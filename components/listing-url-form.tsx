@@ -18,8 +18,8 @@ export function ListingUrlForm() {
   const router = useRouter();
 
   const extractListingInfo = (url: string) => {
-    const otomotoMatch = url.match(/otomoto\.pl\/oferta\/[^\/]+-ID([A-Za-z0-9]+)/);
-    const otodomMatch = url.match(/otodom\.pl\/[^\/]+\/[^\/]+-ID([A-Za-z0-9]+)/);
+    const otomotoMatch = url.match(/otomoto\.pl\/(?:osobowe\/)?oferta\/[^\/]+-ID([A-Za-z0-9]+)/);
+    const otodomMatch = url.match(/otodom\.pl\/[^\/]+\/oferta\/[^\/]+-ID([A-Za-z0-9]+)/);
 
     if (otomotoMatch) {
       return { source: 'otomoto' as const, listingId: otomotoMatch[1] };
@@ -33,15 +33,6 @@ export function ListingUrlForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!user) {
-      toast({
-        title: 'Zaloguj się',
-        description: 'Musisz być zalogowany, aby dodać ogłoszenie',
-        variant: 'destructive',
-      });
-      return;
-    }
-
     const listingInfo = extractListingInfo(url);
 
     if (!listingInfo) {
@@ -53,15 +44,17 @@ export function ListingUrlForm() {
       return;
     }
 
-    const canProceed = await checkRateLimit(user.id, 'add_listing', 5, 60);
+    if (user) {
+      const canProceed = await checkRateLimit(user.id, 'add_listing', 5, 60);
 
-    if (!canProceed) {
-      toast({
-        title: 'Limit przekroczony',
-        description: 'Możesz dodać maksymalnie 5 ogłoszeń na godzinę',
-        variant: 'destructive',
-      });
-      return;
+      if (!canProceed) {
+        toast({
+          title: 'Limit przekroczony',
+          description: 'Możesz dodać maksymalnie 5 ogłoszeń na godzinę',
+          variant: 'destructive',
+        });
+        return;
+      }
     }
 
     setLoading(true);
@@ -86,14 +79,16 @@ export function ListingUrlForm() {
           listing_id: listingInfo.listingId,
           source: listingInfo.source,
           url: url.trim(),
-          created_by: user.id,
+          created_by: user?.id || null,
         })
         .select()
         .single();
 
       if (insertError) throw insertError;
 
-      await recordAction(user.id, 'add_listing');
+      if (user) {
+        await recordAction(user.id, 'add_listing');
+      }
 
       toast({
         title: 'Ogłoszenie dodane',

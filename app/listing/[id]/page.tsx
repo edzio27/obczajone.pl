@@ -115,10 +115,41 @@ export default function ListingPage() {
 
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
-          <Card className="mb-6">
-            <CardHeader>
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            {/* Zdjęcia - Galeria główna */}
+            {latestSnapshot?.photo_urls && latestSnapshot.photo_urls.length > 0 && (
+              <div className="lg:col-span-2">
+                <Card className="overflow-hidden">
+                  <CardContent className="p-0">
+                    <div className="relative aspect-video bg-gray-100">
+                      <img
+                        src={latestSnapshot.photo_urls[0]}
+                        alt={listing.title}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    {latestSnapshot.photo_urls.length > 1 && (
+                      <div className="grid grid-cols-4 gap-2 p-4">
+                        {latestSnapshot.photo_urls.slice(1, 5).map((url, idx) => (
+                          <div key={idx} className="relative aspect-video bg-gray-100 rounded-lg overflow-hidden">
+                            <img
+                              src={url}
+                              alt={`Zdjęcie ${idx + 2}`}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Informacje podstawowe */}
+            <div className={latestSnapshot?.photo_urls && latestSnapshot.photo_urls.length > 0 ? '' : 'lg:col-span-3'}>
+              <Card>
+                <CardHeader>
                   <div className="flex items-center gap-2 mb-2">
                     <Badge variant={listing.source === 'otomoto' ? 'default' : 'secondary'}>
                       {listing.source}
@@ -127,31 +158,29 @@ export default function ListingPage() {
                       <Badge variant="outline">Nieaktywne</Badge>
                     )}
                   </div>
-                  <CardTitle className="text-3xl mb-2">
+                  <CardTitle className="text-2xl">
                     {listing.title || latestSnapshot?.title || 'Ładowanie...'}
                   </CardTitle>
-                  <CardDescription className="text-base">
-                    <div className="flex flex-wrap gap-4 mt-2">
-                      {listing.location && (
-                        <span className="flex items-center gap-1">
-                          <MapPin className="h-4 w-4" />
-                          {listing.location}
-                        </span>
-                      )}
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-4 w-4" />
-                        Dodano{' '}
-                        {formatDistanceToNow(new Date(listing.first_seen_at), {
-                          addSuffix: true,
-                          locale: pl,
-                        })}
-                      </span>
+                  <CardDescription className="text-base space-y-2 mt-3">
+                    {listing.location && (
+                      <div className="flex items-center gap-1">
+                        <MapPin className="h-4 w-4" />
+                        {listing.location}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-1">
+                      <Calendar className="h-4 w-4" />
+                      Dodano{' '}
+                      {formatDistanceToNow(new Date(listing.first_seen_at), {
+                        addSuffix: true,
+                        locale: pl,
+                      })}
                     </div>
                   </CardDescription>
-                </div>
-                <div className="text-right">
+                </CardHeader>
+                <CardContent>
                   {listing.current_price > 0 && (
-                    <div className="text-3xl font-bold text-gray-900 mb-2">
+                    <div className="text-4xl font-bold text-gray-900 mb-4">
                       {listing.current_price.toLocaleString('pl-PL')} zł
                     </div>
                   )}
@@ -159,21 +188,35 @@ export default function ListingPage() {
                     href={listing.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline"
+                    className="inline-flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors"
                   >
                     Zobacz oryginalne ogłoszenie
                     <ExternalLink className="h-4 w-4" />
                   </a>
-                </div>
-              </div>
-            </CardHeader>
-          </Card>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* Opis ogłoszenia */}
+          {latestSnapshot?.description && (
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle>Opis</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div
+                  className="prose prose-sm max-w-none text-gray-700 leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: latestSnapshot.description }}
+                />
+              </CardContent>
+            </Card>
+          )}
 
           <Tabs defaultValue="reviews" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="reviews">Opinie</TabsTrigger>
-              <TabsTrigger value="history">Historia</TabsTrigger>
-              <TabsTrigger value="details">Szczegóły</TabsTrigger>
+              <TabsTrigger value="history">Historia cen</TabsTrigger>
             </TabsList>
 
             <TabsContent value="reviews" className="space-y-6">
@@ -183,59 +226,6 @@ export default function ListingPage() {
 
             <TabsContent value="history">
               <PriceHistory snapshots={snapshots} />
-            </TabsContent>
-
-            <TabsContent value="details">
-              {latestSnapshot ? (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Najnowsze szczegóły</CardTitle>
-                    <CardDescription>
-                      Pobrano{' '}
-                      {formatDistanceToNow(new Date(latestSnapshot.scraped_at), {
-                        addSuffix: true,
-                        locale: pl,
-                      })}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {latestSnapshot.description && (
-                        <div>
-                          <h3 className="font-semibold mb-2">Opis</h3>
-                          <p className="whitespace-pre-wrap text-gray-600">
-                            {latestSnapshot.description}
-                          </p>
-                        </div>
-                      )}
-                      {latestSnapshot.photo_urls?.length > 0 && (
-                        <div>
-                          <h3 className="font-semibold mb-2">Zdjęcia</h3>
-                          <div className="grid grid-cols-3 gap-4">
-                            {latestSnapshot.photo_urls.map((url, idx) => (
-                              <img
-                                key={idx}
-                                src={url}
-                                alt={`Zdjęcie ${idx + 1}`}
-                                className="w-full h-48 object-cover rounded-lg"
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Brak danych</CardTitle>
-                    <CardDescription>
-                      Trwa pobieranie szczegółów ogłoszenia...
-                    </CardDescription>
-                  </CardHeader>
-                </Card>
-              )}
             </TabsContent>
           </Tabs>
         </div>
