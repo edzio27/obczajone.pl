@@ -45,6 +45,8 @@ export default function ListingPage() {
   const [listing, setListing] = useState<Listing | null>(null);
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reviewRefresh, setReviewRefresh] = useState(0);
+  const [hasUserReview, setHasUserReview] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -220,8 +222,16 @@ export default function ListingPage() {
             </TabsList>
 
             <TabsContent value="reviews" className="space-y-6">
-              <ReviewForm listingId={listingId} />
-              <ReviewList listingId={listingId} />
+              <ReviewForm
+                listingId={listingId}
+                onReviewAdded={() => setReviewRefresh(prev => prev + 1)}
+                hasUserReview={hasUserReview}
+              />
+              <ReviewList
+                listingId={listingId}
+                refreshTrigger={reviewRefresh}
+                onHasUserReview={(hasReview) => setHasUserReview(hasReview)}
+              />
             </TabsContent>
 
             <TabsContent value="history">

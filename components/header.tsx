@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth-context';
 import { AuthDialog } from '@/components/auth/auth-dialog';
-import { LogOut, User } from 'lucide-react';
+import { LogOut, User, CircleUser as UserCircle } from 'lucide-react';
 
 export function Header() {
   const { user, signOut } = useAuth();
@@ -24,10 +24,12 @@ export function Header() {
           <nav className="flex items-center space-x-4">
             {user ? (
               <>
-                <span className="text-sm text-gray-600 flex items-center gap-2">
-                  <User className="h-4 w-4" />
-                  {user.email}
-                </span>
+                <Link href="/profile">
+                  <Button variant="ghost" size="sm">
+                    <UserCircle className="h-4 w-4 mr-2" />
+                    Mój profil
+                  </Button>
+                </Link>
                 <Button variant="outline" size="sm" onClick={signOut}>
                   <LogOut className="h-4 w-4 mr-2" />
                   Wyloguj

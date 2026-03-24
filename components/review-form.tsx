@@ -14,9 +14,11 @@ import { Star } from 'lucide-react';
 
 type ReviewFormProps = {
   listingId: string;
+  onReviewAdded?: () => void;
+  hasUserReview?: boolean;
 };
 
-export function ReviewForm({ listingId }: ReviewFormProps) {
+export function ReviewForm({ listingId, onReviewAdded, hasUserReview }: ReviewFormProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -41,12 +43,12 @@ export function ReviewForm({ listingId }: ReviewFormProps) {
       return;
     }
 
-    const canProceed = await checkRateLimit(user.id, 'add_review', 3, 60);
+    const canProceed = await checkRateLimit(user.id, 'add_review', 20, 60);
 
     if (!canProceed) {
       toast({
         title: 'Limit przekroczony',
-        description: 'Możesz dodać maksymalnie 3 opinie na godzinę',
+        description: 'Możesz dodać maksymalnie 20 opinii na godzinę',
         variant: 'destructive',
       });
       return;
@@ -86,7 +88,9 @@ export function ReviewForm({ listingId }: ReviewFormProps) {
       setPhotosDifference('');
       setComment('');
 
-      window.location.reload();
+      if (onReviewAdded) {
+        onReviewAdded();
+      }
     } catch (error: any) {
       toast({
         title: 'Błąd',
@@ -107,6 +111,10 @@ export function ReviewForm({ listingId }: ReviewFormProps) {
         </CardHeader>
       </Card>
     );
+  }
+
+  if (hasUserReview) {
+    return null;
   }
 
   return (

@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
 import { checkRateLimit, recordAction } from '@/lib/rate-limit';
-import { Search } from 'lucide-react';
+import { Search, Loader as Loader2 } from 'lucide-react';
 
 export function ListingUrlForm() {
   const [url, setUrl] = useState('');
@@ -126,10 +126,14 @@ export function ListingUrlForm() {
           placeholder="Wklej link do ogłoszenia z Otomoto lub Otodom"
           className="flex-1"
           required
+          disabled={loading}
         />
         <Button type="submit" disabled={loading}>
           {loading ? (
-            'Wyszukiwanie...'
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Sprawdzanie...
+            </>
           ) : (
             <>
               <Search className="h-4 w-4 mr-2" />
