@@ -1,7 +1,8 @@
 import { Header } from '@/components/header';
 import { ListingUrlForm } from '@/components/listing-url-form';
 import { RecentListings } from '@/components/recent-listings';
-import { TrendingDown, Shield, Users, Eye, Clock, Star, Search } from 'lucide-react';
+import { TrendingDown, Shield, Users, Clock, Star, Search } from 'lucide-react';
+import Image from 'next/image';
 
 export default function Home() {
   return (
@@ -11,8 +12,14 @@ export default function Home() {
       <main className="container mx-auto px-4 py-12 md:py-16">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12 animate-fade-in">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-lg shadow-blue-500/20 mb-5">
-              <Eye className="w-8 h-8 text-white" />
+            <div className="inline-flex items-center justify-center w-24 h-24 mb-6">
+              <Image
+                src="/logo_no_bg.png"
+                alt="Obczajone"
+                width={96}
+                height={96}
+                className="w-24 h-24"
+              />
             </div>
             <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4 text-balance">
               Sprawdź ogłoszenie przed zakupem
@@ -28,7 +35,7 @@ export default function Home() {
 
             <div className="flex flex-wrap justify-center gap-4 text-sm text-gray-600 mb-12">
               <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm">
-                <Eye className="w-4 h-4 text-blue-500" />
+                <Search className="w-4 h-4 text-blue-500" />
                 <span>100% darmowe</span>
               </div>
               <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm">

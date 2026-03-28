@@ -2,10 +2,11 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth-context';
 import { AuthDialog } from '@/components/auth/auth-dialog';
-import { LogOut, CircleUser as UserCircle, Eye } from 'lucide-react';
+import { LogOut, CircleUser as UserCircle } from 'lucide-react';
 
 export function Header() {
   const { user, signOut } = useAuth();
@@ -13,15 +14,17 @@ export function Header() {
 
   return (
     <>
-      <header className="border-b bg-gray-50/90 backdrop-blur-md sticky top-0 z-50 shadow-sm">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center space-x-2.5 group">
-            <div className="flex items-center justify-center w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-sm group-hover:shadow-md transition-all group-hover:scale-105">
-              <Eye className="w-5 h-5 text-white" />
-            </div>
-            <div className="text-xl font-bold text-gray-900">
-              obczajone<span className="text-blue-600">.pl</span>
-            </div>
+      <header className="border-b bg-white/90 backdrop-blur-md sticky top-0 z-50 shadow-sm">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <Link href="/" className="flex items-center group">
+            <Image
+              src="/obczajone_logo_cropped.png"
+              alt="obczajone.pl"
+              width={280}
+              height={70}
+              className="h-16 w-auto transition-all group-hover:scale-105"
+              priority
+            />
           </Link>
 
           <nav className="flex items-center space-x-3">

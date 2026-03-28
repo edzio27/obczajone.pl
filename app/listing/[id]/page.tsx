@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import Head from 'next/head';
 import { Header } from '@/components/header';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
@@ -55,6 +56,8 @@ export default function ListingPage() {
   const [hasUserReview, setHasUserReview] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
+  const [reviewCount, setReviewCount] = useState(0);
+  const [averageRating, setAverageRating] = useState<number | null>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -80,12 +83,23 @@ export default function ListingPage() {
         setSnapshots(snapshotsData || []);
       }
 
+      const { data: reviewsData } = await supabase
+        .from('reviews')
+        .select('rating')
+        .eq('listing_id', listingId);
+
+      if (reviewsData && reviewsData.length > 0) {
+        setReviewCount(reviewsData.length);
+        const avg = reviewsData.reduce((sum, r) => sum + r.rating, 0) / reviewsData.length;
+        setAverageRating(avg);
+      }
+
       setListing(listingData);
       setLoading(false);
     }
 
     fetchData();
-  }, [listingId]);
+  }, [listingId, reviewRefresh]);
 
   useEffect(() => {
     async function checkFavorite() {
@@ -191,9 +205,55 @@ export default function ListingPage() {
 
   const latestSnapshot = snapshots[0];
 
+  const pageTitle = `${listing.title} - ${listing.location} | obczajone.pl`;
+  const pageDescription = `Sprawdź historię cen i opinie dla: ${listing.title}. Aktualna cena: ${listing.current_price.toLocaleString('pl-PL')} zł. ${reviewCount} opinii użytkowników.`;
+  const imageUrl = latestSnapshot?.photo_urls?.[0] || 'https://obczajone.pl/og-image.png';
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header />
+    <>
+      <Head>
+        <title>{pageTitle}</title>
+        <meta name="description" content={pageDescription} />
+        <meta property="og:title" content={pageTitle} />
+        <meta property="og:description" content={pageDescription} />
+        <meta property="og:image" content={imageUrl} />
+        <meta property="og:url" content={`https://obczajone.pl/listing/${listingId}`} />
+        <meta property="og:type" content="product" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={pageTitle} />
+        <meta name="twitter:description" content={pageDescription} />
+        <meta name="twitter:image" content={imageUrl} />
+        <link rel="canonical" href={`https://obczajone.pl/listing/${listingId}`} />
+
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'Product',
+              name: listing.title,
+              description: pageDescription,
+              image: imageUrl,
+              offers: {
+                '@type': 'Offer',
+                price: listing.current_price,
+                priceCurrency: 'PLN',
+                availability: listing.is_active ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+                url: listing.url,
+              },
+              aggregateRating: reviewCount > 0 && averageRating ? {
+                '@type': 'AggregateRating',
+                ratingValue: averageRating.toFixed(1),
+                reviewCount: reviewCount,
+                bestRating: 5,
+                worstRating: 1,
+              } : undefined,
+            }),
+          }}
+        />
+      </Head>
+      <div className="min-h-screen bg-gray-50">
+        <Header />
 
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
@@ -336,6 +396,7 @@ export default function ListingPage() {
           </Tabs>
         </div>
       </main>
-    </div>
+      </div>
+    </>
   );
 }
