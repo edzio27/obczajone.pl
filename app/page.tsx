@@ -1,6 +1,7 @@
 import { Header } from '@/components/header';
 import { ListingUrlForm } from '@/components/listing-url-form';
 import { RecentListings } from '@/components/recent-listings';
+import { PromotionalBanner } from '@/components/promotional-banner';
 import { TrendingDown, Shield, Users, Clock, Star, Search } from 'lucide-react';
 import Image from 'next/image';
 
@@ -31,6 +32,10 @@ export default function Home() {
 
             <div className="flex justify-center mb-8">
               <ListingUrlForm />
+            </div>
+
+            <div className="mb-8">
+              <PromotionalBanner />
             </div>
 
             <div className="flex flex-wrap justify-center gap-4 text-sm text-gray-600 mb-12">
