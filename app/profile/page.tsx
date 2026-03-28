@@ -7,7 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ExternalLink, MessageSquare, TrendingDown, TrendingUp, Minus, Loader as Loader2, Chrome as Home } from 'lucide-react';
+import { ListingCard } from '@/components/listing-card';
+import { MessageSquare, TrendingDown, TrendingUp, Minus, Loader as Loader2, Chrome as Home } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -15,12 +16,16 @@ type Listing = {
   id: string;
   url: string;
   title: string | null;
+  location: string;
   source: string;
   created_at: string;
+  current_price: number;
   latest_price: number | null;
   price_change: number | null;
   has_reviews: boolean;
   review_count: number;
+  image_url: string | null;
+  average_rating?: number;
 };
 
 type Review = {
@@ -34,6 +39,12 @@ type Review = {
     title: string | null;
     url: string;
     source: string;
+    image_url: string | null;
+    location: string;
+    current_price: number;
+    created_at: string;
+    average_rating?: number;
+    review_count?: number;
   };
 };
 
@@ -42,6 +53,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const [listings, setListings] = useState<Listing[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [favorites, setFavorites] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -70,14 +82,18 @@ export default function ProfilePage() {
           id,
           url,
           title,
+          location,
           source,
           created_at,
+          current_price,
+          image_url,
           listing_snapshots (
             price,
             scraped_at
           ),
           reviews (
-            id
+            id,
+            rating
           )
         `)
         .eq('created_by', user.id)
@@ -96,16 +112,25 @@ export default function ProfilePage() {
         const previousPrice = sortedSnapshots[1]?.price || null;
         const priceChange = latestPrice && previousPrice ? latestPrice - previousPrice : null;
 
+        const reviews = listing.reviews || [];
+        const avgRating = reviews.length > 0
+          ? reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviews.length
+          : undefined;
+
         return {
           id: listing.id,
           url: listing.url,
           title: listing.title,
+          location: listing.location || '',
           source: listing.source,
           created_at: listing.created_at,
+          current_price: listing.current_price || latestPrice || 0,
           latest_price: latestPrice,
           price_change: priceChange,
-          has_reviews: listing.reviews.length > 0,
-          review_count: listing.reviews.length,
+          has_reviews: reviews.length > 0,
+          review_count: reviews.length,
+          image_url: listing.image_url,
+          average_rating: avgRating,
         };
       });
 
@@ -124,7 +149,12 @@ export default function ProfilePage() {
           listings (
             title,
             url,
-            source
+            source,
+            image_url,
+            location,
+            current_price,
+            created_at,
+            reviews (rating)
           )
         `)
         .eq('user_id', user.id)
@@ -139,21 +169,104 @@ export default function ProfilePage() {
 
       const processedReviews: Review[] = (reviewsData || [])
         .filter((review: any) => review.listings)
-        .map((review: any) => ({
-          id: review.id,
-          listing_id: review.listing_id,
-          comment: review.comment,
-          rating: review.rating,
-          created_at: review.created_at,
-          updated_at: review.updated_at,
-          listing: {
-            title: review.listings.title,
-            url: review.listings.url,
-            source: review.listings.source,
-          },
-        }));
+        .map((review: any) => {
+          const reviews = review.listings.reviews || [];
+          const avgRating = reviews.length > 0
+            ? reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviews.length
+            : undefined;
+
+          return {
+            id: review.id,
+            listing_id: review.listing_id,
+            comment: review.comment,
+            rating: review.rating,
+            created_at: review.created_at,
+            updated_at: review.updated_at,
+            listing: {
+              title: review.listings.title,
+              url: review.listings.url,
+              source: review.listings.source,
+              image_url: review.listings.image_url,
+              location: review.listings.location || '',
+              current_price: review.listings.current_price || 0,
+              created_at: review.listings.created_at,
+              average_rating: avgRating,
+              review_count: reviews.length,
+            },
+          };
+        });
 
       setReviews(processedReviews);
+
+      // Fetch user's favorite listings
+      const { data: favoritesData, error: favoritesError } = await supabase
+        .from('favorites')
+        .select(`
+          listing_id,
+          created_at,
+          listings (
+            id,
+            url,
+            title,
+            location,
+            source,
+            created_at,
+            current_price,
+            image_url,
+            listing_snapshots (
+              price,
+              scraped_at
+            ),
+            reviews (
+              id,
+              rating
+            )
+          )
+        `)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (favoritesError) {
+        console.error('Error fetching favorites:', favoritesError);
+        throw favoritesError;
+      }
+
+      const processedFavorites: Listing[] = (favoritesData || [])
+        .filter((fav: any) => fav.listings)
+        .map((fav: any) => {
+          const listing = fav.listings;
+          const snapshots = listing.listing_snapshots || [];
+          const sortedSnapshots = snapshots.sort((a: any, b: any) =>
+            new Date(b.scraped_at).getTime() - new Date(a.scraped_at).getTime()
+          );
+
+          const latestPrice = sortedSnapshots[0]?.price || null;
+          const previousPrice = sortedSnapshots[1]?.price || null;
+          const priceChange = latestPrice && previousPrice ? latestPrice - previousPrice : null;
+
+          const reviews = listing.reviews || [];
+          const avgRating = reviews.length > 0
+            ? reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviews.length
+            : undefined;
+
+          return {
+            id: listing.id,
+            url: listing.url,
+            title: listing.title,
+            location: listing.location || '',
+            source: listing.source,
+            created_at: listing.created_at,
+            current_price: listing.current_price || latestPrice || 0,
+            latest_price: latestPrice,
+            price_change: priceChange,
+            has_reviews: reviews.length > 0,
+            review_count: reviews.length,
+            image_url: listing.image_url,
+            average_rating: avgRating,
+          };
+        });
+
+      setFavorites(processedFavorites);
     } catch (error) {
       console.error('Error fetching user data:', error);
     } finally {
@@ -221,9 +334,12 @@ export default function ProfilePage() {
           <TabsTrigger value="reviews">
             Moje Komentarze ({reviews.length})
           </TabsTrigger>
+          <TabsTrigger value="favorites">
+            Polubione ({favorites.length})
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="listings" className="space-y-4">
+        <TabsContent value="listings">
           {listings.length === 0 ? (
             <Card>
               <CardContent className="py-8 text-center text-muted-foreground">
@@ -231,68 +347,15 @@ export default function ProfilePage() {
               </CardContent>
             </Card>
           ) : (
-            listings.map((listing) => (
-              <Card key={listing.id}>
-                <CardHeader>
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <CardTitle className="text-lg mb-2 truncate">
-                        {listing.title || 'Bez tytułu'}
-                      </CardTitle>
-                      <CardDescription>
-                        Dodano: {formatDate(listing.created_at)}
-                      </CardDescription>
-                    </div>
-                    <Badge variant="outline">{listing.source}</Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center gap-6">
-                    {listing.latest_price && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Aktualna cena</p>
-                        <p className="text-2xl font-bold">
-                          {listing.latest_price.toLocaleString('pl-PL')} zł
-                        </p>
-                      </div>
-                    )}
-                    {listing.price_change !== null && listing.price_change !== 0 && (
-                      <div className="flex items-center gap-2">
-                        {getPriceChangeIcon(listing.price_change)}
-                        <span className={`font-medium ${getPriceChangeColor(listing.price_change)}`}>
-                          {listing.price_change > 0 ? '+' : ''}
-                          {listing.price_change.toLocaleString('pl-PL')} zł
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-4">
-                    <Link href={`/listing/${listing.id}`}>
-                      <Button variant="default">
-                        <MessageSquare className="h-4 w-4 mr-2" />
-                        Zobacz szczegóły
-                        {listing.review_count > 0 && (
-                          <Badge variant="secondary" className="ml-2">
-                            {listing.review_count}
-                          </Badge>
-                        )}
-                      </Button>
-                    </Link>
-                    <a href={listing.url} target="_blank" rel="noopener noreferrer">
-                      <Button variant="outline">
-                        <ExternalLink className="h-4 w-4 mr-2" />
-                        Otwórz ogłoszenie
-                      </Button>
-                    </a>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {listings.map((listing) => (
+                <ListingCard key={listing.id} {...listing} />
+              ))}
+            </div>
           )}
         </TabsContent>
 
-        <TabsContent value="reviews" className="space-y-4">
+        <TabsContent value="reviews">
           {reviews.length === 0 ? (
             <Card>
               <CardContent className="py-8 text-center text-muted-foreground">
@@ -300,40 +363,43 @@ export default function ProfilePage() {
               </CardContent>
             </Card>
           ) : (
-            reviews.map((review) => (
-              <Card key={review.id}>
-                <CardHeader>
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <CardTitle className="text-lg mb-2 truncate">
-                        {review.listing.title || 'Bez tytułu'}
-                      </CardTitle>
-                      <CardDescription>
-                        {formatDate(review.created_at)}
-                        {review.updated_at !== review.created_at && ' (edytowano)'}
-                      </CardDescription>
-                    </div>
-                    <div className="text-2xl">{getStarRating(review.rating)}</div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-sm whitespace-pre-wrap">{review.comment}</p>
-                  <div className="flex items-center gap-4">
-                    <Link href={`/listing/${review.listing_id}`}>
-                      <Button variant="default">
-                        Zobacz ogłoszenie
-                      </Button>
-                    </Link>
-                    <a href={review.listing.url} target="_blank" rel="noopener noreferrer">
-                      <Button variant="outline">
-                        <ExternalLink className="h-4 w-4 mr-2" />
-                        Otwórz źródło
-                      </Button>
-                    </a>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {reviews.map((review) => (
+                <ListingCard
+                  key={review.id}
+                  id={review.listing_id}
+                  title={review.listing.title}
+                  location={review.listing.location}
+                  current_price={review.listing.current_price}
+                  source={review.listing.source}
+                  created_at={review.listing.created_at}
+                  image_url={review.listing.image_url}
+                  average_rating={review.listing.average_rating}
+                  review_count={review.listing.review_count}
+                  userReview={{
+                    rating: review.rating,
+                    comment: review.comment,
+                    created_at: review.created_at,
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="favorites">
+          {favorites.length === 0 ? (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                Nie masz jeszcze żadnych polubionych ogłoszeń.
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {favorites.map((listing) => (
+                <ListingCard key={listing.id} {...listing} />
+              ))}
+            </div>
           )}
         </TabsContent>
       </Tabs>

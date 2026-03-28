@@ -117,33 +117,38 @@ export function ListingUrlForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="w-full max-w-2xl">
-      <div className="flex gap-2">
+    <form onSubmit={handleSubmit} className="w-full max-w-3xl">
+      <div className="flex flex-col sm:flex-row gap-3 bg-white p-2 rounded-2xl shadow-lg border-2 border-gray-100 hover:border-blue-200 transition-colors">
         <Input
           type="url"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
-          placeholder="Wklej link do ogłoszenia z Otomoto lub Otodom"
-          className="flex-1"
+          placeholder="Wklej link do ogłoszenia z Otomoto lub Otodom..."
+          className="flex-1 border-0 focus-visible:ring-0 text-base h-12 px-4"
           required
           disabled={loading}
         />
-        <Button type="submit" disabled={loading}>
+        <Button
+          type="submit"
+          disabled={loading}
+          size="lg"
+          className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-md hover:shadow-lg transition-all font-semibold h-12 px-8"
+        >
           {loading ? (
             <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              <Loader2 className="h-5 w-5 mr-2 animate-spin" />
               Sprawdzanie...
             </>
           ) : (
             <>
-              <Search className="h-4 w-4 mr-2" />
+              <Search className="h-5 w-5 mr-2" />
               Sprawdź
             </>
           )}
         </Button>
       </div>
-      <p className="text-sm text-gray-500 mt-2">
-        Wspieramy ogłoszenia z Otomoto.pl i Otodom.pl
+      <p className="text-sm text-gray-500 mt-3 text-center">
+        Wspieramy ogłoszenia z <span className="font-semibold">Otomoto.pl</span> i <span className="font-semibold">Otodom.pl</span>
       </p>
     </form>
   );

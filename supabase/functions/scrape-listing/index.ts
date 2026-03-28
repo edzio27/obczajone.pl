@@ -282,6 +282,7 @@ Deno.serve(async (req: Request) => {
         title: scrapedData.title,
         location: scrapedData.location,
         current_price: scrapedData.price,
+        image_url: scrapedData.photoUrls[0] || '',
         last_checked_at: new Date().toISOString(),
       })
       .eq('id', listingId);

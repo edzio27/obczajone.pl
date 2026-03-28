@@ -4,16 +4,20 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { Header } from '@/components/header';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/auth-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ReviewForm } from '@/components/review-form';
 import { ReviewList } from '@/components/review-list';
 import { PriceHistory } from '@/components/price-history';
+import { PhotoUpload } from '@/components/photo-upload';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ExternalLink, MapPin, Calendar } from 'lucide-react';
+import { ExternalLink, MapPin, Calendar, Heart } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { pl } from 'date-fns/locale';
+import { useToast } from '@/hooks/use-toast';
 
 type Listing = {
   id: string;
@@ -41,12 +45,16 @@ type Snapshot = {
 export default function ListingPage() {
   const params = useParams();
   const listingId = params.id as string;
+  const { user } = useAuth();
+  const { toast } = useToast();
 
   const [listing, setListing] = useState<Listing | null>(null);
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [loading, setLoading] = useState(true);
   const [reviewRefresh, setReviewRefresh] = useState(0);
   const [hasUserReview, setHasUserReview] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [favoriteLoading, setFavoriteLoading] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -78,6 +86,78 @@ export default function ListingPage() {
 
     fetchData();
   }, [listingId]);
+
+  useEffect(() => {
+    async function checkFavorite() {
+      if (!user || !listingId) return;
+
+      const { data } = await supabase
+        .from('favorites')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('listing_id', listingId)
+        .maybeSingle();
+
+      setIsFavorite(!!data);
+    }
+
+    checkFavorite();
+  }, [user, listingId]);
+
+  const toggleFavorite = async () => {
+    if (!user) {
+      toast({
+        title: 'Musisz być zalogowany',
+        description: 'Zaloguj się, aby dodać ogłoszenie do polubionych',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setFavoriteLoading(true);
+
+    try {
+      if (isFavorite) {
+        const { error } = await supabase
+          .from('favorites')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('listing_id', listingId);
+
+        if (error) throw error;
+
+        setIsFavorite(false);
+        toast({
+          title: 'Usunięto z polubionych',
+          description: 'Ogłoszenie zostało usunięte z Twoich polubionych',
+        });
+      } else {
+        const { error } = await supabase
+          .from('favorites')
+          .insert({
+            user_id: user.id,
+            listing_id: listingId,
+          });
+
+        if (error) throw error;
+
+        setIsFavorite(true);
+        toast({
+          title: 'Dodano do polubionych',
+          description: 'Ogłoszenie zostało dodane do Twoich polubionych',
+        });
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      toast({
+        title: 'Błąd',
+        description: 'Nie udało się zaktualizować polubionych',
+        variant: 'destructive',
+      });
+    } finally {
+      setFavoriteLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -180,7 +260,7 @@ export default function ListingPage() {
                     </div>
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-3">
                   {listing.current_price > 0 && (
                     <div className="text-4xl font-bold text-gray-900 mb-4">
                       {listing.current_price.toLocaleString('pl-PL')} zł
@@ -195,6 +275,17 @@ export default function ListingPage() {
                     Zobacz oryginalne ogłoszenie
                     <ExternalLink className="h-4 w-4" />
                   </a>
+                  {user && (
+                    <Button
+                      onClick={toggleFavorite}
+                      disabled={favoriteLoading}
+                      variant={isFavorite ? 'default' : 'outline'}
+                      className="w-full"
+                    >
+                      <Heart className={`h-4 w-4 mr-2 ${isFavorite ? 'fill-current' : ''}`} />
+                      {isFavorite ? 'Usuń z polubionych' : 'Dodaj do polubionych'}
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -216,8 +307,9 @@ export default function ListingPage() {
           )}
 
           <Tabs defaultValue="reviews" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="reviews">Opinie</TabsTrigger>
+              <TabsTrigger value="photos">Zdjęcia</TabsTrigger>
               <TabsTrigger value="history">Historia cen</TabsTrigger>
             </TabsList>
 
@@ -232,6 +324,10 @@ export default function ListingPage() {
                 refreshTrigger={reviewRefresh}
                 onHasUserReview={(hasReview) => setHasUserReview(hasReview)}
               />
+            </TabsContent>
+
+            <TabsContent value="photos">
+              <PhotoUpload listingId={listingId} />
             </TabsContent>
 
             <TabsContent value="history">

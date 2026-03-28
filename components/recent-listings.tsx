@@ -1,13 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { formatDistanceToNow } from 'date-fns';
-import { pl } from 'date-fns/locale';
-import { ExternalLink } from 'lucide-react';
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ListingCard } from '@/components/listing-card';
 
 type Listing = {
   id: string;
@@ -17,6 +13,9 @@ type Listing = {
   source: string;
   created_at: string;
   url: string;
+  image_url: string;
+  average_rating?: number;
+  review_count?: number;
 };
 
 export function RecentListings() {
@@ -27,12 +26,27 @@ export function RecentListings() {
     async function fetchListings() {
       const { data, error } = await supabase
         .from('listings')
-        .select('*')
+        .select(`
+          *,
+          reviews(rating)
+        `)
         .order('created_at', { ascending: false })
         .limit(10);
 
       if (!error && data) {
-        setListings(data);
+        const listingsWithRatings = data.map((listing: any) => {
+          const reviews = listing.reviews || [];
+          const avgRating = reviews.length > 0
+            ? reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviews.length
+            : undefined;
+
+          return {
+            ...listing,
+            average_rating: avgRating,
+            review_count: reviews.length,
+          };
+        });
+        setListings(listingsWithRatings);
       }
       setLoading(false);
     }
@@ -42,11 +56,14 @@ export function RecentListings() {
 
   if (loading) {
     return (
-      <div className="space-y-4">
-        {[...Array(5)].map((_, i) => (
-          <Card key={i}>
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {[...Array(6)].map((_, i) => (
+          <Card key={i} className="border-gray-200">
             <CardHeader>
-              <div className="h-6 bg-gray-200 rounded animate-pulse" />
+              <div className="space-y-3">
+                <div className="h-5 bg-gray-200 rounded animate-pulse w-3/4" />
+                <div className="h-4 bg-gray-100 rounded animate-pulse w-1/2" />
+              </div>
             </CardHeader>
           </Card>
         ))}
@@ -56,10 +73,10 @@ export function RecentListings() {
 
   if (listings.length === 0) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Brak ogłoszeń</CardTitle>
-          <CardDescription>
+      <Card className="border-dashed border-2">
+        <CardHeader className="text-center py-12">
+          <CardTitle className="text-2xl">Brak ogłoszeń</CardTitle>
+          <CardDescription className="text-base mt-2">
             Dodaj pierwsze ogłoszenie używając formularza powyżej
           </CardDescription>
         </CardHeader>
@@ -68,42 +85,9 @@ export function RecentListings() {
   }
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-2xl font-bold text-gray-900">Ostatnio sprawdzone</h2>
+    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
       {listings.map((listing) => (
-        <Link key={listing.id} href={`/listing/${listing.id}`}>
-          <Card className="hover:shadow-md transition-shadow cursor-pointer">
-            <CardHeader>
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <CardTitle className="truncate">
-                    {listing.title || 'Ładowanie tytułu...'}
-                  </CardTitle>
-                  <CardDescription className="flex items-center gap-2 mt-1">
-                    <span>{listing.location || 'Brak lokalizacji'}</span>
-                    <span>•</span>
-                    <span>
-                      {formatDistanceToNow(new Date(listing.created_at), {
-                        addSuffix: true,
-                        locale: pl,
-                      })}
-                    </span>
-                  </CardDescription>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant={listing.source === 'otomoto' ? 'default' : 'secondary'}>
-                    {listing.source}
-                  </Badge>
-                  {listing.current_price > 0 && (
-                    <div className="text-lg font-semibold text-gray-900">
-                      {listing.current_price.toLocaleString('pl-PL')} zł
-                    </div>
-                  )}
-                </div>
-              </div>
-            </CardHeader>
-          </Card>
-        </Link>
+        <ListingCard key={listing.id} {...listing} />
       ))}
     </div>
   );
