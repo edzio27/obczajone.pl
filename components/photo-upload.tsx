@@ -237,23 +237,26 @@ export function PhotoUpload({ listingId, onPhotosChange }: PhotoUploadProps) {
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {userPhotos.map((photo) => (
                   <div key={photo.id} className="relative group overflow-hidden rounded-lg border border-gray-200 hover:border-blue-300 transition-all">
-                    <div className="relative w-full h-48 bg-gray-100">
+                    <button
+                      onClick={() => window.open(photo.photo_url, '_blank')}
+                      className="relative w-full h-48 bg-gray-100 cursor-pointer"
+                    >
                       <img
                         src={photo.photo_url}
                         alt="Zdjęcie użytkownika"
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
-                      <button
-                        onClick={() => handleDelete(photo)}
-                        className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                        title="Usuń zdjęcie"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
                       <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded backdrop-blur-sm">
                         {(photo.file_size / 1024).toFixed(0)} KB
                       </div>
-                    </div>
+                    </button>
+                    <button
+                      onClick={() => handleDelete(photo)}
+                      className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-10"
+                      title="Usuń zdjęcie"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
                   </div>
                 ))}
               </div>
@@ -282,7 +285,11 @@ export function PhotoUpload({ listingId, onPhotosChange }: PhotoUploadProps) {
             </h3>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {otherPhotos.map((photo) => (
-                <div key={photo.id} className="relative overflow-hidden rounded-lg border border-gray-200 hover:border-blue-300 transition-all group">
+                <button
+                  key={photo.id}
+                  onClick={() => window.open(photo.photo_url, '_blank')}
+                  className="relative overflow-hidden rounded-lg border border-gray-200 hover:border-blue-300 transition-all group cursor-pointer"
+                >
                   <div className="relative w-full h-48 bg-gray-100">
                     <img
                       src={photo.photo_url}
@@ -290,7 +297,7 @@ export function PhotoUpload({ listingId, onPhotosChange }: PhotoUploadProps) {
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </CardContent>

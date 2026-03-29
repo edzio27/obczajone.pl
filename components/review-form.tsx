@@ -10,7 +10,11 @@ import { useAuth } from '@/lib/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
 import { checkRateLimit, recordAction } from '@/lib/rate-limit';
-import { Star } from 'lucide-react';
+import { Star, Upload, X, Loader as Loader2 } from 'lucide-react';
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const MAX_PHOTOS = 5;
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 type ReviewFormProps = {
   listingId: string;
@@ -30,6 +34,44 @@ export function ReviewForm({ listingId, onReviewAdded, hasUserReview }: ReviewFo
   const [equipmentDifference, setEquipmentDifference] = useState('');
   const [photosDifference, setPhotosDifference] = useState('');
   const [comment, setComment] = useState('');
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+
+    const remainingSlots = MAX_PHOTOS - selectedFiles.length;
+    if (remainingSlots <= 0) {
+      toast({
+        title: 'Limit zdjęć',
+        description: `Możesz dodać maksymalnie ${MAX_PHOTOS} zdjęć`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const filesToAdd = files.slice(0, remainingSlots);
+    const invalidFiles = filesToAdd.filter(
+      file => !ALLOWED_TYPES.includes(file.type) || file.size > MAX_FILE_SIZE
+    );
+
+    if (invalidFiles.length > 0) {
+      toast({
+        title: 'Nieprawidłowe pliki',
+        description: 'Akceptowane formaty: JPEG, PNG, WebP. Max rozmiar: 5MB',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setSelectedFiles(prev => [...prev, ...filesToAdd]);
+    event.target.value = '';
+  };
+
+  const removeFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,9 +97,10 @@ export function ReviewForm({ listingId, onReviewAdded, hasUserReview }: ReviewFo
     }
 
     setLoading(true);
+    setUploading(true);
 
     try {
-      const { error } = await supabase.from('reviews').insert({
+      const { data: reviewData, error: reviewError } = await supabase.from('reviews').insert({
         listing_id: listingId,
         user_id: user.id,
         visited_in_person: visitedInPerson === 'yes',
@@ -68,15 +111,51 @@ export function ReviewForm({ listingId, onReviewAdded, hasUserReview }: ReviewFo
         equipment_difference: equipmentDifference,
         photos_difference: photosDifference,
         comment,
-      });
+      }).select().single();
 
-      if (error) throw error;
+      if (reviewError) throw reviewError;
+
+      if (selectedFiles.length > 0 && reviewData) {
+        for (let i = 0; i < selectedFiles.length; i++) {
+          const file = selectedFiles[i];
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${user.id}/${listingId}/${reviewData.id}/${Date.now()}_${i}.${fileExt}`;
+
+          const { error: uploadError } = await supabase.storage
+            .from('listing-photos')
+            .upload(fileName, file, {
+              cacheControl: '3600',
+              upsert: false,
+            });
+
+          if (uploadError) throw uploadError;
+
+          const { data: { publicUrl } } = supabase.storage
+            .from('listing-photos')
+            .getPublicUrl(fileName);
+
+          const { error: dbError } = await supabase
+            .from('user_listing_photos')
+            .insert({
+              listing_id: listingId,
+              user_id: user.id,
+              review_id: reviewData.id,
+              photo_url: publicUrl,
+              file_size: file.size,
+              order_index: i,
+            });
+
+          if (dbError) throw dbError;
+        }
+      }
 
       await recordAction(user.id, 'add_review');
 
       toast({
         title: 'Opinia dodana',
-        description: 'Twoja opinia czeka na moderację',
+        description: selectedFiles.length > 0
+          ? `Opinia ze zdjęciami czeka na moderację`
+          : 'Twoja opinia czeka na moderację',
       });
 
       setVisitedInPerson('no');
@@ -87,6 +166,7 @@ export function ReviewForm({ listingId, onReviewAdded, hasUserReview }: ReviewFo
       setEquipmentDifference('');
       setPhotosDifference('');
       setComment('');
+      setSelectedFiles([]);
 
       if (onReviewAdded) {
         onReviewAdded();
@@ -99,6 +179,7 @@ export function ReviewForm({ listingId, onReviewAdded, hasUserReview }: ReviewFo
       });
     } finally {
       setLoading(false);
+      setUploading(false);
     }
   };
 
@@ -227,8 +308,76 @@ export function ReviewForm({ listingId, onReviewAdded, hasUserReview }: ReviewFo
             />
           </div>
 
-          <Button type="submit" disabled={loading} className="w-full">
-            {loading ? 'Dodawanie...' : 'Dodaj opinię'}
+          <div className="space-y-3">
+            <Label>Zdjęcia (opcjonalnie)</Label>
+            <div className="space-y-3">
+              <div>
+                <input
+                  type="file"
+                  id="review-photos"
+                  multiple
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                  disabled={uploading || selectedFiles.length >= MAX_PHOTOS}
+                />
+                <label htmlFor="review-photos">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    asChild
+                    disabled={uploading || selectedFiles.length >= MAX_PHOTOS}
+                    className="cursor-pointer"
+                  >
+                    <span>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Dodaj zdjęcia ({selectedFiles.length}/{MAX_PHOTOS})
+                    </span>
+                  </Button>
+                </label>
+              </div>
+
+              {selectedFiles.length > 0 && (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {selectedFiles.map((file, index) => (
+                    <div key={index} className="relative group">
+                      <div className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 border-2 border-gray-200">
+                        <img
+                          src={URL.createObjectURL(file)}
+                          alt={`Podgląd ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeFile(index)}
+                          className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                        <div className="absolute bottom-1 left-1 bg-black/70 text-white text-xs px-2 py-0.5 rounded">
+                          {(file.size / 1024).toFixed(0)} KB
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <p className="text-xs text-muted-foreground">
+                Maksymalnie {MAX_PHOTOS} zdjęć. Dozwolone formaty: JPEG, PNG, WebP. Max rozmiar: 5MB
+              </p>
+            </div>
+          </div>
+
+          <Button type="submit" disabled={loading || uploading} className="w-full">
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                {uploading ? 'Wysyłanie zdjęć...' : 'Dodawanie...'}
+              </>
+            ) : (
+              'Dodaj opinię'
+            )}
           </Button>
         </form>
       </CardContent>

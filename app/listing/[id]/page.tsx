@@ -9,11 +9,9 @@ import { useAuth } from '@/lib/auth-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ReviewForm } from '@/components/review-form';
 import { ReviewList } from '@/components/review-list';
 import { PriceHistory } from '@/components/price-history';
-import { PhotoUpload } from '@/components/photo-upload';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ExternalLink, MapPin, Calendar, Heart } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -58,6 +56,7 @@ export default function ListingPage() {
   const [favoriteLoading, setFavoriteLoading] = useState(false);
   const [reviewCount, setReviewCount] = useState(0);
   const [averageRating, setAverageRating] = useState<number | null>(null);
+  const [selectedPhoto, setSelectedPhoto] = useState(0);
 
   useEffect(() => {
     async function fetchData() {
@@ -257,26 +256,58 @@ export default function ListingPage() {
 
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
+          {/* Ocena i opinie - SAMA GÓRA */}
+          <div className="mb-6">
+            <Card className="mb-4">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Opinie użytkowników</CardTitle>
+                  {reviewCount > 0 && averageRating && (
+                    <div className="flex items-center gap-2">
+                      <div className="text-3xl font-bold text-gray-900">
+                        {averageRating.toFixed(1)}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {reviewCount} {reviewCount === 1 ? 'opinia' : reviewCount < 5 ? 'opinie' : 'opinii'}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CardHeader>
+            </Card>
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
             {/* Zdjęcia - Galeria główna */}
             {latestSnapshot?.photo_urls && latestSnapshot.photo_urls.length > 0 && (
               <div className="lg:col-span-2">
                 <Card className="overflow-hidden">
                   <CardContent className="p-0">
-                    <div className="relative aspect-video bg-gray-100">
+                    <div
+                      className="relative aspect-video bg-gray-100 cursor-pointer hover:opacity-95 transition-opacity"
+                      onClick={() => window.open(latestSnapshot.photo_urls[selectedPhoto], '_blank')}
+                    >
                       <img
-                        src={latestSnapshot.photo_urls[0]}
+                        src={latestSnapshot.photo_urls[selectedPhoto]}
                         alt={listing.title}
                         className="w-full h-full object-cover"
                       />
                     </div>
                     {latestSnapshot.photo_urls.length > 1 && (
                       <div className="grid grid-cols-4 gap-2 p-4">
-                        {latestSnapshot.photo_urls.slice(1, 5).map((url, idx) => (
-                          <div key={idx} className="relative aspect-video bg-gray-100 rounded-lg overflow-hidden">
+                        {latestSnapshot.photo_urls.map((url, idx) => (
+                          <div
+                            key={idx}
+                            className={`relative aspect-video bg-gray-100 rounded-lg overflow-hidden cursor-pointer transition-all ${
+                              selectedPhoto === idx
+                                ? 'ring-2 ring-blue-500 opacity-100'
+                                : 'hover:opacity-80 opacity-60'
+                            }`}
+                            onClick={() => setSelectedPhoto(idx)}
+                          >
                             <img
                               src={url}
-                              alt={`Zdjęcie ${idx + 2}`}
+                              alt={`Zdjęcie ${idx + 1}`}
                               className="w-full h-full object-cover"
                             />
                           </div>
@@ -366,34 +397,31 @@ export default function ListingPage() {
             </Card>
           )}
 
-          <Tabs defaultValue="reviews" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="reviews">Opinie</TabsTrigger>
-              <TabsTrigger value="photos">Zdjęcia</TabsTrigger>
-              <TabsTrigger value="history">Historia cen</TabsTrigger>
-            </TabsList>
+          {/* Historia cen */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Historia cen</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <PriceHistory snapshots={snapshots} />
+            </CardContent>
+          </Card>
 
-            <TabsContent value="reviews" className="space-y-6">
-              <ReviewForm
-                listingId={listingId}
-                onReviewAdded={() => setReviewRefresh(prev => prev + 1)}
-                hasUserReview={hasUserReview}
-              />
+          <div>
+            <ReviewForm
+              listingId={listingId}
+              onReviewAdded={() => setReviewRefresh(prev => prev + 1)}
+              hasUserReview={hasUserReview}
+            />
+
+            <div className="mt-4">
               <ReviewList
                 listingId={listingId}
                 refreshTrigger={reviewRefresh}
                 onHasUserReview={(hasReview) => setHasUserReview(hasReview)}
               />
-            </TabsContent>
-
-            <TabsContent value="photos">
-              <PhotoUpload listingId={listingId} />
-            </TabsContent>
-
-            <TabsContent value="history">
-              <PriceHistory snapshots={snapshots} />
-            </TabsContent>
-          </Tabs>
+            </div>
+          </div>
         </div>
       </main>
       </div>

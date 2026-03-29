@@ -12,6 +12,13 @@ import { pl } from 'date-fns/locale';
 import { Star, Flag, Pencil } from 'lucide-react';
 import { ReviewEditDialog } from './review-edit-dialog';
 
+type Photo = {
+  id: string;
+  photo_url: string;
+  file_size: number;
+  order_index: number;
+};
+
 type Review = {
   id: string;
   user_id: string;
@@ -24,6 +31,7 @@ type Review = {
   photos_difference: string;
   comment: string;
   created_at: string;
+  photos?: Photo[];
 };
 
 type ReviewListProps = {
@@ -51,7 +59,18 @@ export function ReviewList({ listingId, refreshTrigger, onHasUserReview }: Revie
         .order('created_at', { ascending: false });
 
       if (!error && data) {
-        setReviews(data);
+        const reviewsWithPhotos = await Promise.all(
+          data.map(async (review) => {
+            const { data: photos } = await supabase
+              .from('user_listing_photos')
+              .select('id, photo_url, file_size, order_index')
+              .eq('review_id', review.id)
+              .order('order_index');
+
+            return { ...review, photos: photos || [] };
+          })
+        );
+        setReviews(reviewsWithPhotos);
       }
 
       if (user) {
@@ -64,9 +83,20 @@ export function ReviewList({ listingId, refreshTrigger, onHasUserReview }: Revie
           .order('created_at', { ascending: false });
 
         if (!pendingError && userPendingReviews) {
-          setPendingReviews(userPendingReviews);
+          const pendingWithPhotos = await Promise.all(
+            userPendingReviews.map(async (review) => {
+              const { data: photos } = await supabase
+                .from('user_listing_photos')
+                .select('id, photo_url, file_size, order_index')
+                .eq('review_id', review.id)
+                .order('order_index');
+
+              return { ...review, photos: photos || [] };
+            })
+          );
+          setPendingReviews(pendingWithPhotos);
           if (onHasUserReview) {
-            onHasUserReview(userPendingReviews.length > 0, userPendingReviews[0] || null);
+            onHasUserReview(pendingWithPhotos.length > 0, pendingWithPhotos[0] || null);
           }
         }
       }
@@ -203,6 +233,26 @@ export function ReviewList({ listingId, refreshTrigger, onHasUserReview }: Revie
                     <p className="text-gray-600">{review.comment}</p>
                   </div>
                 )}
+                {review.photos && review.photos.length > 0 && (
+                  <div>
+                    <h4 className="font-semibold text-sm text-gray-700 mb-2">Zdjęcia ({review.photos.length})</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      {review.photos.map((photo) => (
+                        <button
+                          key={photo.id}
+                          onClick={() => window.open(photo.photo_url, '_blank')}
+                          className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 hover:opacity-90 transition-opacity cursor-pointer border border-gray-200"
+                        >
+                          <img
+                            src={photo.photo_url}
+                            alt="Zdjęcie z opinii"
+                            className="w-full h-full object-cover"
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <div className="pt-2 border-t flex gap-2">
                   <Button
                     variant="outline"
@@ -289,6 +339,26 @@ export function ReviewList({ listingId, refreshTrigger, onHasUserReview }: Revie
                 <p className="text-gray-600">{review.comment}</p>
               </div>
             )}
+            {review.photos && review.photos.length > 0 && (
+              <div>
+                <h4 className="font-semibold text-sm text-gray-700 mb-2">Zdjęcia ({review.photos.length})</h4>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {review.photos.map((photo) => (
+                    <button
+                      key={photo.id}
+                      onClick={() => window.open(photo.photo_url, '_blank')}
+                      className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 hover:opacity-90 transition-opacity cursor-pointer border border-gray-200"
+                    >
+                      <img
+                        src={photo.photo_url}
+                        alt="Zdjęcie z opinii"
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="pt-2 border-t flex gap-2">
               {user && user.id === review.user_id && (
@@ -296,10 +366,8 @@ export function ReviewList({ listingId, refreshTrigger, onHasUserReview }: Revie
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    toast({
-                      title: 'Funkcja w przygotowaniu',
-                      description: 'Edycja opinii będzie dostępna wkrótce',
-                    });
+                    setEditingReview(review);
+                    setEditDialogOpen(true);
                   }}
                 >
                   <Pencil className="h-4 w-4 mr-1" />
@@ -345,7 +413,18 @@ export function ReviewList({ listingId, refreshTrigger, onHasUserReview }: Revie
       .order('created_at', { ascending: false });
 
     if (!error && data) {
-      setReviews(data);
+      const reviewsWithPhotos = await Promise.all(
+        data.map(async (review) => {
+          const { data: photos } = await supabase
+            .from('user_listing_photos')
+            .select('id, photo_url, file_size, order_index')
+            .eq('review_id', review.id)
+            .order('order_index');
+
+          return { ...review, photos: photos || [] };
+        })
+      );
+      setReviews(reviewsWithPhotos);
     }
 
     if (user) {
@@ -358,9 +437,20 @@ export function ReviewList({ listingId, refreshTrigger, onHasUserReview }: Revie
         .order('created_at', { ascending: false });
 
       if (!pendingError && userPendingReviews) {
-        setPendingReviews(userPendingReviews);
+        const pendingWithPhotos = await Promise.all(
+          userPendingReviews.map(async (review) => {
+            const { data: photos } = await supabase
+              .from('user_listing_photos')
+              .select('id, photo_url, file_size, order_index')
+              .eq('review_id', review.id)
+              .order('order_index');
+
+            return { ...review, photos: photos || [] };
+          })
+        );
+        setPendingReviews(pendingWithPhotos);
         if (onHasUserReview) {
-          onHasUserReview(userPendingReviews.length > 0, userPendingReviews[0] || null);
+          onHasUserReview(pendingWithPhotos.length > 0, pendingWithPhotos[0] || null);
         }
       }
     }
