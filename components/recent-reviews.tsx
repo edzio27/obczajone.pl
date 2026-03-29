@@ -20,36 +20,50 @@ type Listing = {
   review_count?: number;
 };
 
-export function RecentListings({ limit, showMoreButton = false }: { limit?: number; showMoreButton?: boolean }) {
+export function RecentReviews({ limit = 3, showMoreButton = false }: { limit?: number; showMoreButton?: boolean }) {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
     async function fetchListings() {
-      const { data, error } = await supabase
-        .from('listings')
+      const { data: reviewsData, error } = await supabase
+        .from('reviews')
         .select(`
-          *,
-          reviews(rating)
+          listing_id,
+          created_at,
+          listings(*)
         `)
         .order('created_at', { ascending: false })
-        .limit(limit || 10);
+        .limit(limit);
 
-      if (!error && data) {
-        const listingsWithRatings = data.map((listing: any) => {
-          const reviews = listing.reviews || [];
-          const avgRating = reviews.length > 0
-            ? reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviews.length
-            : undefined;
+      if (!error && reviewsData) {
+        const uniqueListings = new Map();
 
-          return {
-            ...listing,
-            average_rating: avgRating,
-            review_count: reviews.length,
-          };
-        });
-        setListings(listingsWithRatings);
+        for (const review of reviewsData) {
+          const listing: any = review.listings;
+          if (listing && typeof listing === 'object' && !Array.isArray(listing) && !uniqueListings.has(listing.id)) {
+            const { data: allReviews } = await supabase
+              .from('reviews')
+              .select('rating')
+              .eq('listing_id', listing.id);
+
+            const reviews = allReviews || [];
+            const avgRating = reviews.length > 0
+              ? reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviews.length
+              : undefined;
+
+            uniqueListings.set(listing.id, {
+              ...listing,
+              average_rating: avgRating,
+              review_count: reviews.length,
+            });
+
+            if (uniqueListings.size >= limit) break;
+          }
+        }
+
+        setListings(Array.from(uniqueListings.values()));
       }
       setLoading(false);
     }
@@ -60,7 +74,7 @@ export function RecentListings({ limit, showMoreButton = false }: { limit?: numb
   if (loading) {
     return (
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {[...Array(6)].map((_, i) => (
+        {[...Array(3)].map((_, i) => (
           <Card key={i} className="border-gray-200">
             <CardHeader>
               <div className="space-y-3">
@@ -78,9 +92,9 @@ export function RecentListings({ limit, showMoreButton = false }: { limit?: numb
     return (
       <Card className="border-dashed border-2">
         <CardHeader className="text-center py-12">
-          <CardTitle className="text-2xl">Brak ogłoszeń</CardTitle>
+          <CardTitle className="text-2xl">Brak skomentowanych ogłoszeń</CardTitle>
           <CardDescription className="text-base mt-2">
-            Dodaj pierwsze ogłoszenie używając formularza powyżej
+            Bądź pierwszym, który zostawi komentarz
           </CardDescription>
         </CardHeader>
       </Card>

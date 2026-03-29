@@ -1,8 +1,9 @@
 import { Header } from '@/components/header';
 import { ListingUrlForm } from '@/components/listing-url-form';
 import { RecentListings } from '@/components/recent-listings';
+import { RecentReviews } from '@/components/recent-reviews';
 import { PromotionalBanner } from '@/components/promotional-banner';
-import { TrendingDown, Shield, Users, Clock, Star, Search } from 'lucide-react';
+import { TrendingDown, Shield, Users, Clock, Star } from 'lucide-react';
 import Image from 'next/image';
 
 export default function Home() {
@@ -13,25 +14,17 @@ export default function Home() {
       <main className="container mx-auto px-4 py-12 md:py-16">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12 animate-fade-in">
-            <div className="inline-flex items-center justify-center w-24 h-24 mb-6">
-              <Image
-                src="/logo_no_bg.png"
-                alt="Obczajone"
-                width={96}
-                height={96}
-                className="w-24 h-24"
-              />
-            </div>
-            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4 text-balance">
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-8 text-balance">
               Sprawdź ogłoszenie przed zakupem
             </h1>
-            <p className="text-lg md:text-xl text-gray-600 mb-8 max-w-3xl mx-auto leading-relaxed">
-              Historia cen, opinie kupujących i zmiany w opisach.
-              <span className="text-blue-600 font-semibold"> Chroń się przed oszustwami.</span>
-            </p>
 
-            <div className="flex justify-center mb-8">
+            <div className="flex justify-center mb-4">
               <ListingUrlForm />
+            </div>
+
+            <div className="mb-8 mt-12">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Zobacz co inni znaleźli:</h3>
+              <RecentReviews limit={10} showMoreButton={true} />
             </div>
 
             <div className="mb-8">
@@ -40,7 +33,7 @@ export default function Home() {
 
             <div className="flex flex-wrap justify-center gap-4 text-sm text-gray-600 mb-12">
               <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm">
-                <Search className="w-4 h-4 text-blue-500" />
+                <Shield className="w-4 h-4 text-green-500" />
                 <span>100% darmowe</span>
               </div>
               <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm">
@@ -95,13 +88,13 @@ export default function Home() {
           <div className="mt-20">
             <div className="text-center mb-8">
               <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">
-                Ostatnio sprawdzone ogłoszenia
+                Wszystkie sprawdzone ogłoszenia
               </h2>
               <p className="text-gray-600">
                 Zobacz co inni użytkownicy weryfikowali
               </p>
             </div>
-            <RecentListings />
+            <RecentListings limit={50} />
           </div>
 
           <div className="mt-20 bg-gradient-to-br from-blue-600 to-blue-700 rounded-3xl p-10 md:p-12 text-center text-white shadow-2xl shadow-blue-500/30">
