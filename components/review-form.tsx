@@ -185,7 +185,7 @@ export function ReviewForm({ listingId, onReviewAdded, hasUserReview }: ReviewFo
 
   if (!user) {
     return (
-      <Card>
+      <Card data-review-form>
         <CardHeader>
           <CardTitle>Dodaj opinię</CardTitle>
           <CardDescription>Zaloguj się, aby dodać swoją opinię o tym ogłoszeniu</CardDescription>
@@ -199,7 +199,7 @@ export function ReviewForm({ listingId, onReviewAdded, hasUserReview }: ReviewFo
   }
 
   return (
-    <Card>
+    <Card data-review-form>
       <CardHeader>
         <CardTitle>Dodaj opinię</CardTitle>
         <CardDescription>

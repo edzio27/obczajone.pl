@@ -3,7 +3,7 @@ import { ListingUrlForm } from '@/components/listing-url-form';
 import { RecentListings } from '@/components/recent-listings';
 import { RecentReviews } from '@/components/recent-reviews';
 import { PromotionalBanner } from '@/components/promotional-banner';
-import { TrendingDown, Shield, Users, Clock, Star } from 'lucide-react';
+import { TrendingDown, Shield, Users, Clock, Star, Search, CircleCheck as CheckCircle } from 'lucide-react';
 import Image from 'next/image';
 
 export default function Home() {
@@ -23,7 +23,7 @@ export default function Home() {
             </div>
 
             <div className="mb-8 mt-12">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Zobacz co inni znaleźli:</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 text-left">Zobacz co inni znaleźli:</h3>
               <RecentReviews limit={10} showMoreButton={true} />
             </div>
 
@@ -33,11 +33,18 @@ export default function Home() {
 
             <div className="flex flex-wrap justify-center gap-4 text-sm text-gray-600 mb-12">
               <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm">
-                <Shield className="w-4 h-4 text-green-500" />
+                <div className="relative">
+                  <Search className="w-4 h-4 text-blue-500" />
+                  <CheckCircle className="w-2 h-2 text-green-500 absolute -bottom-0.5 -right-0.5" />
+                </div>
+                <span>Drive Check</span>
+              </div>
+              <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm">
+                <CheckCircle className="w-4 h-4 text-green-500" />
                 <span>100% darmowe</span>
               </div>
               <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm">
-                <Shield className="w-4 h-4 text-green-500" />
+                <Shield className="w-4 h-4 text-blue-500" />
                 <span>Bezpieczne weryfikacje</span>
               </div>
               <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm">
@@ -47,7 +54,7 @@ export default function Home() {
             </div>
 
             <div className="grid md:grid-cols-3 gap-6 mt-12">
-              <div className="group bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl hover:border-blue-200 transition-all duration-300 hover:-translate-y-1">
+              <div className="group bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl hover:border-orange-200 transition-all duration-300 hover:-translate-y-1">
                 <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-green-400 to-green-500 rounded-xl mb-4 group-hover:scale-110 transition-transform shadow-lg shadow-green-500/20">
                   <TrendingDown className="w-6 h-6 text-white" />
                 </div>
@@ -59,7 +66,7 @@ export default function Home() {
                 </p>
               </div>
 
-              <div className="group bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl hover:border-blue-200 transition-all duration-300 hover:-translate-y-1">
+              <div className="group bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl hover:border-orange-200 transition-all duration-300 hover:-translate-y-1">
                 <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-500 rounded-xl mb-4 group-hover:scale-110 transition-transform shadow-lg shadow-blue-500/20">
                   <Users className="w-6 h-6 text-white" />
                 </div>
@@ -71,7 +78,7 @@ export default function Home() {
                 </p>
               </div>
 
-              <div className="group bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl hover:border-blue-200 transition-all duration-300 hover:-translate-y-1">
+              <div className="group bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl hover:border-orange-200 transition-all duration-300 hover:-translate-y-1">
                 <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-orange-400 to-orange-500 rounded-xl mb-4 group-hover:scale-110 transition-transform shadow-lg shadow-orange-500/20">
                   <Shield className="w-6 h-6 text-white" />
                 </div>
@@ -86,23 +93,23 @@ export default function Home() {
           </div>
 
           <div className="mt-20">
-            <div className="text-center mb-8">
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">
+            <div className="mb-8">
+              <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3 text-left">
                 Wszystkie sprawdzone ogłoszenia
               </h2>
-              <p className="text-gray-600">
+              <p className="text-gray-600 text-left">
                 Zobacz co inni użytkownicy weryfikowali
               </p>
             </div>
             <RecentListings limit={50} />
           </div>
 
-          <div className="mt-20 bg-gradient-to-br from-blue-600 to-blue-700 rounded-3xl p-10 md:p-12 text-center text-white shadow-2xl shadow-blue-500/30">
+          <div className="mt-20 bg-gradient-to-br from-orange-600 to-orange-700 rounded-3xl p-10 md:p-12 text-center text-white shadow-2xl shadow-orange-500/30">
             <Star className="w-12 h-12 mx-auto mb-4 text-yellow-300" />
             <h2 className="text-2xl md:text-3xl font-bold mb-4">
               Gotowy na bezpieczne zakupy?
             </h2>
-            <p className="text-lg text-blue-100 mb-6 max-w-2xl mx-auto">
+            <p className="text-lg text-orange-100 mb-6 max-w-2xl mx-auto">
               Dołącz do tysięcy użytkowników, którzy chronią się przed oszustwami korzystając z obczajone.pl
             </p>
             <div className="flex justify-center">

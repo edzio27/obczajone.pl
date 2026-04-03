@@ -22,9 +22,7 @@ async function scrapeOtomoto(url: string) {
     let title = '';
     let price = 0;
     let location = '';
-    let description = '';
-    let photoUrls: string[] = [];
-    let metadata: Record<string, any> = {};
+    let photoUrl = '';
 
     // Szukaj danych w __NEXT_DATA__
     const nextDataMatch = html.match(/<script id="__NEXT_DATA__"[^>]*>(.*?)<\/script>/s);
@@ -59,19 +57,8 @@ async function scrapeOtomoto(url: string) {
               : ad.location.region.name;
           }
 
-          description = ad.description || '';
-
-          if (ad.photos && Array.isArray(ad.photos)) {
-            photoUrls = ad.photos.slice(0, 10).map((photo: any) => photo.large || photo.medium || photo.small).filter(Boolean);
-          }
-
-          // Parametry pojazdu
-          if (ad.params) {
-            for (const param of ad.params) {
-              if (param.key && param.displayValue) {
-                metadata[param.key] = param.displayValue;
-              }
-            }
+          if (ad.photos && Array.isArray(ad.photos) && ad.photos.length > 0) {
+            photoUrl = ad.photos[0].large || ad.photos[0].medium || ad.photos[0].small || '';
           }
         }
       } catch (e) {
@@ -103,23 +90,10 @@ async function scrapeOtomoto(url: string) {
       }
     }
 
-    if (!description) {
-      const descMatch = html.match(/<div[^>]*data-testid="description"[^>]*>(.*?)<\/div>/s) ||
-                        html.match(/<div[^>]*class="[^"]*description[^"]*"[^>]*>(.*?)<\/div>/s);
-      if (descMatch) {
-        description = descMatch[1].replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
-      }
-    }
-
-    if (photoUrls.length === 0) {
-      const photoMatches = html.matchAll(/"(https:\/\/ireland\.apollo\.olxcdn\.com\/v1\/files\/[^"]+\/image)"/g);
-      const seenPhotos = new Set<string>();
-      for (const match of photoMatches) {
-        const baseUrl = match[1].split(';')[0];
-        if (!seenPhotos.has(baseUrl) && photoUrls.length < 10) {
-          seenPhotos.add(baseUrl);
-          photoUrls.push(baseUrl);
-        }
+    if (!photoUrl) {
+      const photoMatch = html.match(/"(https:\/\/ireland\.apollo\.olxcdn\.com\/v1\/files\/[^"]+\/image)"/);
+      if (photoMatch) {
+        photoUrl = photoMatch[1].split(';')[0];
       }
     }
 
@@ -127,9 +101,7 @@ async function scrapeOtomoto(url: string) {
       title: title || 'Ogłoszenie Otomoto',
       price,
       location,
-      description: description.substring(0, 5000),
-      photoUrls,
-      metadata,
+      photoUrl,
     };
   } catch (error) {
     console.error('Error scraping Otomoto:', error);
@@ -149,8 +121,7 @@ async function scrapeOtodom(url: string) {
     let title = '';
     let price = 0;
     let location = '';
-    let description = '';
-    let photoUrls: string[] = [];
+    let photoUrl = '';
 
     // Szukaj danych w formacie __NEXT_DATA__
     const nextDataMatch = html.match(/<script id="__NEXT_DATA__"[^>]*>(.*?)<\/script>/s);
@@ -172,10 +143,8 @@ async function scrapeOtodom(url: string) {
             location = ad.location.reverseGeocoding.locations[0].address.city;
           }
 
-          description = ad.description || '';
-
-          if (ad.images && Array.isArray(ad.images)) {
-            photoUrls = ad.images.slice(0, 10).map((img: any) => img.large || img.medium || img.small).filter(Boolean);
+          if (ad.images && Array.isArray(ad.images) && ad.images.length > 0) {
+            photoUrl = ad.images[0].large || ad.images[0].medium || ad.images[0].small || '';
           }
         }
       } catch (e) {
@@ -197,7 +166,6 @@ async function scrapeOtodom(url: string) {
             if (!location && jsonData.address) {
               location = typeof jsonData.address === 'string' ? jsonData.address : jsonData.address.addressLocality || '';
             }
-            if (!description) description = jsonData.description || '';
           }
         } catch (e) {
           console.error('Error parsing JSON-LD:', e);
@@ -209,9 +177,7 @@ async function scrapeOtodom(url: string) {
       title: title || 'Ogłoszenie Otodom',
       price,
       location,
-      description: description.substring(0, 5000),
-      photoUrls,
-      metadata: {},
+      photoUrl,
     };
   } catch (error) {
     console.error('Error scraping Otodom:', error);
@@ -282,7 +248,7 @@ Deno.serve(async (req: Request) => {
         title: scrapedData.title,
         location: scrapedData.location,
         current_price: scrapedData.price,
-        image_url: scrapedData.photoUrls[0] || '',
+        image_url: scrapedData.photoUrl || '',
         last_checked_at: new Date().toISOString(),
       })
       .eq('id', listingId);
@@ -291,9 +257,9 @@ Deno.serve(async (req: Request) => {
       listing_id: listingId,
       price: scrapedData.price,
       title: scrapedData.title,
-      description: scrapedData.description,
-      photo_urls: scrapedData.photoUrls,
-      metadata: scrapedData.metadata,
+      description: '',
+      photo_urls: scrapedData.photoUrl ? [scrapedData.photoUrl] : [],
+      metadata: {},
     });
 
     return new Response(

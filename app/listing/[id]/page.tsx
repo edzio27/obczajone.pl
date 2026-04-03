@@ -57,6 +57,7 @@ export default function ListingPage() {
   const [reviewCount, setReviewCount] = useState(0);
   const [averageRating, setAverageRating] = useState<number | null>(null);
   const [selectedPhoto, setSelectedPhoto] = useState(0);
+  const [recommendedListings, setRecommendedListings] = useState<Listing[]>([]);
 
   useEffect(() => {
     async function fetchData() {
@@ -91,6 +92,19 @@ export default function ListingPage() {
         setReviewCount(reviewsData.length);
         const avg = reviewsData.reduce((sum, r) => sum + r.rating, 0) / reviewsData.length;
         setAverageRating(avg);
+      }
+
+      const { data: recommendedData } = await supabase
+        .from('listings')
+        .select('*')
+        .eq('source', listingData.source)
+        .neq('id', listingId)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      if (recommendedData) {
+        setRecommendedListings(recommendedData);
       }
 
       setListing(listingData);
@@ -262,7 +276,7 @@ export default function ListingPage() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle>Opinie użytkowników</CardTitle>
-                  {reviewCount > 0 && averageRating && (
+                  {reviewCount > 0 && averageRating ? (
                     <div className="flex items-center gap-2">
                       <div className="text-3xl font-bold text-gray-900">
                         {averageRating.toFixed(1)}
@@ -271,6 +285,15 @@ export default function ListingPage() {
                         {reviewCount} {reviewCount === 1 ? 'opinia' : reviewCount < 5 ? 'opinie' : 'opinii'}
                       </div>
                     </div>
+                  ) : (
+                    <Button onClick={() => {
+                      const reviewForm = document.querySelector('[data-review-form]');
+                      if (reviewForm) {
+                        reviewForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      }
+                    }}>
+                      Zostaw swoją opinię
+                    </Button>
                   )}
                 </div>
               </CardHeader>
@@ -284,13 +307,15 @@ export default function ListingPage() {
                 <Card className="overflow-hidden">
                   <CardContent className="p-0">
                     <div
-                      className="relative aspect-video bg-gray-100 cursor-pointer hover:opacity-95 transition-opacity"
+                      className="relative bg-gray-100 cursor-pointer hover:opacity-95 transition-opacity flex items-center justify-center"
+                      style={{ minHeight: '400px', maxHeight: '600px' }}
                       onClick={() => window.open(latestSnapshot.photo_urls[selectedPhoto], '_blank')}
                     >
                       <img
                         src={latestSnapshot.photo_urls[selectedPhoto]}
                         alt={listing.title}
-                        className="w-full h-full object-cover"
+                        className="max-w-full max-h-full object-contain"
+                        style={{ maxHeight: '600px' }}
                       />
                     </div>
                     {latestSnapshot.photo_urls.length > 1 && (
@@ -298,17 +323,18 @@ export default function ListingPage() {
                         {latestSnapshot.photo_urls.map((url, idx) => (
                           <div
                             key={idx}
-                            className={`relative aspect-video bg-gray-100 rounded-lg overflow-hidden cursor-pointer transition-all ${
+                            className={`relative bg-gray-100 rounded-lg overflow-hidden cursor-pointer transition-all flex items-center justify-center ${
                               selectedPhoto === idx
                                 ? 'ring-2 ring-blue-500 opacity-100'
                                 : 'hover:opacity-80 opacity-60'
                             }`}
+                            style={{ aspectRatio: '1', minHeight: '80px' }}
                             onClick={() => setSelectedPhoto(idx)}
                           >
                             <img
                               src={url}
                               alt={`Zdjęcie ${idx + 1}`}
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-contain"
                             />
                           </div>
                         ))}
@@ -361,7 +387,8 @@ export default function ListingPage() {
                     href={listing.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+                    className="inline-flex items-center justify-center gap-2 w-full text-white font-medium py-3 px-4 rounded-lg transition-colors hover:opacity-90"
+                    style={{ background: '#F97316' }}
                   >
                     Zobacz oryginalne ogłoszenie
                     <ExternalLink className="h-4 w-4" />
@@ -406,6 +433,35 @@ export default function ListingPage() {
               <PriceHistory snapshots={snapshots} />
             </CardContent>
           </Card>
+
+          {/* Polecane ogłoszenia */}
+          {recommendedListings.length > 0 && (
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle>Podobne ogłoszenia z {listing.source}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {recommendedListings.map((rec) => (
+                    <a
+                      key={rec.id}
+                      href={`/listing/${rec.id}`}
+                      className="block border rounded-lg p-4 hover:border-blue-500 transition-colors"
+                    >
+                      <h3 className="font-medium mb-2 line-clamp-2">{rec.title}</h3>
+                      <div className="flex items-center text-sm text-gray-600 mb-2">
+                        <MapPin className="h-3 w-3 mr-1" />
+                        {rec.location}
+                      </div>
+                      <div className="text-xl font-bold text-gray-900">
+                        {rec.current_price.toLocaleString('pl-PL')} zł
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           <div>
             <ReviewForm

@@ -376,11 +376,6 @@ export default function ProfilePage() {
                   image_url={review.listing.image_url}
                   average_rating={review.listing.average_rating}
                   review_count={review.listing.review_count}
-                  userReview={{
-                    rating: review.rating,
-                    comment: review.comment,
-                    created_at: review.created_at,
-                  }}
                 />
               ))}
             </div>

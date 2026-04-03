@@ -20,7 +20,7 @@ export function Header() {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center group">
             <Image
-              src="/obczajone_logo_cropped copy copy copy.png"
+              src="/obczajone_logo_cropped_v4.png"
               alt="obczajone.pl"
               width={280}
               height={70}
@@ -47,7 +47,7 @@ export function Header() {
               <Button
                 size="default"
                 onClick={() => setAuthDialogOpen(true)}
-                className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-md hover:shadow-lg transition-all font-medium"
+                className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 shadow-md hover:shadow-lg transition-all font-medium"
               >
                 Zaloguj się
               </Button>
@@ -89,7 +89,7 @@ export function Header() {
               <Button
                 size="default"
                 onClick={() => setAuthDialogOpen(true)}
-                className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-md hover:shadow-lg transition-all font-medium"
+                className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 shadow-md hover:shadow-lg transition-all font-medium"
               >
                 Zaloguj się
               </Button>

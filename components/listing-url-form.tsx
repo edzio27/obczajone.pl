@@ -121,7 +121,7 @@ export function ListingUrlForm() {
       <p className="text-sm text-gray-700 mb-3 text-center">
         Zobacz, czy cena była manipulowana i czy inni użytkownicy zgłaszali problem
       </p>
-      <div className="flex flex-col sm:flex-row gap-3 bg-white p-2 rounded-2xl shadow-lg border-2 border-gray-100 hover:border-blue-200 transition-colors">
+      <div className="flex flex-col sm:flex-row gap-3 bg-white p-2 rounded-2xl shadow-lg border-2 border-gray-100 hover:border-orange-200 transition-colors">
         <Input
           type="url"
           value={url}
@@ -135,7 +135,7 @@ export function ListingUrlForm() {
           type="submit"
           disabled={loading}
           size="lg"
-          className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-md hover:shadow-lg transition-all font-semibold h-12 px-8"
+          className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 shadow-md hover:shadow-lg transition-all font-semibold h-12 px-8"
         >
           {loading ? (
             <>

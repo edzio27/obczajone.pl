@@ -105,23 +105,24 @@ export function RecentReviews({ limit = 3, showMoreButton = false }: { limit?: n
 
   return (
     <div>
-      <div className={showMoreButton ? "flex flex-col sm:flex-row gap-4 items-stretch" : "grid md:grid-cols-2 lg:grid-cols-3 gap-6"}>
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         {displayedListings.map((listing) => (
-          <div key={listing.id} className={showMoreButton ? "w-full sm:flex-1 flex" : ""}>
-            <ListingCard {...listing} />
-          </div>
+          <ListingCard key={listing.id} {...listing} />
         ))}
-        {showMoreButton && !showAll && listings.length > 3 && (
+      </div>
+      {showMoreButton && !showAll && listings.length > 3 && (
+        <div className="flex justify-center mt-6">
           <Button
             onClick={() => setShowAll(true)}
             variant="outline"
-            className="whitespace-nowrap flex items-center justify-center min-h-[200px]"
+            size="lg"
+            className="flex items-center gap-2"
           >
             Pokaż więcej
-            <ChevronRight className="ml-2 h-4 w-4" />
+            <ChevronRight className="h-4 w-4" />
           </Button>
-        )}
-      </div>
+        </div>
+      )}
       {showMoreButton && showAll && (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
           {listings.slice(3).map((listing) => (
