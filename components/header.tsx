@@ -20,7 +20,7 @@ export function Header() {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center group">
             <Image
-              src="/obczajone_logo_cropped_v4.png"
+              src="/obczajone_logo_transparent_cropped copy copy.png"
               alt="obczajone.pl"
               width={280}
               height={70}
