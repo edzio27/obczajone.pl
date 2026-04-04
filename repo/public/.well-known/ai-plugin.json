@@ -1,0 +1,17 @@
+{
+  "schema_version": "v1",
+  "name_for_human": "obczajone.pl",
+  "name_for_model": "obczajone",
+  "description_for_human": "Sprawdź historię cen i opinie o ogłoszeniach z Otomoto i Otodom",
+  "description_for_model": "Portal obczajone.pl pozwala użytkownikom sprawdzać historię zmian cen ogłoszeń z Otomoto i Otodom oraz czytać opinie innych użytkowników. Pomaga uniknąć oszustw i weryfikować wiarygodność sprzedawców. Użytkownicy mogą: 1) Wklejać linki do ogłoszeń, 2) Przeglądać historię cen, 3) Czytać i dodawać opinie, 4) Sprawdzać zmiany w opisach i zdjęciach.",
+  "api": {
+    "type": "openapi",
+    "url": "https://obczajone.pl/openapi.json"
+  },
+  "auth": {
+    "type": "none"
+  },
+  "logo_url": "https://obczajone.pl/logo.png",
+  "contact_email": "kontakt@obczajone.pl",
+  "legal_info_url": "https://obczajone.pl/terms"
+}

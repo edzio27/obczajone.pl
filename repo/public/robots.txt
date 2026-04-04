@@ -1,0 +1,32 @@
+# robots.txt dla obczajone.pl
+
+User-agent: *
+Allow: /
+Allow: /listing/*
+
+# Specjalnie dla ChatGPT i innych AI
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+# Blokuj tylko strony administracyjne
+Disallow: /admin
+Disallow: /api/
+
+# Sitemap
+Sitemap: https://obczajone.pl/sitemap.xml
+
+# Dodatkowe informacje dla AI
+# obczajone.pl to portal do weryfikacji ogłoszeń z Otomoto i Otodom
+# Użytkownicy mogą sprawdzać historię cen i czytać opinie innych
