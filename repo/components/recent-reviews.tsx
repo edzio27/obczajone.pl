@@ -29,41 +29,41 @@ export function RecentReviews({ limit = 3, showMoreButton = false }: { limit?: n
     async function fetchListings() {
       const { data: reviewsData, error } = await supabase
         .from('reviews')
-        .select(`
-          listing_id,
-          created_at,
-          listings(*)
-        `)
+        .select('listing_id')
         .order('created_at', { ascending: false })
-        .limit(limit);
+        .limit(limit * 3);
 
       if (!error && reviewsData) {
-        const uniqueListings = new Map();
-
-        for (const review of reviewsData) {
-          const listing: any = review.listings;
-          if (listing && typeof listing === 'object' && !Array.isArray(listing) && !uniqueListings.has(listing.id)) {
-            const { data: allReviews } = await supabase
-              .from('reviews')
-              .select('rating')
-              .eq('listing_id', listing.id);
-
-            const reviews = allReviews || [];
-            const avgRating = reviews.length > 0
-              ? reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviews.length
-              : undefined;
-
-            uniqueListings.set(listing.id, {
-              ...listing,
-              average_rating: avgRating,
-              review_count: reviews.length,
-            });
-
-            if (uniqueListings.size >= limit) break;
+        const uniqueIds: string[] = [];
+        for (const r of reviewsData) {
+          if (!uniqueIds.includes(r.listing_id)) {
+            uniqueIds.push(r.listing_id);
+            if (uniqueIds.length >= limit) break;
           }
         }
 
-        setListings(Array.from(uniqueListings.values()));
+        if (uniqueIds.length > 0) {
+          const { data: listingsData } = await supabase
+            .from('listings')
+            .select('*, reviews(rating)')
+            .in('id', uniqueIds);
+
+          if (listingsData) {
+            const sorted = uniqueIds
+              .map((id) => listingsData.find((l: any) => l.id === id))
+              .filter(Boolean) as any[];
+
+            const withRatings = sorted.map((listing: any) => {
+              const reviews = listing.reviews || [];
+              const avgRating = reviews.length > 0
+                ? reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviews.length
+                : undefined;
+              return { ...listing, average_rating: avgRating, review_count: reviews.length };
+            });
+
+            setListings(withRatings);
+          }
+        }
       }
       setLoading(false);
     }
