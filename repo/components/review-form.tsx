@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -10,7 +10,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
 import { checkRateLimit, recordAction } from '@/lib/rate-limit';
-import { Star, Upload, X, Loader as Loader2 } from 'lucide-react';
+import { Star, X, Loader as Loader2, ImagePlus } from 'lucide-react';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const MAX_PHOTOS = 5;
@@ -36,11 +36,10 @@ export function ReviewForm({ listingId, onReviewAdded, hasUserReview }: ReviewFo
   const [comment, setComment] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
-    if (files.length === 0) return;
-
+  const addFiles = useCallback((files: File[]) => {
     const remainingSlots = MAX_PHOTOS - selectedFiles.length;
     if (remainingSlots <= 0) {
       toast({
@@ -66,8 +65,36 @@ export function ReviewForm({ listingId, onReviewAdded, hasUserReview }: ReviewFo
     }
 
     setSelectedFiles(prev => [...prev, ...filesToAdd]);
+  }, [selectedFiles, toast]);
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+    addFiles(files);
     event.target.value = '';
   };
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const files = Array.from(e.dataTransfer.files).filter(f =>
+      ALLOWED_TYPES.includes(f.type)
+    );
+    if (files.length > 0) addFiles(files);
+  }, [addFiles]);
 
   const removeFile = (index: number) => {
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
@@ -311,31 +338,52 @@ export function ReviewForm({ listingId, onReviewAdded, hasUserReview }: ReviewFo
           <div className="space-y-3">
             <Label>Zdjęcia (opcjonalnie)</Label>
             <div className="space-y-3">
-              <div>
-                <input
-                  type="file"
-                  id="review-photos"
-                  multiple
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={handleFileSelect}
-                  className="hidden"
-                  disabled={uploading || selectedFiles.length >= MAX_PHOTOS}
-                />
-                <label htmlFor="review-photos">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    asChild
-                    disabled={uploading || selectedFiles.length >= MAX_PHOTOS}
-                    className="cursor-pointer"
-                  >
-                    <span>
-                      <Upload className="h-4 w-4 mr-2" />
-                      Dodaj zdjęcia ({selectedFiles.length}/{MAX_PHOTOS})
-                    </span>
-                  </Button>
-                </label>
-              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                id="review-photos"
+                multiple
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handleFileSelect}
+                className="hidden"
+                disabled={uploading || selectedFiles.length >= MAX_PHOTOS}
+              />
+
+              {selectedFiles.length < MAX_PHOTOS && (
+                <div
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  onClick={() => !uploading && fileInputRef.current?.click()}
+                  className={`
+                    border-2 border-dashed rounded-xl p-6 text-center cursor-pointer
+                    transition-all duration-200
+                    ${isDragging
+                      ? 'border-blue-500 bg-blue-50 scale-[1.01]'
+                      : 'border-gray-200 hover:border-blue-400 hover:bg-gray-50'
+                    }
+                    ${uploading ? 'pointer-events-none opacity-60' : ''}
+                  `}
+                >
+                  <div className="flex flex-col items-center gap-2 pointer-events-none">
+                    <div className={`p-2 rounded-full transition-colors ${isDragging ? 'bg-blue-100' : 'bg-gray-100'}`}>
+                      <ImagePlus className={`h-5 w-5 ${isDragging ? 'text-blue-500' : 'text-gray-400'}`} />
+                    </div>
+                    {isDragging ? (
+                      <p className="text-sm font-medium text-blue-600">Upuść zdjęcia tutaj</p>
+                    ) : (
+                      <>
+                        <p className="text-sm font-medium text-gray-700">
+                          Przeciągnij i upuść lub <span className="text-blue-600">kliknij</span>
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {selectedFiles.length}/{MAX_PHOTOS} zdjęć — JPEG, PNG, WebP, maks. 5 MB
+                        </p>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {selectedFiles.length > 0 && (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -362,10 +410,6 @@ export function ReviewForm({ listingId, onReviewAdded, hasUserReview }: ReviewFo
                   ))}
                 </div>
               )}
-
-              <p className="text-xs text-muted-foreground">
-                Maksymalnie {MAX_PHOTOS} zdjęć. Dozwolone formaty: JPEG, PNG, WebP. Max rozmiar: 5MB
-              </p>
             </div>
           </div>
 
