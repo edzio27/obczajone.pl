@@ -1,1 +1,9 @@
 .vercel
+node_modules
+.next
+.env
+.env.local
+.env.*.local
+*.zip
+.DS_Store
+foty/

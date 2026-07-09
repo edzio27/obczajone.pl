@@ -1,9 +1,18 @@
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { formatDistanceToNow } from 'date-fns';
+import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
-import { TrendingDown, TrendingUp, Minus } from 'lucide-react';
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ReferenceDot,
+} from 'recharts';
 
 type Snapshot = {
   id: string;
@@ -16,6 +25,20 @@ type Snapshot = {
 type PriceHistoryProps = {
   snapshots: Snapshot[];
 };
+
+function CustomTooltip({ active, payload, label }: any) {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white border border-gray-200 rounded-lg shadow-lg px-4 py-3">
+        <p className="text-xs text-gray-500 mb-1">{label}</p>
+        <p className="text-base font-semibold text-gray-900">
+          {payload[0].value.toLocaleString('pl-PL')} zł
+        </p>
+      </div>
+    );
+  }
+  return null;
+}
 
 export function PriceHistory({ snapshots }: PriceHistoryProps) {
   if (snapshots.length === 0) {
@@ -31,144 +54,109 @@ export function PriceHistory({ snapshots }: PriceHistoryProps) {
     );
   }
 
-  const priceChanges = [];
-  for (let i = 0; i < snapshots.length - 1; i++) {
-    const current = snapshots[i];
-    const previous = snapshots[i + 1];
-    const priceDiff = current.price - previous.price;
+  const sorted = [...snapshots].sort(
+    (a, b) => new Date(a.scraped_at).getTime() - new Date(b.scraped_at).getTime()
+  );
 
-    priceChanges.push({
-      date: current.scraped_at,
-      currentPrice: current.price,
-      previousPrice: previous.price,
-      difference: priceDiff,
-      title: current.title,
-    });
-  }
+  const data = sorted.map((s) => ({
+    date: format(new Date(s.scraped_at), 'd MMM yyyy', { locale: pl }),
+    price: s.price,
+  }));
 
-  if (snapshots.length === 1) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Historia zmian</CardTitle>
-          <CardDescription>Mamy tylko jeden snapshot tego ogłoszenia</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="border-l-4 border-blue-500 pl-4 py-2">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-semibold text-lg">{snapshots[0].price.toLocaleString('pl-PL')} zł</p>
-                  <p className="text-sm text-gray-500">
-                    {formatDistanceToNow(new Date(snapshots[0].scraped_at), {
-                      addSuffix: true,
-                      locale: pl,
-                    })}
-                  </p>
-                </div>
-              </div>
-              <p className="text-sm text-gray-600 mt-2">{snapshots[0].title}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  const prices = data.map((d) => d.price);
+  const minPrice = Math.min(...prices);
+  const maxPrice = Math.max(...prices);
+  const firstPrice = prices[0];
+  const lastPrice = prices[prices.length - 1];
+  const priceDiff = lastPrice - firstPrice;
+
+  const yMin = Math.floor((minPrice * 0.97) / 500) * 500;
+  const yMax = Math.ceil((maxPrice * 1.03) / 500) * 500;
+
+  const minPoint = data.find((d) => d.price === minPrice);
+  const maxPoint = data.find((d) => d.price === maxPrice);
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Historia zmian ceny</CardTitle>
+        <CardTitle>Historia ceny</CardTitle>
         <CardDescription>
-          Śledziliśmy {snapshots.length} {snapshots.length === 1 ? 'zmianę' : 'zmiany'} w tym ogłoszeniu
+          {snapshots.length === 1
+            ? 'Mamy tylko jeden pomiar dla tego ogłoszenia'
+            : `${snapshots.length} pomiarów ceny`}
+          {snapshots.length > 1 && priceDiff !== 0 && (
+            <span
+              className={`ml-2 font-medium ${priceDiff < 0 ? 'text-green-600' : 'text-red-600'}`}
+            >
+              {priceDiff < 0 ? '' : '+'}
+              {priceDiff.toLocaleString('pl-PL')} zł od pierwszego pomiaru
+            </span>
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          <div className="border-l-4 border-blue-500 pl-4 py-2">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-semibold text-lg">{snapshots[0].price.toLocaleString('pl-PL')} zł</p>
-                <p className="text-sm text-gray-500">
-                  Aktualna cena (sprawdzone{' '}
-                  {formatDistanceToNow(new Date(snapshots[0].scraped_at), {
-                    addSuffix: true,
-                    locale: pl,
-                  })}
-                  )
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {priceChanges.map((change, idx) => {
-            const isPriceDown = change.difference < 0;
-            const isPriceUp = change.difference > 0;
-
-            return (
-              <div
-                key={idx}
-                className={`border-l-4 pl-4 py-2 ${
-                  isPriceDown
-                    ? 'border-green-500'
-                    : isPriceUp
-                    ? 'border-red-500'
-                    : 'border-gray-300'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="font-semibold">{change.currentPrice.toLocaleString('pl-PL')} zł</p>
-                      {isPriceDown && (
-                        <span className="flex items-center text-green-600 text-sm">
-                          <TrendingDown className="h-4 w-4 mr-1" />
-                          {Math.abs(change.difference).toLocaleString('pl-PL')} zł
-                        </span>
-                      )}
-                      {isPriceUp && (
-                        <span className="flex items-center text-red-600 text-sm">
-                          <TrendingUp className="h-4 w-4 mr-1" />
-                          +{change.difference.toLocaleString('pl-PL')} zł
-                        </span>
-                      )}
-                      {!isPriceDown && !isPriceUp && (
-                        <span className="flex items-center text-gray-500 text-sm">
-                          <Minus className="h-4 w-4 mr-1" />
-                          Bez zmian
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-sm text-gray-500">
-                      {formatDistanceToNow(new Date(change.date), {
-                        addSuffix: true,
-                        locale: pl,
-                      })}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-
-          <div className="border-l-4 border-gray-300 pl-4 py-2">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-semibold">
-                  {snapshots[snapshots.length - 1].price.toLocaleString('pl-PL')} zł
-                </p>
-                <p className="text-sm text-gray-500">
-                  Pierwsza cena (
-                  {formatDistanceToNow(new Date(snapshots[snapshots.length - 1].scraped_at), {
-                    addSuffix: true,
-                    locale: pl,
-                  })}
-                  )
-                </p>
-              </div>
-            </div>
-          </div>
+        <div className="h-56 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={data} margin={{ top: 12, right: 16, left: 8, bottom: 4 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis
+                dataKey="date"
+                tick={{ fontSize: 11, fill: '#6b7280' }}
+                tickLine={false}
+                axisLine={false}
+              />
+              <YAxis
+                domain={[yMin, yMax]}
+                tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+                tick={{ fontSize: 11, fill: '#6b7280' }}
+                tickLine={false}
+                axisLine={false}
+                width={40}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Line
+                type="monotone"
+                dataKey="price"
+                stroke="#f97316"
+                strokeWidth={2.5}
+                dot={{ r: 4, fill: '#f97316', strokeWidth: 0 }}
+                activeDot={{ r: 6, fill: '#ea580c', strokeWidth: 0 }}
+              />
+              {snapshots.length > 2 && minPrice !== maxPrice && minPoint && (
+                <ReferenceDot
+                  x={minPoint.date}
+                  y={minPoint.price}
+                  r={5}
+                  fill="#16a34a"
+                  stroke="white"
+                  strokeWidth={2}
+                />
+              )}
+              {snapshots.length > 2 && minPrice !== maxPrice && maxPoint && (
+                <ReferenceDot
+                  x={maxPoint.date}
+                  y={maxPoint.price}
+                  r={5}
+                  fill="#dc2626"
+                  stroke="white"
+                  strokeWidth={2}
+                />
+              )}
+            </LineChart>
+          </ResponsiveContainer>
         </div>
+        {snapshots.length > 2 && minPrice !== maxPrice && (
+          <div className="flex gap-4 mt-3 text-xs text-gray-500">
+            <span className="flex items-center gap-1">
+              <span className="w-3 h-3 rounded-full bg-green-600 inline-block" />
+              Najniższa: {minPrice.toLocaleString('pl-PL')} zł
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-3 h-3 rounded-full bg-red-600 inline-block" />
+              Najwyższa: {maxPrice.toLocaleString('pl-PL')} zł
+            </span>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

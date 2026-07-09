@@ -18,7 +18,7 @@ export function ListingUrlForm() {
   const router = useRouter();
 
   const extractListingInfo = (url: string) => {
-    const otomotoMatch = url.match(/otomoto\.pl\/(?:osobowe\/)?oferta\/[^\/]+-ID([A-Za-z0-9]+)/);
+    const otomotoMatch = url.match(/otomoto\.pl\/(?:[^\/]+\/)?oferta\/[^\/]+-ID([A-Za-z0-9]+)/);
     const otodomMatch = url.match(/otodom\.pl\/[^\/]+\/oferta\/[^\/]+-ID([A-Za-z0-9]+)/);
 
     if (otomotoMatch) {
