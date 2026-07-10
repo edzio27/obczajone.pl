@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
-import { checkRateLimit, recordAction } from '@/lib/rate-limit';
+import { checkRateLimit } from '@/lib/rate-limit';
 import { Search, Loader as Loader2 } from 'lucide-react';
 
 export function ListingUrlForm() {
@@ -86,9 +86,11 @@ export function ListingUrlForm() {
 
       if (insertError) throw insertError;
 
-      if (user) {
-        await recordAction(user.id, 'add_listing');
-      }
+      // Note: recording of the rate-limit action now happens atomically in a
+      // database trigger (enforce_listing_rate_limit) alongside the insert
+      // itself, so it can't be skipped by bypassing the client. No separate
+      // client-side recordAction() call is needed (and doing it here too
+      // would double-count against the limit).
 
       toast({
         title: 'Ogłoszenie dodane',

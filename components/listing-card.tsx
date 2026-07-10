@@ -98,7 +98,7 @@ export function ListingCard({
                 <span className="text-lg">{getStarRating(userReview.rating)}</span>
               </div>
               <p className="text-sm text-gray-600 line-clamp-2 italic">
-                "{userReview.comment}"
+                &quot;{userReview.comment}&quot;
               </p>
               <p className="text-xs text-muted-foreground">
                 {formatDistanceToNow(new Date(userReview.created_at), {

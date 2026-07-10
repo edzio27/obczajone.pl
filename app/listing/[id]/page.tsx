@@ -30,15 +30,17 @@ async function getListingData(id: string) {
 
   const { data: reviews } = await supabase
     .from('reviews')
-    .select('rating')
-    .eq('listing_id', id);
+    .select('rating, comment, created_at')
+    .eq('listing_id', id)
+    .eq('is_approved', true)
+    .order('created_at', { ascending: false });
 
   const reviewCount = reviews?.length || 0;
   const averageRating = reviewCount > 0
     ? reviews!.reduce((sum, r) => sum + r.rating, 0) / reviewCount
     : null;
 
-  return { listing, snapshot, reviewCount, averageRating };
+  return { listing, snapshot, reviewCount, averageRating, reviews: reviews || [] };
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -92,6 +94,86 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default function ListingPage({ params }: Props) {
-  return <ListingClient listingId={params.id} />;
+// JSON.stringify does not escape "<", so a value like listing.title or
+// review.comment (both attacker-controllable - listing.title has no RLS
+// column-level restriction on insert, and review.comment is free user text)
+// containing "</script><script>...</script>" would break out of this
+// <script type="application/ld+json"> tag and execute as real markup/script
+// when injected via dangerouslySetInnerHTML. Escaping "<" as the unicode
+// escape neutralizes that while remaining valid, semantically identical JSON.
+function safeJsonLdString(value: unknown): string {
+  return JSON.stringify(value).replace(/</g, '\\u003c');
+}
+
+export default async function ListingPage({ params }: Props) {
+  const data = await getListingData(params.id);
+  const jsonLd = data ? buildListingJsonLd(params.id, data) : null;
+
+  return (
+    <>
+      {jsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: safeJsonLdString(jsonLd) }}
+        />
+      )}
+      <ListingClient listingId={params.id} />
+    </>
+  );
+}
+
+function buildListingJsonLd(
+  id: string,
+  data: NonNullable<Awaited<ReturnType<typeof getListingData>>>
+) {
+  const { listing, snapshot, reviewCount, averageRating, reviews } = data;
+  const pageUrl = `https://obczajone.pl/listing/${id}`;
+  const imageUrl = snapshot?.photo_urls?.[0] || 'https://obczajone.pl/og-image.png';
+
+  const product: Record<string, any> = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: listing.title,
+    url: pageUrl,
+    image: imageUrl,
+    offers: {
+      '@type': 'Offer',
+      url: listing.url,
+      priceCurrency: 'PLN',
+      price: listing.current_price,
+      availability: listing.is_active
+        ? 'https://schema.org/InStock'
+        : 'https://schema.org/Discontinued',
+    },
+  };
+
+  if (reviewCount > 0 && averageRating) {
+    product.aggregateRating = {
+      '@type': 'AggregateRating',
+      ratingValue: Number(averageRating.toFixed(1)),
+      reviewCount,
+      bestRating: 5,
+      worstRating: 1,
+    };
+  }
+
+  if (reviews.length > 0) {
+    product.review = reviews.slice(0, 10).map((review) => ({
+      '@type': 'Review',
+      reviewRating: {
+        '@type': 'Rating',
+        ratingValue: review.rating,
+        bestRating: 5,
+        worstRating: 1,
+      },
+      author: {
+        '@type': 'Person',
+        name: 'Użytkownik obczajone.pl',
+      },
+      datePublished: review.created_at,
+      reviewBody: review.comment || undefined,
+    }));
+  }
+
+  return product;
 }

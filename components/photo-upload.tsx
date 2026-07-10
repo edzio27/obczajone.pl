@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
@@ -35,9 +35,9 @@ export function PhotoUpload({ listingId, onPhotosChange }: PhotoUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useState(() => {
+  useEffect(() => {
     loadPhotos();
-  });
+  }, [listingId]);
 
   async function loadPhotos() {
     try {
@@ -309,6 +309,7 @@ export function PhotoUpload({ listingId, onPhotosChange }: PhotoUploadProps) {
                     <button
                       onClick={() => window.open(photo.photo_url, '_blank')}
                       className="relative w-full h-48 bg-gray-100 cursor-pointer"
+                      aria-label="Otwórz zdjęcie w pełnym rozmiarze"
                     >
                       <img
                         src={photo.photo_url}
@@ -323,6 +324,7 @@ export function PhotoUpload({ listingId, onPhotosChange }: PhotoUploadProps) {
                       onClick={() => handleDelete(photo)}
                       className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-10"
                       title="Usuń zdjęcie"
+                      aria-label="Usuń zdjęcie"
                     >
                       <X className="h-4 w-4" />
                     </button>
@@ -352,6 +354,7 @@ export function PhotoUpload({ listingId, onPhotosChange }: PhotoUploadProps) {
                   key={photo.id}
                   onClick={() => window.open(photo.photo_url, '_blank')}
                   className="relative overflow-hidden rounded-lg border border-gray-200 hover:border-blue-300 transition-all group cursor-pointer"
+                  aria-label="Otwórz zdjęcie w pełnym rozmiarze"
                 >
                   <div className="relative w-full h-48 bg-gray-100">
                     <img

@@ -24,9 +24,11 @@ export function RecentListings({ limit, showMoreButton = false }: { limit?: numb
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAll, setShowAll] = useState(false);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     async function fetchListings() {
+      setError(false);
       const { data, error } = await supabase
         .from('listings')
         .select(`
@@ -50,6 +52,9 @@ export function RecentListings({ limit, showMoreButton = false }: { limit?: numb
           };
         });
         setListings(listingsWithRatings);
+      } else if (error) {
+        console.error('Error fetching listings:', error);
+        setError(true);
       }
       setLoading(false);
     }
@@ -71,6 +76,19 @@ export function RecentListings({ limit, showMoreButton = false }: { limit?: numb
           </Card>
         ))}
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="border-dashed border-2 border-red-200">
+        <CardHeader className="text-center py-12">
+          <CardTitle className="text-2xl">Nie udało się wczytać ogłoszeń</CardTitle>
+          <CardDescription className="text-base mt-2">
+            Wystąpił błąd podczas pobierania danych. Spróbuj odświeżyć stronę.
+          </CardDescription>
+        </CardHeader>
+      </Card>
     );
   }
 

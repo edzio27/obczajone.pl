@@ -24,16 +24,21 @@ export function RecentReviews({ limit = 3, showMoreButton = false }: { limit?: n
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAll, setShowAll] = useState(false);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     async function fetchListings() {
+      setError(false);
       const { data: reviewsData, error } = await supabase
         .from('reviews')
         .select('listing_id')
         .order('created_at', { ascending: false })
         .limit(limit * 3);
 
-      if (!error && reviewsData) {
+      if (error) {
+        console.error('Error fetching recent reviews:', error);
+        setError(true);
+      } else if (reviewsData) {
         const uniqueIds: string[] = [];
         for (const r of reviewsData) {
           if (!uniqueIds.includes(r.listing_id)) {
@@ -85,6 +90,19 @@ export function RecentReviews({ limit = 3, showMoreButton = false }: { limit?: n
           </Card>
         ))}
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="border-dashed border-2 border-red-200">
+        <CardHeader className="text-center py-12">
+          <CardTitle className="text-2xl">Nie udało się wczytać opinii</CardTitle>
+          <CardDescription className="text-base mt-2">
+            Wystąpił błąd podczas pobierania danych. Spróbuj odświeżyć stronę.
+          </CardDescription>
+        </CardHeader>
+      </Card>
     );
   }
 

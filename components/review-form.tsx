@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -9,7 +9,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useAuth } from '@/lib/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
-import { checkRateLimit, recordAction } from '@/lib/rate-limit';
+import { checkRateLimit } from '@/lib/rate-limit';
 import { Star, X, Loader as Loader2, ImagePlus } from 'lucide-react';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -35,9 +35,19 @@ export function ReviewForm({ listingId, onReviewAdded, hasUserReview }: ReviewFo
   const [photosDifference, setPhotosDifference] = useState('');
   const [comment, setComment] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const urls = selectedFiles.map((file) => URL.createObjectURL(file));
+    setPreviewUrls(urls);
+
+    return () => {
+      urls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [selectedFiles]);
 
   const addFiles = useCallback((files: File[]) => {
     const remainingSlots = MAX_PHOTOS - selectedFiles.length;
@@ -176,7 +186,10 @@ export function ReviewForm({ listingId, onReviewAdded, hasUserReview }: ReviewFo
         }
       }
 
-      await recordAction(user.id, 'add_review');
+      // Note: rate-limit recording now happens atomically in a database
+      // trigger (enforce_review_rate_limit) alongside the insert itself, so
+      // it can't be skipped by bypassing the client. No separate client-side
+      // recordAction() call is needed here (it would double-count).
 
       toast({
         title: 'Opinia dodana',
@@ -258,6 +271,8 @@ export function ReviewForm({ listingId, onReviewAdded, hasUserReview }: ReviewFo
                   type="button"
                   onClick={() => setRating(value)}
                   className="focus:outline-none"
+                  aria-label={`Oceń na ${value} z 5 gwiazdek`}
+                  aria-pressed={value === rating}
                 >
                   <Star
                     className={`h-8 w-8 ${
@@ -388,10 +403,10 @@ export function ReviewForm({ listingId, onReviewAdded, hasUserReview }: ReviewFo
               {selectedFiles.length > 0 && (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   {selectedFiles.map((file, index) => (
-                    <div key={index} className="relative group">
+                    <div key={`${file.name}-${file.size}-${file.lastModified}`} className="relative group">
                       <div className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 border-2 border-gray-200">
                         <img
-                          src={URL.createObjectURL(file)}
+                          src={previewUrls[index]}
                           alt={`Podgląd ${index + 1}`}
                           className="w-full h-full object-cover"
                         />
@@ -399,6 +414,7 @@ export function ReviewForm({ listingId, onReviewAdded, hasUserReview }: ReviewFo
                           type="button"
                           onClick={() => removeFile(index)}
                           className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                          aria-label={`Usuń zdjęcie ${index + 1}`}
                         >
                           <X className="h-3 w-3" />
                         </button>

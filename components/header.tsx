@@ -58,7 +58,7 @@ export function Header() {
             {user ? (
               <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon">
+                  <Button variant="ghost" size="icon" aria-label="Otwórz menu">
                     <Menu className="h-6 w-6" />
                   </Button>
                 </SheetTrigger>

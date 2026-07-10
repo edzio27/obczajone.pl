@@ -132,6 +132,8 @@ export function ReviewEditDialog({ review, open, onOpenChange, onReviewUpdated }
                   onMouseEnter={() => setHoveredRating(star)}
                   onMouseLeave={() => setHoveredRating(0)}
                   className="transition-transform hover:scale-110"
+                  aria-label={`Oceń na ${star} z 5 gwiazdek`}
+                  aria-pressed={star === rating}
                 >
                   <Star
                     className={`h-8 w-8 ${

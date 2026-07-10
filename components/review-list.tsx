@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -49,18 +49,41 @@ export function ReviewList({ listingId, refreshTrigger, onHasUserReview }: Revie
   const [editingReview, setEditingReview] = useState<Review | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
 
-  useEffect(() => {
-    async function fetchReviews() {
-      const { data, error } = await supabase
+  const fetchReviews = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('reviews')
+      .select('*')
+      .eq('listing_id', listingId)
+      .eq('is_approved', true)
+      .order('created_at', { ascending: false });
+
+    if (!error && data) {
+      const reviewsWithPhotos = await Promise.all(
+        data.map(async (review) => {
+          const { data: photos } = await supabase
+            .from('user_listing_photos')
+            .select('id, photo_url, file_size, order_index')
+            .eq('review_id', review.id)
+            .order('order_index');
+
+          return { ...review, photos: photos || [] };
+        })
+      );
+      setReviews(reviewsWithPhotos);
+    }
+
+    if (user) {
+      const { data: userPendingReviews, error: pendingError } = await supabase
         .from('reviews')
         .select('*')
         .eq('listing_id', listingId)
-        .eq('is_approved', true)
+        .eq('user_id', user.id)
+        .eq('is_approved', false)
         .order('created_at', { ascending: false });
 
-      if (!error && data) {
-        const reviewsWithPhotos = await Promise.all(
-          data.map(async (review) => {
+      if (!pendingError && userPendingReviews) {
+        const pendingWithPhotos = await Promise.all(
+          userPendingReviews.map(async (review) => {
             const { data: photos } = await supabase
               .from('user_listing_photos')
               .select('id, photo_url, file_size, order_index')
@@ -70,42 +93,20 @@ export function ReviewList({ listingId, refreshTrigger, onHasUserReview }: Revie
             return { ...review, photos: photos || [] };
           })
         );
-        setReviews(reviewsWithPhotos);
-      }
-
-      if (user) {
-        const { data: userPendingReviews, error: pendingError } = await supabase
-          .from('reviews')
-          .select('*')
-          .eq('listing_id', listingId)
-          .eq('user_id', user.id)
-          .eq('is_approved', false)
-          .order('created_at', { ascending: false });
-
-        if (!pendingError && userPendingReviews) {
-          const pendingWithPhotos = await Promise.all(
-            userPendingReviews.map(async (review) => {
-              const { data: photos } = await supabase
-                .from('user_listing_photos')
-                .select('id, photo_url, file_size, order_index')
-                .eq('review_id', review.id)
-                .order('order_index');
-
-              return { ...review, photos: photos || [] };
-            })
-          );
-          setPendingReviews(pendingWithPhotos);
-          if (onHasUserReview) {
-            onHasUserReview(pendingWithPhotos.length > 0, pendingWithPhotos[0] || null);
-          }
+        setPendingReviews(pendingWithPhotos);
+        if (onHasUserReview) {
+          onHasUserReview(pendingWithPhotos.length > 0, pendingWithPhotos[0] || null);
         }
       }
-
-      setLoading(false);
     }
 
+    setLoading(false);
+  }, [listingId, user, onHasUserReview]);
+
+  useEffect(() => {
+    setLoading(true);
     fetchReviews();
-  }, [listingId, refreshTrigger, user]);
+  }, [refreshTrigger, fetchReviews]);
 
   const handleReport = async (reviewId: string) => {
     if (!user) {
@@ -242,6 +243,7 @@ export function ReviewList({ listingId, refreshTrigger, onHasUserReview }: Revie
                           key={photo.id}
                           onClick={() => window.open(photo.photo_url, '_blank')}
                           className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 hover:opacity-90 transition-opacity cursor-pointer border border-gray-200"
+                          aria-label="Otwórz zdjęcie w pełnym rozmiarze"
                         >
                           <img
                             src={photo.photo_url}
@@ -348,6 +350,7 @@ export function ReviewList({ listingId, refreshTrigger, onHasUserReview }: Revie
                       key={photo.id}
                       onClick={() => window.open(photo.photo_url, '_blank')}
                       className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 hover:opacity-90 transition-opacity cursor-pointer border border-gray-200"
+                      aria-label="Otwórz zdjęcie w pełnym rozmiarze"
                     >
                       <img
                         src={photo.photo_url}
@@ -403,58 +406,4 @@ export function ReviewList({ listingId, refreshTrigger, onHasUserReview }: Revie
       )}
     </div>
   );
-
-  async function fetchReviews() {
-    const { data, error } = await supabase
-      .from('reviews')
-      .select('*')
-      .eq('listing_id', listingId)
-      .eq('is_approved', true)
-      .order('created_at', { ascending: false });
-
-    if (!error && data) {
-      const reviewsWithPhotos = await Promise.all(
-        data.map(async (review) => {
-          const { data: photos } = await supabase
-            .from('user_listing_photos')
-            .select('id, photo_url, file_size, order_index')
-            .eq('review_id', review.id)
-            .order('order_index');
-
-          return { ...review, photos: photos || [] };
-        })
-      );
-      setReviews(reviewsWithPhotos);
-    }
-
-    if (user) {
-      const { data: userPendingReviews, error: pendingError } = await supabase
-        .from('reviews')
-        .select('*')
-        .eq('listing_id', listingId)
-        .eq('user_id', user.id)
-        .eq('is_approved', false)
-        .order('created_at', { ascending: false });
-
-      if (!pendingError && userPendingReviews) {
-        const pendingWithPhotos = await Promise.all(
-          userPendingReviews.map(async (review) => {
-            const { data: photos } = await supabase
-              .from('user_listing_photos')
-              .select('id, photo_url, file_size, order_index')
-              .eq('review_id', review.id)
-              .order('order_index');
-
-            return { ...review, photos: photos || [] };
-          })
-        );
-        setPendingReviews(pendingWithPhotos);
-        if (onHasUserReview) {
-          onHasUserReview(pendingWithPhotos.length > 0, pendingWithPhotos[0] || null);
-        }
-      }
-    }
-
-    setLoading(false);
-  }
 }

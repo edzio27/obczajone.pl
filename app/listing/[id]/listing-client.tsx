@@ -304,9 +304,9 @@ export function ListingClient({ listingId }: { listingId: string }) {
                       <Badge variant="outline">Nieaktywne</Badge>
                     )}
                   </div>
-                  <CardTitle className="text-2xl">
+                  <h1 className="text-2xl font-semibold leading-none tracking-tight">
                     {listing.title || latestSnapshot?.title || 'Ładowanie...'}
-                  </CardTitle>
+                  </h1>
                   <CardDescription className="text-base space-y-2 mt-3">
                     {listing.location && (
                       <div className="flex items-center gap-1">
@@ -334,8 +334,7 @@ export function ListingClient({ listingId }: { listingId: string }) {
                     href={listing.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center gap-2 w-full text-white font-medium py-3 px-4 rounded-lg transition-colors hover:opacity-90"
-                    style={{ background: '#F97316' }}
+                    className="inline-flex items-center justify-center gap-2 w-full text-white font-medium py-3 px-4 rounded-lg transition-colors bg-orange-500 hover:bg-orange-600"
                   >
                     Zobacz oryginalne ogłoszenie
                     <ExternalLink className="h-4 w-4" />
@@ -362,10 +361,18 @@ export function ListingClient({ listingId }: { listingId: string }) {
                 <CardTitle>Opis</CardTitle>
               </CardHeader>
               <CardContent>
-                <div
-                  className="prose prose-sm max-w-none text-gray-700 leading-relaxed"
-                  dangerouslySetInnerHTML={{ __html: latestSnapshot.description }}
-                />
+                {/*
+                  Rendered as plain text (not dangerouslySetInnerHTML). This
+                  field is populated from scraped third-party listing data and
+                  writable by any authenticated user via the listing_snapshots
+                  table, so it must never be interpreted as HTML - doing so
+                  previously allowed stored XSS against every visitor of this
+                  page. whitespace-pre-line preserves line breaks without
+                  needing raw HTML.
+                */}
+                <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed whitespace-pre-line">
+                  {latestSnapshot.description}
+                </div>
               </CardContent>
             </Card>
           )}

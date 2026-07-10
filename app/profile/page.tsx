@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { supabase } from '@/lib/supabase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -62,18 +62,11 @@ export default function ProfilePage() {
     }
   }, [user, authLoading, router]);
 
-  useEffect(() => {
-    if (user) {
-      fetchUserData();
-    }
-  }, [user]);
-
-  const fetchUserData = async () => {
+  const fetchUserData = useCallback(async () => {
     if (!user) return;
 
     try {
       setLoading(true);
-      console.log('Fetching data for user:', user.id);
 
       // Fetch user's listings with review count and latest price info
       const { data: listingsData, error: listingsError } = await supabase
@@ -164,8 +157,6 @@ export default function ProfilePage() {
         console.error('Error fetching reviews:', reviewsError);
         throw reviewsError;
       }
-
-      console.log('Reviews data from Supabase:', reviewsData);
 
       const processedReviews: Review[] = (reviewsData || [])
         .filter((review: any) => review.listings)
@@ -272,7 +263,13 @@ export default function ProfilePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      fetchUserData();
+    }
+  }, [user, fetchUserData]);
 
   const getPriceChangeIcon = (change: number | null) => {
     if (!change) return <Minus className="h-4 w-4" />;
