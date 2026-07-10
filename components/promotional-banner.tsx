@@ -6,7 +6,7 @@ import Image from "next/image";
 
 export function PromotionalBanner() {
   return (
-    <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 overflow-hidden">
+    <Card className="bg-primary/5 border-primary/20 overflow-hidden">
       <div className="p-6 flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-4">
           <div className="relative w-16 h-16 rounded-full overflow-hidden shadow-lg bg-white">
@@ -19,7 +19,7 @@ export function PromotionalBanner() {
           </div>
           <div>
             <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-              <Shield className="h-4 w-4 text-blue-600" />
+              <Shield className="h-4 w-4 text-primary" />
               DriveCheck Performance
             </h3>
             <p className="text-sm text-gray-600 mt-1">
@@ -31,7 +31,7 @@ export function PromotionalBanner() {
           href="https://www.instagram.com/drivecheckperformance"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 bg-gradient-to-r from-pink-500 to-purple-600 text-white px-6 py-3 rounded-lg hover:from-pink-600 hover:to-purple-700 transition-all font-medium shadow-md hover:shadow-lg"
+          className="inline-flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary/90 transition-all font-medium shadow-md hover:shadow-lg"
         >
           Zobacz na Instagram
           <Instagram className="h-4 w-4" />
