@@ -11,7 +11,7 @@ const faqs = [
   {
     question: 'Skąd bierzecie historię cen?',
     answer:
-      'Automatycznie śledzimy zmiany w dodanych ogłoszeniach z Otomoto i Otodom i zapisujemy historię cen oraz treści oferty.',
+      'Automatycznie śledzimy zmiany w dodanych ogłoszeniach z Otomoto i Otodom i zapisujemy historię cen oraz zmiany tytułu i zdjęcia ogłoszenia.',
   },
   {
     question: 'Kto moderuje opinie?',
@@ -20,7 +20,7 @@ const faqs = [
   {
     question: 'Co zrobić, jeśli opinia wygląda na nieprawdziwą?',
     answer:
-      'Przy każdej opinii znajduje się opcja zgłoszenia — nasz zespół sprawdzi zgłoszenie i usunie treść, jeśli narusza zasady.',
+      'Przy każdej opinii znajduje się opcja zgłoszenia — trafia ono do zespołu obczajone.pl, który weryfikuje zgłoszone treści.',
   },
 ];
 
