@@ -23,17 +23,6 @@ export const metadata: Metadata = {
   creator: 'obczajone.pl',
   publisher: 'obczajone.pl',
 
-  icons: {
-    icon: [
-      { url: '/favicon.ico', sizes: 'any' },
-      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
-      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
-      { url: '/icon.svg', type: 'image/svg+xml' },
-    ],
-    apple: [
-      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
-    ],
-  },
   manifest: '/manifest.json',
 
   // Open Graph (Facebook, LinkedIn)
@@ -44,14 +33,6 @@ export const metadata: Metadata = {
     title: 'obczajone.pl - Sprawdź Historię i Opinie Przed Zakupem',
     description: 'Weryfikuj ogłoszenia z Otomoto i Otodom. Czytaj opinie użytkowników, sprawdzaj historię cen i chroń się przed oszustwami.',
     siteName: 'obczajone.pl',
-    images: [
-      {
-        url: 'https://obczajone.pl/og-image.png',
-        width: 1200,
-        height: 630,
-        alt: 'obczajone.pl - Historia i opinie o ogłoszeniach',
-      },
-    ],
   },
 
   // Twitter
@@ -59,7 +40,6 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'obczajone.pl - Historia Cen i Opinie o Ogłoszeniach',
     description: 'Sprawdź historię cen i opinie o ogłoszeniach z Otomoto i Otodom. Chroń się przed oszustwami.',
-    images: ['https://obczajone.pl/og-image.png'],
   },
 
   // Additional metadata
