@@ -60,7 +60,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     ? `Sprawdź historię cen i ${reviewCount} opinii dla: ${listing.title}. Aktualna cena: ${listing.current_price.toLocaleString('pl-PL')} zł. Ocena: ${averageRating.toFixed(1)}/5.`
     : `Sprawdź historię cen dla: ${listing.title}. Aktualna cena: ${listing.current_price.toLocaleString('pl-PL')} zł. Bądź pierwszy który doda opinię!`;
 
-  const imageUrl = snapshot?.photo_urls?.[0] || 'https://obczajone.pl/og-image.png';
+  const imageUrl = snapshot?.photo_urls?.[0] || 'https://obczajone.pl/opengraph-image';
   const pageUrl = `https://obczajone.pl/listing/${params.id}`;
 
   return {
@@ -128,7 +128,7 @@ function buildListingJsonLd(
 ) {
   const { listing, snapshot, reviewCount, averageRating, reviews } = data;
   const pageUrl = `https://obczajone.pl/listing/${id}`;
-  const imageUrl = snapshot?.photo_urls?.[0] || 'https://obczajone.pl/og-image.png';
+  const imageUrl = snapshot?.photo_urls?.[0] || 'https://obczajone.pl/opengraph-image';
 
   const product: Record<string, any> = {
     '@context': 'https://schema.org',

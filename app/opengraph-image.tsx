@@ -36,6 +36,7 @@ export default function OpengraphImage() {
             <span style={{ color: '#16A34A' }}>.pl</span>
           </span>
         </div>
+        {/* ASCII-only: Satori has no loaded font here that covers Polish diacritics */}
         <span style={{ fontSize: 32, color: '#CBD5E1', textAlign: 'center', display: 'flex' }}>
           Sprawdz historie cen i opinie o ogloszeniach z Otomoto i Otodom
         </span>
