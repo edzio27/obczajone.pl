@@ -20,9 +20,6 @@ export default function Home() {
             <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-4 text-balance">
               Sprawdź ogłoszenie przed zakupem
             </h1>
-            <p className="text-gray-600 max-w-xl mx-auto mb-8">
-              Zobacz, czy cena była manipulowana i czy inni użytkownicy zgłaszali problem
-            </p>
 
             <div className="flex justify-center mb-4">
               <ListingUrlForm />
