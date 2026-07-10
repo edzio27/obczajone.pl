@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { Button } from '@/components/ui/button';
+import { LogoMark } from '@/components/brand/logo-mark';
 import { useAuth } from '@/lib/auth-context';
 import { AuthDialog } from '@/components/auth/auth-dialog';
 import { LogOut, CircleUser as UserCircle, Menu, X } from 'lucide-react';
@@ -18,15 +18,11 @@ export function Header() {
     <>
       <header className="border-b bg-white/90 backdrop-blur-md sticky top-0 z-50 shadow-sm">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center group">
-            <Image
-              src="/obczajone_logo_transparent_cropped copy copy.png"
-              alt="obczajone.pl"
-              width={280}
-              height={70}
-              className="h-16 w-auto transition-all group-hover:scale-105"
-              priority
-            />
+          <Link href="/" className="flex items-center gap-2 group">
+            <LogoMark className="h-9 w-9 transition-transform group-hover:scale-105" />
+            <span className="font-heading text-xl font-bold text-primary">
+              obczajone<span className="text-verified">.pl</span>
+            </span>
           </Link>
 
           <nav className="hidden md:flex items-center space-x-3">
@@ -47,7 +43,7 @@ export function Header() {
               <Button
                 size="default"
                 onClick={() => setAuthDialogOpen(true)}
-                className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 shadow-md hover:shadow-lg transition-all font-medium"
+                className="shadow-md hover:shadow-lg transition-all font-medium"
               >
                 Zaloguj się
               </Button>
@@ -89,7 +85,7 @@ export function Header() {
               <Button
                 size="default"
                 onClick={() => setAuthDialogOpen(true)}
-                className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 shadow-md hover:shadow-lg transition-all font-medium"
+                className="shadow-md hover:shadow-lg transition-all font-medium"
               >
                 Zaloguj się
               </Button>

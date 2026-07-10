@@ -334,7 +334,7 @@ export function ListingClient({ listingId }: { listingId: string }) {
                     href={listing.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center gap-2 w-full text-white font-medium py-3 px-4 rounded-lg transition-colors bg-orange-500 hover:bg-orange-600"
+                    className="inline-flex items-center justify-center gap-2 w-full text-white font-medium py-3 px-4 rounded-lg transition-colors bg-primary hover:bg-primary/90"
                   >
                     Zobacz oryginalne ogłoszenie
                     <ExternalLink className="h-4 w-4" />
