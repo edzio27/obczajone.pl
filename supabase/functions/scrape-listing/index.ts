@@ -2,12 +2,47 @@ import { createClient } from 'npm:@supabase/supabase-js@2.58.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
 };
 
 interface RequestBody {
   listingId: string;
+}
+
+// Strict allowlist of hostnames we are willing to fetch server-side.
+// Prevents SSRF via crafted/anonymous listing URLs or spoofed "source" values -
+// a substring check like url.includes('otomoto') is NOT sufficient because an
+// attacker can put that substring anywhere in the URL (path, query, fragment)
+// while pointing the actual host at an internal/arbitrary target.
+const ALLOWED_HOSTNAMES: Record<'otomoto' | 'otodom', string[]> = {
+  otomoto: ['www.otomoto.pl', 'otomoto.pl'],
+  otodom: ['www.otodom.pl', 'otodom.pl'],
+};
+
+function isAllowedUrl(rawUrl: string, source: 'otomoto' | 'otodom'): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    return false;
+  }
+
+  if (parsed.protocol !== 'https:') return false;
+
+  // Block obvious internal/metadata/loopback targets even if hostname somehow
+  // matched (defense in depth against DNS rebinding to the allowlisted host).
+  const hostname = parsed.hostname.toLowerCase();
+  if (
+    hostname === 'localhost' ||
+    hostname === '169.254.169.254' ||
+    hostname.endsWith('.internal') ||
+    hostname.endsWith('.local')
+  ) {
+    return false;
+  }
+
+  return ALLOWED_HOSTNAMES[source].includes(hostname);
 }
 
 async function scrapeOtomoto(url: string) {
@@ -199,24 +234,14 @@ Deno.serve(async (req: Request) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const body = await req.json();
-    const { listingId, testUrl }: RequestBody & { testUrl?: string } = body;
+    const { listingId }: RequestBody = body;
 
-    // Test mode - bezpośrednie testowanie URL
-    if (testUrl) {
-      let scrapedData;
-      if (testUrl.includes('otomoto')) {
-        scrapedData = await scrapeOtomoto(testUrl);
-      } else if (testUrl.includes('otodom')) {
-        scrapedData = await scrapeOtodom(testUrl);
-      }
-
+    if (!listingId || typeof listingId !== 'string') {
       return new Response(
-        JSON.stringify({ success: true, data: scrapedData, test: true }),
+        JSON.stringify({ error: 'Missing or invalid listingId' }),
         {
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json',
-          },
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
     }
@@ -231,10 +256,21 @@ Deno.serve(async (req: Request) => {
       throw new Error('Listing not found');
     }
 
+    if (listing.source !== 'otomoto' && listing.source !== 'otodom') {
+      throw new Error('Unsupported listing source');
+    }
+
+    if (!isAllowedUrl(listing.url, listing.source)) {
+      // Do not attempt to fetch: the stored URL does not point at a trusted
+      // host for its declared source. This blocks SSRF via listings inserted
+      // (anonymously or otherwise) with an arbitrary url value.
+      throw new Error('Listing URL is not from a trusted host');
+    }
+
     let scrapedData;
     if (listing.source === 'otomoto') {
       scrapedData = await scrapeOtomoto(listing.url);
-    } else if (listing.source === 'otodom') {
+    } else {
       scrapedData = await scrapeOtodom(listing.url);
     }
 
@@ -272,11 +308,12 @@ Deno.serve(async (req: Request) => {
       }
     );
   } catch (error) {
+    // Log full details server-side only; never leak stack traces or internal
+    // error details to the client (information disclosure).
     console.error('Error in scrape-listing function:', error);
     return new Response(
       JSON.stringify({
-        error: error.message,
-        stack: error.stack
+        error: 'Failed to process listing',
       }),
       {
         status: 500,

@@ -2,9 +2,40 @@ import { createClient } from 'npm:@supabase/supabase-js@2.58.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
 };
+
+// Strict allowlist of hostnames we are willing to fetch server-side.
+// Listings can be created anonymously with an arbitrary `url` value, so this
+// job must not blindly fetch whatever is stored in the DB (SSRF risk).
+const ALLOWED_HOSTNAMES: Record<'otomoto' | 'otodom', string[]> = {
+  otomoto: ['www.otomoto.pl', 'otomoto.pl'],
+  otodom: ['www.otodom.pl', 'otodom.pl'],
+};
+
+function isAllowedUrl(rawUrl: string, source: 'otomoto' | 'otodom'): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    return false;
+  }
+
+  if (parsed.protocol !== 'https:') return false;
+
+  const hostname = parsed.hostname.toLowerCase();
+  if (
+    hostname === 'localhost' ||
+    hostname === '169.254.169.254' ||
+    hostname.endsWith('.internal') ||
+    hostname.endsWith('.local')
+  ) {
+    return false;
+  }
+
+  return ALLOWED_HOSTNAMES[source].includes(hostname);
+}
 
 async function scrapeOtomoto(url: string) {
   try {
@@ -119,6 +150,20 @@ Deno.serve(async (req: Request) => {
       try {
         let newPrice = null;
 
+        if (
+          (listing.source === 'otomoto' || listing.source === 'otodom') &&
+          !isAllowedUrl(listing.url, listing.source)
+        ) {
+          results.push({
+            id: listing.id,
+            success: false,
+            error: 'Listing URL is not from a trusted host',
+          });
+          failCount++;
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          continue;
+        }
+
         if (listing.source === 'otomoto') {
           newPrice = await scrapeOtomoto(listing.url);
         } else if (listing.source === 'otodom') {
@@ -185,11 +230,12 @@ Deno.serve(async (req: Request) => {
       }
     );
   } catch (error) {
+    // Log full details server-side only; never leak stack traces or internal
+    // error details to the client (information disclosure).
     console.error('Error in daily-price-scraper function:', error);
     return new Response(
       JSON.stringify({
-        error: error.message,
-        stack: error.stack,
+        error: 'Failed to run price scraper',
       }),
       {
         status: 500,
