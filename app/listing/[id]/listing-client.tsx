@@ -11,10 +11,11 @@ import { ReviewForm } from '@/components/review-form';
 import { ReviewList } from '@/components/review-list';
 import { PriceHistory } from '@/components/price-history';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ExternalLink, MapPin, Calendar, Heart } from 'lucide-react';
+import { ExternalLink, MapPin, Calendar, Heart, TrendingDown, TrendingUp } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
+import { computePriceChangePercent } from '@/lib/price-change';
 
 type Listing = {
   id: string;
@@ -184,7 +185,7 @@ export function ListingClient({ listingId }: { listingId: string }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-background">
         <Header />
         <main className="container mx-auto px-4 py-8">
           <Skeleton className="h-48 w-full mb-4" />
@@ -196,7 +197,7 @@ export function ListingClient({ listingId }: { listingId: string }) {
 
   if (!listing) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-background">
         <Header />
         <main className="container mx-auto px-4 py-8">
           <Card>
@@ -213,9 +214,15 @@ export function ListingClient({ listingId }: { listingId: string }) {
   }
 
   const latestSnapshot = snapshots[0];
+  const earliestSnapshot = snapshots.length > 0
+    ? [...snapshots].sort((a, b) => new Date(a.scraped_at).getTime() - new Date(b.scraped_at).getTime())[0]
+    : null;
+  const priceChangePercent = earliestSnapshot
+    ? computePriceChangePercent(listing.current_price, earliestSnapshot.price)
+    : null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <Header />
 
       <main className="container mx-auto px-4 py-8">
@@ -273,7 +280,7 @@ export function ListingClient({ listingId }: { listingId: string }) {
                             key={idx}
                             className={`relative bg-gray-100 rounded-lg overflow-hidden cursor-pointer transition-all flex items-center justify-center ${
                               selectedPhoto === idx
-                                ? 'ring-2 ring-blue-500 opacity-100'
+                                ? 'ring-2 ring-primary opacity-100'
                                 : 'hover:opacity-80 opacity-60'
                             }`}
                             style={{ aspectRatio: '1', minHeight: '80px' }}
@@ -326,8 +333,30 @@ export function ListingClient({ listingId }: { listingId: string }) {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {listing.current_price > 0 && (
-                    <div className="text-4xl font-bold text-gray-900 mb-4">
-                      {listing.current_price.toLocaleString('pl-PL')} zł
+                    <div className="mb-4">
+                      <div className="text-4xl font-bold text-gray-900">
+                        {listing.current_price.toLocaleString('pl-PL')} zł
+                      </div>
+                      {priceChangePercent != null && priceChangePercent !== 0 && (
+                        <div
+                          className={`inline-flex items-center gap-1 text-sm font-semibold mt-1 ${
+                            priceChangePercent < 0 ? 'text-verified' : 'text-destructive'
+                          }`}
+                        >
+                          {priceChangePercent < 0 ? (
+                            <TrendingDown className="h-4 w-4" />
+                          ) : (
+                            <TrendingUp className="h-4 w-4" />
+                          )}
+                          {priceChangePercent < 0 ? '' : '+'}
+                          {priceChangePercent.toFixed(0)}% od pierwszego wykrycia
+                        </div>
+                      )}
+                      {priceChangePercent === 0 && (
+                        <div className="text-sm text-muted-foreground mt-1">
+                          Cena bez zmian od pierwszego wykrycia
+                        </div>
+                      )}
                     </div>
                   )}
                   <a
@@ -397,7 +426,7 @@ export function ListingClient({ listingId }: { listingId: string }) {
                     <a
                       key={rec.id}
                       href={`/listing/${rec.id}`}
-                      className="block border rounded-lg p-4 hover:border-blue-500 transition-colors"
+                      className="block border rounded-lg p-4 hover:border-primary transition-colors"
                     >
                       <h3 className="font-medium mb-2 line-clamp-2">{rec.title}</h3>
                       <div className="flex items-center text-sm text-gray-600 mb-2">
