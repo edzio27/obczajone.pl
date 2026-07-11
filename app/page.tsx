@@ -50,7 +50,7 @@ export default function Home() {
                 Zobacz co inni użytkownicy weryfikowali
               </p>
             </div>
-            <RecentListings limit={50} />
+            <RecentListings />
           </div>
 
           <div className="mt-20">

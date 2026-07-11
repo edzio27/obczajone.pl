@@ -6,6 +6,7 @@ import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/ca
 import { ListingCard } from '@/components/listing-card';
 import { Button } from '@/components/ui/button';
 import { ChevronRight } from 'lucide-react';
+import { computePriceChangePercent } from '@/lib/price-change';
 
 type Listing = {
   id: string;
@@ -18,40 +19,67 @@ type Listing = {
   image_url: string;
   average_rating?: number;
   review_count?: number;
+  priceChangePercent?: number | null;
 };
 
-export function RecentListings({ limit, showMoreButton = false }: { limit?: number; showMoreButton?: boolean }) {
+async function attachPriceChanges(listings: any[]): Promise<Listing[]> {
+  if (listings.length === 0) return [];
+
+  const ids = listings.map((l) => l.id);
+  const { data: snapshotsData } = await supabase
+    .from('listing_snapshots')
+    .select('listing_id, price, scraped_at')
+    .in('listing_id', ids)
+    .order('scraped_at', { ascending: true });
+
+  const earliestPriceByListing = new Map<string, number>();
+  for (const snap of snapshotsData || []) {
+    if (!earliestPriceByListing.has(snap.listing_id)) {
+      earliestPriceByListing.set(snap.listing_id, snap.price);
+    }
+  }
+
+  return listings.map((listing) => {
+    const reviews = listing.reviews || [];
+    const avgRating = reviews.length > 0
+      ? reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviews.length
+      : undefined;
+    const earliestPrice = earliestPriceByListing.get(listing.id);
+
+    return {
+      ...listing,
+      average_rating: avgRating,
+      review_count: reviews.length,
+      priceChangePercent: earliestPrice != null
+        ? computePriceChangePercent(listing.current_price, earliestPrice)
+        : null,
+    };
+  });
+}
+
+export function RecentListings({ pageSize = 9 }: { pageSize?: number }) {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showAll, setShowAll] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [page, setPage] = useState(0);
 
   useEffect(() => {
-    async function fetchListings() {
+    async function fetchFirstPage() {
       setError(false);
+      setLoading(true);
       const { data, error } = await supabase
         .from('listings')
-        .select(`
-          *,
-          reviews(rating)
-        `)
+        .select('*, reviews(rating)')
         .order('created_at', { ascending: false })
-        .limit(limit || 10);
+        .range(0, pageSize - 1);
 
       if (!error && data) {
-        const listingsWithRatings = data.map((listing: any) => {
-          const reviews = listing.reviews || [];
-          const avgRating = reviews.length > 0
-            ? reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviews.length
-            : undefined;
-
-          return {
-            ...listing,
-            average_rating: avgRating,
-            review_count: reviews.length,
-          };
-        });
-        setListings(listingsWithRatings);
+        const withPriceChanges = await attachPriceChanges(data);
+        setListings(withPriceChanges);
+        setHasMore(data.length === pageSize);
+        setPage(0);
       } else if (error) {
         console.error('Error fetching listings:', error);
         setError(true);
@@ -59,8 +87,31 @@ export function RecentListings({ limit, showMoreButton = false }: { limit?: numb
       setLoading(false);
     }
 
-    fetchListings();
-  }, [limit]);
+    fetchFirstPage();
+  }, [pageSize]);
+
+  async function loadMore() {
+    setLoadingMore(true);
+    const nextPage = page + 1;
+    const from = nextPage * pageSize;
+    const to = from + pageSize - 1;
+
+    const { data, error } = await supabase
+      .from('listings')
+      .select('*, reviews(rating)')
+      .order('created_at', { ascending: false })
+      .range(from, to);
+
+    if (!error && data) {
+      const withPriceChanges = await attachPriceChanges(data);
+      setListings((prev) => [...prev, ...withPriceChanges]);
+      setHasMore(data.length === pageSize);
+      setPage(nextPage);
+    } else if (error) {
+      console.error('Error fetching more listings:', error);
+    }
+    setLoadingMore(false);
+  }
 
   if (loading) {
     return (
@@ -105,33 +156,25 @@ export function RecentListings({ limit, showMoreButton = false }: { limit?: numb
     );
   }
 
-  const displayedListings = showMoreButton && !showAll ? listings.slice(0, 3) : listings;
-
   return (
     <div>
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {displayedListings.map((listing) => (
+        {listings.map((listing) => (
           <ListingCard key={listing.id} {...listing} />
         ))}
       </div>
-      {showMoreButton && !showAll && listings.length > 3 && (
+      {hasMore && (
         <div className="flex justify-center mt-6">
           <Button
-            onClick={() => setShowAll(true)}
+            onClick={loadMore}
+            disabled={loadingMore}
             variant="outline"
             size="lg"
             className="flex items-center gap-2"
           >
-            Pokaż więcej
+            {loadingMore ? 'Ładowanie...' : 'Załaduj więcej'}
             <ChevronRight className="h-4 w-4" />
           </Button>
-        </div>
-      )}
-      {showMoreButton && showAll && (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-          {listings.slice(3).map((listing) => (
-            <ListingCard key={listing.id} {...listing} />
-          ))}
         </div>
       )}
     </div>
