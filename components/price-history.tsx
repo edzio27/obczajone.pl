@@ -86,7 +86,7 @@ export function PriceHistory({ snapshots }: PriceHistoryProps) {
             : `${snapshots.length} pomiarów ceny`}
           {snapshots.length > 1 && priceDiff !== 0 && (
             <span
-              className={`ml-2 font-medium ${priceDiff < 0 ? 'text-green-600' : 'text-red-600'}`}
+              className={`ml-2 font-medium ${priceDiff < 0 ? 'text-success' : 'text-warning'}`}
             >
               {priceDiff < 0 ? '' : '+'}
               {priceDiff.toLocaleString('pl-PL')} zł od pierwszego pomiaru
