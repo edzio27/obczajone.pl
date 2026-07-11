@@ -15,16 +15,25 @@ export default function OpengraphImage() {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          background: '#0F2A4A',
+          background: '#1E1B4B',
           padding: '80px',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 24, marginBottom: 40 }}>
           <svg width="90" height="90" viewBox="0 0 100 100">
-            <circle cx="50" cy="50" r="38" stroke="#FFFFFF" strokeWidth="9" fill="none" />
+            <defs>
+              <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#4F46E5" />
+                <stop offset="100%" stopColor="#06B6D4" />
+              </linearGradient>
+            </defs>
+            <path
+              d="M30,10 L70,10 A20,20 0 0 1 90,30 L90,60 A20,20 0 0 1 70,80 L34,80 L20,96 L28,80 L30,80 A20,20 0 0 1 10,60 L10,30 A20,20 0 0 1 30,10 Z"
+              fill="url(#g)"
+            />
             <path
               d="M32 52L46 66L70 34"
-              stroke="#16A34A"
+              stroke="#FFFFFF"
               strokeWidth="9"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -32,8 +41,7 @@ export default function OpengraphImage() {
             />
           </svg>
           <span style={{ fontSize: 64, fontWeight: 700, color: 'white', display: 'flex' }}>
-            obczajone
-            <span style={{ color: '#16A34A' }}>.pl</span>
+            obczajone.pl
           </span>
         </div>
         {/* ASCII-only: Satori has no loaded font here that covers Polish diacritics */}
