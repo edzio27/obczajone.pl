@@ -36,7 +36,7 @@ function PriceChangeBadge({ percent }: { percent: number }) {
   return (
     <span
       className={`inline-flex items-center gap-1 text-xs font-semibold ${
-        dropped ? 'text-verified' : 'text-destructive'
+        dropped ? 'text-success' : 'text-warning'
       }`}
     >
       <Icon className="h-3 w-3" />

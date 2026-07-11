@@ -340,7 +340,7 @@ export function ListingClient({ listingId }: { listingId: string }) {
                       {priceChangePercent != null && priceChangePercent !== 0 && (
                         <div
                           className={`inline-flex items-center gap-1 text-sm font-semibold mt-1 ${
-                            priceChangePercent < 0 ? 'text-verified' : 'text-destructive'
+                            priceChangePercent < 0 ? 'text-success' : 'text-warning'
                           }`}
                         >
                           {priceChangePercent < 0 ? (

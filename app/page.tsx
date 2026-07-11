@@ -27,7 +27,7 @@ export default function Home() {
 
             <div className="flex justify-center mt-6">
               <div className="inline-flex items-center gap-2 bg-primary/5 border border-primary/10 text-primary px-4 py-2 rounded-full text-sm font-medium">
-                <ShieldCheck className="w-4 h-4 text-verified" />
+                <ShieldCheck className="w-4 h-4 text-success" />
                 Ponad 10 000 sprawdzonych ogłoszeń
               </div>
             </div>
@@ -60,7 +60,7 @@ export default function Home() {
           <Faq />
 
           <div className="mt-20 bg-primary rounded-3xl p-10 md:p-12 text-center text-white shadow-xl">
-            <ShieldCheck className="w-12 h-12 mx-auto mb-4 text-verified" />
+            <ShieldCheck className="w-12 h-12 mx-auto mb-4 text-success" />
             <h2 className="text-2xl md:text-3xl font-bold mb-4">
               Gotowy na bezpieczne zakupy?
             </h2>

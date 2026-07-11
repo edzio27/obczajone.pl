@@ -50,10 +50,6 @@ const config: Config = {
           DEFAULT: 'hsl(var(--accent))',
           foreground: 'hsl(var(--accent-foreground))',
         },
-        verified: {
-          DEFAULT: 'hsl(var(--verified))',
-          foreground: 'hsl(var(--verified-foreground))',
-        },
         navy: {
           DEFAULT: 'hsl(var(--navy))',
           foreground: 'hsl(var(--navy-foreground))',
