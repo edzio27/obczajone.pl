@@ -1,17 +1,17 @@
 import './globals.css';
 import type { Metadata } from 'next';
-import { Manrope, Space_Grotesk } from 'next/font/google';
+import { Inter, Manrope } from 'next/font/google';
 import { AuthProvider } from '@/lib/auth-context';
 import { Toaster } from '@/components/ui/toaster';
 
+const inter = Inter({
+  subsets: ['latin', 'latin-ext'],
+  variable: '--font-inter',
+});
 const manrope = Manrope({
   subsets: ['latin', 'latin-ext'],
+  weight: ['600', '700'],
   variable: '--font-manrope',
-});
-const spaceGrotesk = Space_Grotesk({
-  subsets: ['latin', 'latin-ext'],
-  weight: ['500', '600', '700'],
-  variable: '--font-space-grotesk',
 });
 
 export const metadata: Metadata = {
@@ -109,7 +109,7 @@ export default function RootLayout({
         />
         <link rel="canonical" href="https://obczajone.pl" />
       </head>
-      <body className={`${manrope.variable} ${spaceGrotesk.variable}`}>
+      <body className={`${inter.variable} ${manrope.variable}`}>
         <AuthProvider>
           {children}
           <Toaster />
