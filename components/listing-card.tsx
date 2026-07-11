@@ -1,9 +1,9 @@
 import Link from 'next/link';
-import { Card, CardHeader } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { pl } from 'date-fns/locale';
-import { Star } from 'lucide-react';
+import { Star, TrendingDown, TrendingUp } from 'lucide-react';
 
 type ListingCardProps = {
   id: string;
@@ -15,12 +15,36 @@ type ListingCardProps = {
   image_url: string | null;
   average_rating?: number;
   review_count?: number;
+  priceChangePercent?: number | null;
   userReview?: {
     rating: number;
     comment: string;
     created_at: string;
   };
 };
+
+function PriceChangeBadge({ percent }: { percent: number }) {
+  if (percent === 0) {
+    return (
+      <span className="text-xs font-medium text-muted-foreground">
+        Cena bez zmian
+      </span>
+    );
+  }
+  const dropped = percent < 0;
+  const Icon = dropped ? TrendingDown : TrendingUp;
+  return (
+    <span
+      className={`inline-flex items-center gap-1 text-xs font-semibold ${
+        dropped ? 'text-verified' : 'text-destructive'
+      }`}
+    >
+      <Icon className="h-3 w-3" />
+      {dropped ? '' : '+'}
+      {percent.toFixed(0)}%
+    </span>
+  );
+}
 
 export function ListingCard({
   id,
@@ -32,83 +56,90 @@ export function ListingCard({
   image_url,
   average_rating,
   review_count = 0,
+  priceChangePercent,
   userReview,
 }: ListingCardProps) {
   const getStarRating = (rating: number) => {
     return '⭐'.repeat(rating);
   };
+
   return (
     <Link href={`/listing/${id}`}>
-      <Card className="group hover:shadow-xl hover:border-blue-200 transition-all duration-300 cursor-pointer h-full border-gray-200 hover:-translate-y-1 overflow-hidden">
-        {image_url && (
-          <div className="relative w-full h-48 bg-gray-100 overflow-hidden flex items-center justify-center">
-            <img
-              src={image_url}
-              alt={title || 'Zdjęcie ogłoszenia'}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-              }}
-            />
+      <Card className="group hover:shadow-xl hover:border-primary/30 transition-all duration-300 cursor-pointer h-full border-gray-200 hover:-translate-y-1 overflow-hidden">
+        <div className="flex gap-4 p-4">
+          <div className="w-28 sm:w-36 aspect-square flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden">
+            {image_url && (
+              <img
+                src={image_url}
+                alt={title || 'Zdjęcie ogłoszenia'}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+            )}
           </div>
-        )}
-        <CardHeader className="space-y-3">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-2">
-                <Badge
-                  variant={source === 'otomoto' ? 'default' : 'secondary'}
-                  className="font-semibold"
-                >
-                  {source}
-                </Badge>
-                {average_rating && review_count > 0 && (
-                  <div className="flex items-center gap-1 text-sm">
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    <span className="font-semibold">{average_rating.toFixed(1)}</span>
-                    <span className="text-muted-foreground">({review_count})</span>
-                  </div>
+
+          <div className="flex-1 min-w-0 flex flex-col">
+            <div className="flex items-center gap-2 mb-1.5">
+              <Badge
+                variant={source === 'otomoto' ? 'default' : 'secondary'}
+                className="font-semibold"
+              >
+                {source}
+              </Badge>
+              {average_rating && review_count > 0 && (
+                <div className="flex items-center gap-1 text-sm">
+                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                  <span className="font-semibold">{average_rating.toFixed(1)}</span>
+                  <span className="text-muted-foreground">({review_count})</span>
+                </div>
+              )}
+            </div>
+
+            <h3 className="font-semibold text-base leading-tight line-clamp-2 group-hover:text-primary transition-colors">
+              {title || 'Brak tytułu'}
+            </h3>
+            <p className="text-sm text-muted-foreground mt-1 line-clamp-1">
+              {location || 'Brak lokalizacji'}
+            </p>
+
+            <div className="mt-auto pt-2 flex items-end justify-between gap-2">
+              <div>
+                <p className="text-xl font-bold text-primary">
+                  {current_price.toLocaleString('pl-PL')} zł
+                </p>
+                {priceChangePercent != null && (
+                  <PriceChangeBadge percent={priceChangePercent} />
                 )}
               </div>
-              <h3 className="font-semibold text-lg leading-tight line-clamp-2 group-hover:text-blue-600 transition-colors">
-                {title || 'Brak tytułu'}
-              </h3>
-              <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
-                <span>{location || 'Brak lokalizacji'}</span>
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center justify-between pt-2 border-t">
-            <div>
-              <p className="text-2xl font-bold text-blue-600">
-                {current_price.toLocaleString('pl-PL')} zł
-              </p>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {formatDistanceToNow(new Date(created_at), {
-                addSuffix: true,
-                locale: pl,
-              })}
-            </p>
-          </div>
-          {userReview && (
-            <div className="pt-3 border-t mt-3 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-gray-700">Twoja ocena:</span>
-                <span className="text-lg">{getStarRating(userReview.rating)}</span>
-              </div>
-              <p className="text-sm text-gray-600 line-clamp-2 italic">
-                &quot;{userReview.comment}&quot;
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {formatDistanceToNow(new Date(userReview.created_at), {
+              <p className="text-xs text-muted-foreground whitespace-nowrap">
+                {formatDistanceToNow(new Date(created_at), {
                   addSuffix: true,
                   locale: pl,
                 })}
               </p>
             </div>
-          )}
-        </CardHeader>
+
+            {userReview && (
+              <div className="pt-3 border-t mt-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-gray-700">Twoja ocena:</span>
+                  <span className="text-lg">{getStarRating(userReview.rating)}</span>
+                </div>
+                <p className="text-sm text-gray-600 line-clamp-2 italic">
+                  &quot;{userReview.comment}&quot;
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {formatDistanceToNow(new Date(userReview.created_at), {
+                    addSuffix: true,
+                    locale: pl,
+                  })}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
       </Card>
     </Link>
   );
