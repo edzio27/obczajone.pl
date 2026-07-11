@@ -104,9 +104,9 @@ export function ListingCard({
               {location || 'Brak lokalizacji'}
             </p>
 
-            <div className="mt-auto pt-2 flex items-end justify-between gap-2">
+            <div className="mt-auto pt-2 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between sm:gap-2">
               <div>
-                <p className="text-xl font-bold text-primary">
+                <p className="text-xl font-bold text-primary whitespace-nowrap">
                   {current_price.toLocaleString('pl-PL')} zł
                 </p>
                 {priceChangePercent != null && (
