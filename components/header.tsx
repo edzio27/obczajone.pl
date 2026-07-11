@@ -20,9 +20,14 @@ export function Header() {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 group">
             <LogoMark className="h-9 w-9 transition-transform group-hover:scale-105" />
-            <span className="font-heading text-xl font-bold text-primary">
-              obczajone<span className="text-verified">.pl</span>
-            </span>
+            <div className="flex flex-col leading-tight">
+              <span className="font-heading text-xl font-bold text-navy">
+                obczajone.pl
+              </span>
+              <span className="hidden sm:block text-xs text-muted-foreground">
+                Ogłoszenia i opinie
+              </span>
+            </div>
           </Link>
 
           <nav className="hidden md:flex items-center space-x-3">
