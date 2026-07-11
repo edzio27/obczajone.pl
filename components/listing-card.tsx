@@ -67,7 +67,7 @@ export function ListingCard({
     <Link href={`/listing/${id}`}>
       <Card className="group hover:shadow-xl hover:border-primary/30 transition-all duration-300 cursor-pointer h-full border-gray-200 hover:-translate-y-1 overflow-hidden">
         <div className="flex gap-4 p-4">
-          <div className="w-28 sm:w-36 aspect-square flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden">
+          <div className="w-24 h-24 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden">
             {image_url && (
               <img
                 src={image_url}
@@ -104,16 +104,14 @@ export function ListingCard({
               {location || 'Brak lokalizacji'}
             </p>
 
-            <div className="mt-auto pt-2 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between sm:gap-2">
-              <div>
-                <p className="text-xl font-bold text-primary whitespace-nowrap">
-                  {current_price.toLocaleString('pl-PL')} zł
-                </p>
-                {priceChangePercent != null && (
-                  <PriceChangeBadge percent={priceChangePercent} />
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground whitespace-nowrap">
+            <div className="mt-auto pt-2">
+              <p className="text-xl font-bold text-primary">
+                {current_price.toLocaleString('pl-PL')} zł
+              </p>
+              {priceChangePercent != null && (
+                <PriceChangeBadge percent={priceChangePercent} />
+              )}
+              <p className="text-xs text-muted-foreground mt-0.5">
                 {formatDistanceToNow(new Date(created_at), {
                   addSuffix: true,
                   locale: pl,
