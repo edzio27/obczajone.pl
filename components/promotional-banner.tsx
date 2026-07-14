@@ -2,20 +2,14 @@
 
 import { ExternalLink, Instagram, Shield } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import Image from "next/image";
 
 export function PromotionalBanner() {
   return (
     <Card className="bg-primary/5 border-primary/20 overflow-hidden">
       <div className="p-6 flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-4">
-          <div className="relative w-16 h-16 rounded-full overflow-hidden shadow-lg bg-white">
-            <Image
-              src="https://scontent.fktw1-1.fna.fbcdn.net/v/t39.30808-6/633197112_25780169918311194_3295348389581314951_n.jpg?_nc_cat=104&ccb=1-7&_nc_sid=1d70fc&_nc_ohc=zHeOuX3uZw0Q7kNvwFZ4fXV&_nc_oc=AdoElYekMeJ_WPakz8EI7k0N5xOaW5U6iKi37l9xYZIZznJ9UvcF3xzG1ZaJRMQuiQM&_nc_zt=23&_nc_ht=scontent.fktw1-1.fna&_nc_gid=5D6AmzY7gd-il62bIsQQKQ&_nc_ss=7a32e&oh=00_AfzgK4X1aKLzYBWFnMfd4n_V2YDfM63CfG8At9AQtWciAw&oe=69CE1B9F"
-              alt="DriveCheck Performance Logo"
-              fill
-              className="object-cover"
-            />
+          <div className="w-16 h-16 rounded-full shadow-lg bg-primary flex items-center justify-center flex-shrink-0">
+            <Shield className="h-8 w-8 text-primary-foreground" />
           </div>
           <div>
             <h3 className="font-semibold text-gray-900 flex items-center gap-2">

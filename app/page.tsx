@@ -58,7 +58,7 @@ export default function Home() {
           <HowItWorks />
           <WhyUs />
 
-          <div className="mt-12">
+          <div className="mt-8">
             <div className="mb-8">
               <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-3 text-left">
                 Wszystkie sprawdzone ogłoszenia

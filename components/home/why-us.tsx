@@ -20,8 +20,8 @@ const reasons = [
 
 export function WhyUs() {
   return (
-    <section className="mt-12" aria-labelledby="dlaczego-warto">
-      <h2 id="dlaczego-warto" className="text-2xl md:text-3xl font-bold text-foreground mb-8 text-center">
+    <section className="mt-8" aria-labelledby="dlaczego-warto">
+      <h2 id="dlaczego-warto" className="text-2xl md:text-3xl font-bold text-foreground mb-6 text-center">
         Dlaczego warto
       </h2>
       <div className="grid md:grid-cols-3 gap-6">
@@ -30,8 +30,8 @@ export function WhyUs() {
             key={title}
             className="group bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg transition-shadow duration-300"
           >
-            <div className="inline-flex items-center justify-center w-12 h-12 bg-primary rounded-xl mb-4">
-              <Icon className="w-6 h-6 text-primary-foreground" />
+            <div className="inline-flex items-center justify-center w-14 h-14 bg-primary rounded-xl mb-4">
+              <Icon className="w-7 h-7 text-primary-foreground" />
             </div>
             <h3 className="text-lg font-bold text-foreground mb-2">{title}</h3>
             <p className="text-gray-600 text-sm leading-relaxed">{description}</p>
