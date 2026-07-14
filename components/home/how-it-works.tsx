@@ -26,7 +26,7 @@ export function HowItWorks() {
       </h2>
       <div className="grid md:grid-cols-3 gap-6">
         {steps.map(({ icon: Icon, title, description }) => (
-          <div key={title} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
+          <div key={title} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-shadow duration-300 flex items-center gap-4">
             <div className="inline-flex items-center justify-center w-12 h-12 bg-primary/10 rounded-xl flex-shrink-0">
               <Icon className="w-6 h-6 text-primary" />
             </div>

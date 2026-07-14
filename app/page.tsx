@@ -7,7 +7,7 @@ import { PartnersSection } from '@/components/promotional-banner';
 import { HowItWorks } from '@/components/home/how-it-works';
 import { WhyUs } from '@/components/home/why-us';
 import { Faq, faqs } from '@/components/home/faq';
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, Search } from 'lucide-react';
 
 export default function Home() {
   const faqJsonLd = {
@@ -34,9 +34,12 @@ export default function Home() {
       <main className="container mx-auto px-4 py-12 md:py-16">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12 animate-fade-in">
-            <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-4 text-balance">
-              Sprawdź ogłoszenie przed zakupem
+            <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4 text-balance">
+              Nie przepłacaj za samochód.
             </h1>
+            <p className="text-base md:text-lg text-gray-600 max-w-2xl mx-auto mb-6">
+              Sprawdź historię ceny, oceń wiarygodność ogłoszenia i zobacz, czy sprzedający już obniżał cenę.
+            </p>
 
             <div className="flex justify-center mb-4">
               <ListingUrlForm />
@@ -64,12 +67,10 @@ export default function Home() {
 
           <div className="mt-8">
             <div className="mb-8">
-              <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-3 text-left">
+              <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-3 text-left flex items-center gap-2">
+                <Search className="h-6 w-6 text-primary" />
                 Wszystkie sprawdzone ogłoszenia
               </h2>
-              <p className="text-gray-600 text-left">
-                Zobacz co inni użytkownicy weryfikowali
-              </p>
             </div>
             <RecentListings />
           </div>

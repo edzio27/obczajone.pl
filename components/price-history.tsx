@@ -3,6 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
+import { TrendingDown } from 'lucide-react';
 import {
   ResponsiveContainer,
   LineChart,
@@ -79,7 +80,10 @@ export function PriceHistory({ snapshots }: PriceHistoryProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Historia ceny</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <TrendingDown className="h-5 w-5 text-primary" />
+          Historia ceny
+        </CardTitle>
         <CardDescription>
           {snapshots.length === 1
             ? 'Mamy tylko jeden pomiar dla tego ogłoszenia'

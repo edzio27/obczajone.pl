@@ -120,9 +120,6 @@ export function ListingUrlForm() {
 
   return (
     <form onSubmit={handleSubmit} className="w-full max-w-3xl">
-      <p className="text-sm text-gray-700 mb-3 text-center">
-        Zobacz, czy cena była manipulowana i czy inni użytkownicy zgłaszali problem
-      </p>
       <div className="flex flex-col sm:flex-row gap-3 bg-white p-2 rounded-2xl shadow-lg border-2 border-gray-100 hover:border-primary/30 transition-colors">
         <Input
           type="url"
