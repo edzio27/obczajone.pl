@@ -20,7 +20,7 @@ const steps = [
 
 export function HowItWorks() {
   return (
-    <section className="mt-20" aria-labelledby="jak-to-dziala">
+    <section className="mt-12" aria-labelledby="jak-to-dziala">
       <h2 id="jak-to-dziala" className="text-2xl md:text-3xl font-bold text-foreground mb-8 text-center">
         Jak to działa
       </h2>

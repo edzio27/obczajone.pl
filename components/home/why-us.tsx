@@ -20,7 +20,7 @@ const reasons = [
 
 export function WhyUs() {
   return (
-    <section className="mt-20" aria-labelledby="dlaczego-warto">
+    <section className="mt-12" aria-labelledby="dlaczego-warto">
       <h2 id="dlaczego-warto" className="text-2xl md:text-3xl font-bold text-foreground mb-8 text-center">
         Dlaczego warto
       </h2>

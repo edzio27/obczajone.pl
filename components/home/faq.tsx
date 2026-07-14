@@ -26,7 +26,7 @@ const faqs = [
 
 export function Faq() {
   return (
-    <section className="mt-20" aria-labelledby="faq">
+    <section className="mt-12" aria-labelledby="faq">
       <h2 id="faq" className="text-2xl md:text-3xl font-bold text-foreground mb-8 text-center">
         Najczęstsze pytania
       </h2>

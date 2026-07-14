@@ -41,7 +41,7 @@ export default function Home() {
           <HowItWorks />
           <WhyUs />
 
-          <div className="mt-20">
+          <div className="mt-12">
             <div className="mb-8">
               <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-3 text-left">
                 Wszystkie sprawdzone ogłoszenia
@@ -53,13 +53,13 @@ export default function Home() {
             <RecentListings />
           </div>
 
-          <div className="mt-20">
+          <div className="mt-12">
             <PromotionalBanner />
           </div>
 
           <Faq />
 
-          <div className="mt-20 bg-primary rounded-3xl p-10 md:p-12 text-center text-white shadow-xl">
+          <div className="mt-14 bg-primary rounded-3xl p-10 md:p-12 text-center text-white shadow-xl">
             <ShieldCheck className="w-12 h-12 mx-auto mb-4 text-success" />
             <h2 className="text-2xl md:text-3xl font-bold mb-4">
               Gotowy na bezpieczne zakupy?
