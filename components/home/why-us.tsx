@@ -28,13 +28,15 @@ export function WhyUs() {
         {reasons.map(({ icon: Icon, title, description }) => (
           <div
             key={title}
-            className="group bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg transition-shadow duration-300"
+            className="group bg-white p-5 rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg transition-shadow duration-300 flex items-center gap-4"
           >
-            <div className="inline-flex items-center justify-center w-12 h-12 bg-primary rounded-xl mb-4">
+            <div className="inline-flex items-center justify-center w-12 h-12 bg-primary rounded-xl flex-shrink-0">
               <Icon className="w-6 h-6 text-primary-foreground" />
             </div>
-            <h3 className="text-lg font-bold text-foreground mb-2">{title}</h3>
-            <p className="text-gray-600 text-sm leading-relaxed">{description}</p>
+            <div>
+              <h3 className="text-base font-bold text-foreground mb-1">{title}</h3>
+              <p className="text-gray-600 text-sm leading-relaxed">{description}</p>
+            </div>
           </div>
         ))}
       </div>
