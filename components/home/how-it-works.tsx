@@ -27,8 +27,8 @@ export function HowItWorks() {
       <div className="grid md:grid-cols-3 gap-6">
         {steps.map(({ icon: Icon, title, description }) => (
           <div key={title} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/10 rounded-xl mb-4">
-              <Icon className="w-8 h-8 text-primary" />
+            <div className="inline-flex items-center justify-center w-[84px] h-[84px] bg-primary/10 rounded-xl mb-4">
+              <Icon className="w-[42px] h-[42px] text-primary" />
             </div>
             <h3 className="text-lg font-bold text-foreground mb-2">{title}</h3>
             <p className="text-gray-600 text-sm leading-relaxed">{description}</p>
