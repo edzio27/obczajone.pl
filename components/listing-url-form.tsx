@@ -119,14 +119,14 @@ export function ListingUrlForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="w-full max-w-3xl">
+    <form onSubmit={handleSubmit} className="w-full max-w-4xl">
       <div className="flex flex-col sm:flex-row gap-3 bg-white p-2 rounded-2xl shadow-lg border-2 border-gray-100 hover:border-primary/30 transition-colors">
         <Input
           type="url"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           placeholder="Wklej link do ogłoszenia..."
-          className="flex-1 border-0 focus-visible:ring-0 text-base h-12 px-4"
+          className="flex-1 border-0 focus-visible:ring-0 text-lg h-16 px-5"
           required
           disabled={loading}
         />
@@ -134,7 +134,7 @@ export function ListingUrlForm() {
           type="submit"
           disabled={loading}
           size="lg"
-          className="bg-primary hover:bg-primary/90 shadow-md hover:shadow-lg transition-all font-semibold h-12 px-8"
+          className="bg-primary hover:bg-primary/90 shadow-md hover:shadow-lg transition-all font-semibold h-16 px-10 text-lg"
         >
           {loading ? (
             <>
