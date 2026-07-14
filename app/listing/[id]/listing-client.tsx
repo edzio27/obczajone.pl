@@ -12,7 +12,7 @@ import { ReviewList } from '@/components/review-list';
 import { PriceHistory } from '@/components/price-history';
 import { ListingCard } from '@/components/listing-card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ExternalLink, MapPin, Calendar, Heart, TrendingDown, TrendingUp } from 'lucide-react';
+import { ExternalLink, MapPin, Calendar, Heart, TrendingDown, TrendingUp, Share2 } from 'lucide-react';
 import { formatDistanceToNow, differenceInDays } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -188,6 +188,34 @@ export function ListingClient({ listingId }: { listingId: string }) {
       });
     } finally {
       setFavoriteLoading(false);
+    }
+  };
+
+  const handleShare = async () => {
+    const shareUrl = window.location.href;
+    const shareTitle = listing?.title || 'Ogłoszenie na obczajone.pl';
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: shareTitle, url: shareUrl });
+      } catch {
+        // User cancelled the share sheet — nothing to do.
+      }
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast({
+        title: 'Link skopiowany',
+        description: 'Link do ogłoszenia został skopiowany do schowka',
+      });
+    } catch {
+      toast({
+        title: 'Błąd',
+        description: 'Nie udało się skopiować linku',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -385,6 +413,10 @@ export function ListingClient({ listingId }: { listingId: string }) {
                     Zobacz oryginalne ogłoszenie
                     <ExternalLink className="h-4 w-4" />
                   </a>
+                  <Button onClick={handleShare} variant="outline" className="w-full">
+                    <Share2 className="h-4 w-4 mr-2" />
+                    Udostępnij
+                  </Button>
                   {user && (
                     <Button
                       onClick={toggleFavorite}
