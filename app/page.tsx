@@ -6,12 +6,29 @@ import { RecentReviews } from '@/components/recent-reviews';
 import { PromotionalBanner } from '@/components/promotional-banner';
 import { HowItWorks } from '@/components/home/how-it-works';
 import { WhyUs } from '@/components/home/why-us';
-import { Faq } from '@/components/home/faq';
+import { Faq, faqs } from '@/components/home/faq';
 import { ShieldCheck } from 'lucide-react';
 
 export default function Home() {
+  const faqJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map(({ question, answer }) => ({
+      '@type': 'Question',
+      name: question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: answer,
+      },
+    })),
+  };
+
   return (
     <div className="min-h-screen bg-background">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
       <Header />
 
       <main className="container mx-auto px-4 py-12 md:py-16">

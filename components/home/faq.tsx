@@ -1,4 +1,4 @@
-const faqs = [
+export const faqs = [
   {
     question: 'Czy korzystanie z obczajone.pl jest płatne?',
     answer: 'Nie, sprawdzanie ogłoszeń i przeglądanie opinii jest całkowicie darmowe.',

@@ -60,11 +60,6 @@ export const metadata: Metadata = {
     },
   },
 
-  // Verification and analytics
-  verification: {
-    google: 'google-site-verification-code', // Dodaj swój kod weryfikacji Google
-  },
-
   // Additional tags
   category: 'Technology',
   classification: 'Business',
@@ -105,12 +100,24 @@ export default function RootLayout({
     },
   };
 
+  const organizationJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'obczajone.pl',
+    url: 'https://obczajone.pl',
+    logo: 'https://obczajone.pl/manifest-icon/512',
+  };
+
   return (
     <html lang="pl">
       <head>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
         />
         <link rel="canonical" href="https://obczajone.pl" />
       </head>
