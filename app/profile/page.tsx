@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ListingCard } from '@/components/listing-card';
-import { MessageSquare, TrendingDown, TrendingUp, Minus, Loader as Loader2, Chrome as Home } from 'lucide-react';
+import { MessageSquare, TrendingDown, TrendingUp, Minus, Loader as Loader2, Chrome as Home, XCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -327,6 +327,36 @@ export default function ProfilePage() {
           </Button>
         </Link>
       </div>
+
+      {favorites.length > 0 && (() => {
+        const droppedCount = favorites.filter(
+          (f) => f.price_change !== null && f.price_change < 0
+        ).length;
+        const removedCount = favorites.filter((f) => !f.is_active).length;
+
+        return (
+          <div className="grid grid-cols-2 gap-4 mb-8 max-w-xl">
+            <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-3">
+              <TrendingDown className="h-8 w-8 text-success flex-shrink-0" />
+              <div>
+                <div className="text-2xl font-bold text-foreground">{droppedCount}</div>
+                <div className="text-sm text-muted-foreground">
+                  {droppedCount === 1 ? 'auto staniało' : 'auta staniały'}
+                </div>
+              </div>
+            </div>
+            <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-3">
+              <XCircle className="h-8 w-8 text-destructive flex-shrink-0" />
+              <div>
+                <div className="text-2xl font-bold text-foreground">{removedCount}</div>
+                <div className="text-sm text-muted-foreground">
+                  {removedCount === 1 ? 'zostało zdjęte z rynku' : 'zostało zdjętych z rynku'}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       <Tabs defaultValue="listings" className="space-y-6">
         <TabsList>
