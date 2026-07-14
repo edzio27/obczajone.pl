@@ -64,15 +64,28 @@ export function RecentListings({ pageSize = 9 }: { pageSize?: number }) {
   const [error, setError] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setDebouncedQuery(searchQuery.trim()), 400);
+    return () => clearTimeout(timeout);
+  }, [searchQuery]);
 
   useEffect(() => {
     async function fetchFirstPage() {
       setError(false);
       setLoading(true);
-      const { data, error } = await supabase
+      let query = supabase
         .from('listings')
         .select('*, reviews(rating)')
-        .gt('current_price', 0)
+        .gt('current_price', 0);
+
+      if (debouncedQuery) {
+        query = query.ilike('title', `%${debouncedQuery}%`);
+      }
+
+      const { data, error } = await query
         .order('created_at', { ascending: false })
         .range(0, pageSize - 1);
 
@@ -89,7 +102,7 @@ export function RecentListings({ pageSize = 9 }: { pageSize?: number }) {
     }
 
     fetchFirstPage();
-  }, [pageSize]);
+  }, [pageSize, debouncedQuery]);
 
   async function loadMore() {
     setLoadingMore(true);
@@ -97,10 +110,16 @@ export function RecentListings({ pageSize = 9 }: { pageSize?: number }) {
     const from = nextPage * pageSize;
     const to = from + pageSize - 1;
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('listings')
       .select('*, reviews(rating)')
-      .gt('current_price', 0)
+      .gt('current_price', 0);
+
+    if (debouncedQuery) {
+      query = query.ilike('title', `%${debouncedQuery}%`);
+    }
+
+    const { data, error } = await query
       .order('created_at', { ascending: false })
       .range(from, to);
 
