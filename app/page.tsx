@@ -6,6 +6,8 @@ import { RecentReviews } from '@/components/recent-reviews';
 import { PartnersSection } from '@/components/promotional-banner';
 import { HowItWorks } from '@/components/home/how-it-works';
 import { WhyUs } from '@/components/home/why-us';
+import { BiggestPriceDrops } from '@/components/biggest-price-drops';
+import { RecentlyChecked } from '@/components/recently-checked';
 import { Faq, faqs } from '@/components/home/faq';
 import { ShieldCheck, Search } from 'lucide-react';
 
@@ -64,6 +66,14 @@ export default function Home() {
 
           <HowItWorks />
           <WhyUs />
+
+          <div className="mt-8">
+            <BiggestPriceDrops />
+          </div>
+
+          <div className="mt-8">
+            <RecentlyChecked />
+          </div>
 
           <div className="mt-8">
             <div className="mb-8">
