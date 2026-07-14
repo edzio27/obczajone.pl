@@ -1,6 +1,6 @@
 import './globals.css';
 import type { Metadata } from 'next';
-import { Inter, Manrope } from 'next/font/google';
+import { Baloo_2, Inter, Manrope } from 'next/font/google';
 import { AuthProvider } from '@/lib/auth-context';
 import { Toaster } from '@/components/ui/toaster';
 
@@ -12,6 +12,11 @@ const manrope = Manrope({
   subsets: ['latin', 'latin-ext'],
   weight: ['600', '700'],
   variable: '--font-manrope',
+});
+const baloo2 = Baloo_2({
+  subsets: ['latin', 'latin-ext'],
+  weight: ['700', '800'],
+  variable: '--font-logo',
 });
 
 export const metadata: Metadata = {
@@ -109,7 +114,7 @@ export default function RootLayout({
         />
         <link rel="canonical" href="https://obczajone.pl" />
       </head>
-      <body className={`${inter.variable} ${manrope.variable}`}>
+      <body className={`${inter.variable} ${manrope.variable} ${baloo2.variable}`}>
         <AuthProvider>
           {children}
           <Toaster />

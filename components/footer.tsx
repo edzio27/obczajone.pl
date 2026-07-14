@@ -9,7 +9,11 @@ export function Footer() {
         <div className="max-w-4xl mx-auto">
           <div className="grid md:grid-cols-3 gap-8 mb-8">
             <div>
-              <h3 className="font-bold text-foreground mb-4 text-lg">obczajone.pl</h3>
+              <h3 className="font-logo font-extrabold text-lg uppercase tracking-tight">
+                <span className="text-navy">Obczajone</span>
+                <span className="text-primary">.pl</span>
+              </h3>
+              <p className="text-xs text-muted-foreground mb-3">Obczaj zanim kupisz.</p>
               <p className="text-gray-600 text-sm leading-relaxed">
                 Portal do weryfikacji ogłoszeń z Otomoto i Otodom.
                 Pomagamy kupującym podejmować świadome decyzje.

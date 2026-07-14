@@ -21,11 +21,12 @@ export function Header() {
           <Link href="/" className="flex items-center gap-2 group">
             <LogoMark className="h-9 w-9 transition-transform group-hover:scale-105" />
             <div className="flex flex-col leading-tight">
-              <span className="font-heading text-xl font-bold text-navy">
-                obczajone.pl
+              <span className="font-logo font-extrabold text-xl uppercase tracking-tight">
+                <span className="text-navy">Obczajone</span>
+                <span className="text-primary">.pl</span>
               </span>
               <span className="hidden sm:block text-xs text-muted-foreground">
-                Ogłoszenia i opinie
+                Obczaj zanim kupisz.
               </span>
             </div>
           </Link>
