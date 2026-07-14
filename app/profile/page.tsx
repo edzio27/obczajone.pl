@@ -26,6 +26,7 @@ type Listing = {
   review_count: number;
   image_url: string | null;
   average_rating?: number;
+  is_active: boolean;
 };
 
 type Review = {
@@ -80,6 +81,7 @@ export default function ProfilePage() {
           created_at,
           current_price,
           image_url,
+          is_active,
           listing_snapshots (
             price,
             scraped_at
@@ -124,6 +126,7 @@ export default function ProfilePage() {
           review_count: reviews.length,
           image_url: listing.image_url,
           average_rating: avgRating,
+          is_active: listing.is_active,
         };
       });
 
@@ -204,6 +207,7 @@ export default function ProfilePage() {
             created_at,
             current_price,
             image_url,
+            is_active,
             listing_snapshots (
               price,
               scraped_at
@@ -254,6 +258,7 @@ export default function ProfilePage() {
             review_count: reviews.length,
             image_url: listing.image_url,
             average_rating: avgRating,
+            is_active: listing.is_active,
           };
         });
 
