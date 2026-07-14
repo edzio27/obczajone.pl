@@ -13,10 +13,12 @@ import { PriceHistory } from '@/components/price-history';
 import { ListingCard } from '@/components/listing-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ExternalLink, MapPin, Calendar, Heart, TrendingDown, TrendingUp } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, differenceInDays } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { computePriceChangePercent } from '@/lib/price-change';
+import { computeListingScore } from '@/lib/listing-score';
+import { ListingScoreCard } from '@/components/listing-score-card';
 
 type Listing = {
   id: string;
@@ -56,6 +58,7 @@ export function ListingClient({ listingId }: { listingId: string }) {
   const [favoriteLoading, setFavoriteLoading] = useState(false);
   const [reviewCount, setReviewCount] = useState(0);
   const [averageRating, setAverageRating] = useState<number | null>(null);
+  const [hasReportedReview, setHasReportedReview] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState(0);
   const [recommendedListings, setRecommendedListings] = useState<Listing[]>([]);
 
@@ -85,13 +88,14 @@ export function ListingClient({ listingId }: { listingId: string }) {
 
       const { data: reviewsData } = await supabase
         .from('reviews')
-        .select('rating')
+        .select('rating, is_reported')
         .eq('listing_id', listingId);
 
       if (reviewsData && reviewsData.length > 0) {
         setReviewCount(reviewsData.length);
         const avg = reviewsData.reduce((sum, r) => sum + r.rating, 0) / reviewsData.length;
         setAverageRating(avg);
+        setHasReportedReview(reviewsData.some((r) => r.is_reported));
       }
 
       const { data: recommendedData } = await supabase
@@ -223,6 +227,15 @@ export function ListingClient({ listingId }: { listingId: string }) {
   const priceChangePercent = earliestSnapshot
     ? computePriceChangePercent(listing.current_price, earliestSnapshot.price)
     : null;
+
+  const listingScore = computeListingScore({
+    priceChangePercent,
+    averageRating,
+    reviewCount,
+    hasReportedReview,
+    isActive: listing.is_active,
+    daysSinceFirstSeen: differenceInDays(new Date(), new Date(listing.first_seen_at)),
+  });
 
   return (
     <div className="min-h-screen bg-background">
@@ -386,6 +399,8 @@ export function ListingClient({ listingId }: { listingId: string }) {
               </Card>
             </div>
           </div>
+
+          <ListingScoreCard score={listingScore} />
 
           {latestSnapshot?.description && (
             <Card className="mb-6">
