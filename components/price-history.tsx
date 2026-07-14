@@ -4,10 +4,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { TrendingDown } from 'lucide-react';
+import { useId } from 'react';
 import {
   ResponsiveContainer,
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -42,6 +43,8 @@ function CustomTooltip({ active, payload, label }: any) {
 }
 
 export function PriceHistory({ snapshots }: PriceHistoryProps) {
+  const gradientId = useId();
+
   if (snapshots.length === 0) {
     return (
       <Card>
@@ -99,10 +102,16 @@ export function PriceHistory({ snapshots }: PriceHistoryProps) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="h-56 w-full">
+        <div className="h-72 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data} margin={{ top: 12, right: 16, left: 8, bottom: 4 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <AreaChart data={data} margin={{ top: 12, right: 16, left: 8, bottom: 4 }}>
+              <defs>
+                <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.25} />
+                  <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid horizontal vertical={false} stroke="#e5e7eb" strokeOpacity={0.6} />
               <XAxis
                 dataKey="date"
                 tick={{ fontSize: 11, fill: '#6b7280' }}
@@ -118,20 +127,22 @@ export function PriceHistory({ snapshots }: PriceHistoryProps) {
                 width={40}
               />
               <Tooltip content={<CustomTooltip />} />
-              <Line
+              <Area
                 type="monotone"
                 dataKey="price"
-                stroke="#f97316"
-                strokeWidth={2.5}
-                dot={{ r: 4, fill: '#f97316', strokeWidth: 0 }}
-                activeDot={{ r: 6, fill: '#ea580c', strokeWidth: 0 }}
+                stroke="hsl(var(--primary))"
+                strokeWidth={3}
+                fill={`url(#${gradientId})`}
+                dot={false}
+                activeDot={{ r: 6, fill: 'hsl(var(--primary))', strokeWidth: 0 }}
+                animationDuration={800}
               />
               {snapshots.length > 2 && minPrice !== maxPrice && minPoint && (
                 <ReferenceDot
                   x={minPoint.date}
                   y={minPoint.price}
                   r={5}
-                  fill="#16a34a"
+                  fill="hsl(var(--success))"
                   stroke="white"
                   strokeWidth={2}
                 />
@@ -141,22 +152,22 @@ export function PriceHistory({ snapshots }: PriceHistoryProps) {
                   x={maxPoint.date}
                   y={maxPoint.price}
                   r={5}
-                  fill="#dc2626"
+                  fill="hsl(var(--destructive))"
                   stroke="white"
                   strokeWidth={2}
                 />
               )}
-            </LineChart>
+            </AreaChart>
           </ResponsiveContainer>
         </div>
         {snapshots.length > 2 && minPrice !== maxPrice && (
           <div className="flex gap-4 mt-3 text-xs text-gray-500">
             <span className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded-full bg-green-600 inline-block" />
+              <span className="w-3 h-3 rounded-full bg-success inline-block" />
               Najniższa: {minPrice.toLocaleString('pl-PL')} zł
             </span>
             <span className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded-full bg-red-600 inline-block" />
+              <span className="w-3 h-3 rounded-full bg-destructive inline-block" />
               Najwyższa: {maxPrice.toLocaleString('pl-PL')} zł
             </span>
           </div>
