@@ -67,7 +67,7 @@ export function ListingCard({
     <Link href={`/listing/${id}`}>
       <Card className="group hover:shadow-xl hover:border-primary/30 transition-all duration-300 cursor-pointer h-full border-gray-200 hover:-translate-y-1 overflow-hidden">
         <div className="flex gap-4 p-4">
-          <div className="w-32 h-32 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
+          <div className="w-[154px] h-[154px] flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
             {image_url ? (
               <img
                 src={image_url}
