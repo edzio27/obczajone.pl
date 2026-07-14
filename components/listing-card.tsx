@@ -3,7 +3,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { pl } from 'date-fns/locale';
-import { Star, TrendingDown, TrendingUp } from 'lucide-react';
+import { ImageOff, Star, TrendingDown, TrendingUp } from 'lucide-react';
 
 type ListingCardProps = {
   id: string;
@@ -67,8 +67,8 @@ export function ListingCard({
     <Link href={`/listing/${id}`}>
       <Card className="group hover:shadow-xl hover:border-primary/30 transition-all duration-300 cursor-pointer h-full border-gray-200 hover:-translate-y-1 overflow-hidden">
         <div className="flex gap-4 p-4">
-          <div className="w-24 h-24 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden">
-            {image_url && (
+          <div className="w-24 h-24 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
+            {image_url ? (
               <img
                 src={image_url}
                 alt={title || 'Zdjęcie ogłoszenia'}
@@ -77,6 +77,8 @@ export function ListingCard({
                   e.currentTarget.style.display = 'none';
                 }}
               />
+            ) : (
+              <ImageOff className="h-6 w-6 text-gray-300" />
             )}
           </div>
 
@@ -105,11 +107,19 @@ export function ListingCard({
             </p>
 
             <div className="mt-auto pt-2">
-              <p className="text-xl font-bold text-primary">
-                {current_price.toLocaleString('pl-PL')} zł
-              </p>
-              {priceChangePercent != null && (
-                <PriceChangeBadge percent={priceChangePercent} />
+              {current_price > 0 ? (
+                <>
+                  <p className="text-xl font-bold text-primary">
+                    {current_price.toLocaleString('pl-PL')} zł
+                  </p>
+                  {priceChangePercent != null && (
+                    <PriceChangeBadge percent={priceChangePercent} />
+                  )}
+                </>
+              ) : (
+                <p className="text-sm font-medium text-muted-foreground">
+                  Cena niedostępna
+                </p>
               )}
               <p className="text-xs text-muted-foreground mt-0.5">
                 {formatDistanceToNow(new Date(created_at), {
