@@ -3,7 +3,7 @@ import { Footer } from '@/components/footer';
 import { ListingUrlForm } from '@/components/listing-url-form';
 import { RecentListings } from '@/components/recent-listings';
 import { RecentReviews } from '@/components/recent-reviews';
-import { PromotionalBanner } from '@/components/promotional-banner';
+import { PartnersSection } from '@/components/promotional-banner';
 import { HowItWorks } from '@/components/home/how-it-works';
 import { WhyUs } from '@/components/home/why-us';
 import { Faq, faqs } from '@/components/home/faq';
@@ -55,6 +55,10 @@ export default function Home() {
             </div>
           </div>
 
+          <div className="mt-12">
+            <PartnersSection />
+          </div>
+
           <HowItWorks />
           <WhyUs />
 
@@ -68,10 +72,6 @@ export default function Home() {
               </p>
             </div>
             <RecentListings />
-          </div>
-
-          <div className="mt-12">
-            <PromotionalBanner />
           </div>
 
           <Faq />
