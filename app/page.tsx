@@ -37,7 +37,7 @@ export default function Home() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12 animate-fade-in">
             <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4 text-balance">
-              Nie przepłacaj za samochód.
+              Sprawdź, zanim kupisz.
             </h1>
             <p className="text-base md:text-lg text-gray-600 max-w-2xl mx-auto mb-6">
               Sprawdź historię ceny, oceń wiarygodność ogłoszenia i zobacz, czy sprzedający już obniżał cenę.
