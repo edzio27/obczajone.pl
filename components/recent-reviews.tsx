@@ -51,7 +51,8 @@ export function RecentReviews({ limit = 3, showMoreButton = false }: { limit?: n
           const { data: listingsData } = await supabase
             .from('listings')
             .select('*, reviews(rating)')
-            .in('id', uniqueIds);
+            .in('id', uniqueIds)
+            .gt('current_price', 0);
 
           if (listingsData) {
             const sorted = uniqueIds

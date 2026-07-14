@@ -104,6 +104,7 @@ export function ListingClient({ listingId }: { listingId: string }) {
         .eq('source', listingData.source)
         .neq('id', listingId)
         .eq('is_active', true)
+        .gt('current_price', 0)
         .order('created_at', { ascending: false })
         .limit(3);
 

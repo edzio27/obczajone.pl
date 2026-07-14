@@ -72,6 +72,7 @@ export function RecentListings({ pageSize = 9 }: { pageSize?: number }) {
       const { data, error } = await supabase
         .from('listings')
         .select('*, reviews(rating)')
+        .gt('current_price', 0)
         .order('created_at', { ascending: false })
         .range(0, pageSize - 1);
 
@@ -99,6 +100,7 @@ export function RecentListings({ pageSize = 9 }: { pageSize?: number }) {
     const { data, error } = await supabase
       .from('listings')
       .select('*, reviews(rating)')
+      .gt('current_price', 0)
       .order('created_at', { ascending: false })
       .range(from, to);
 

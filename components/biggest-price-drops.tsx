@@ -26,6 +26,7 @@ export function BiggestPriceDrops() {
         .from('listings')
         .select('id, title, location, current_price, source, created_at, image_url')
         .eq('is_active', true)
+        .gt('current_price', 0)
         .order('last_checked_at', { ascending: false })
         .limit(100);
 
