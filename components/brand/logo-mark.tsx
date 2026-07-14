@@ -1,38 +1,34 @@
-import { useId } from 'react';
-
 type LogoMarkProps = {
+  size?: number;
   className?: string;
 };
 
-export function LogoMark({ className }: LogoMarkProps) {
-  const gradientId = useId();
+const BRAND_BLUE = '#175CE0';
 
+export function LogoMark({ size, className }: LogoMarkProps) {
   return (
     <svg
       viewBox="0 0 100 100"
       xmlns="http://www.w3.org/2000/svg"
+      {...(size ? { width: size, height: size } : {})}
       className={className}
       role="img"
       aria-label="obczajone.pl"
+      fill="none"
+      stroke={BRAND_BLUE}
+      strokeWidth={6.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
     >
-      <defs>
-        <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#4F46E5" />
-          <stop offset="100%" stopColor="#06B6D4" />
-        </linearGradient>
-      </defs>
-      <path
-        d="M30,10 L70,10 A20,20 0 0 1 90,30 L90,60 A20,20 0 0 1 70,80 L34,80 L20,96 L28,80 L30,80 A20,20 0 0 1 10,60 L10,30 A20,20 0 0 1 30,10 Z"
-        fill={`url(#${gradientId})`}
-      />
-      <path
-        d="M32 52L46 66L70 34"
-        stroke="#FFFFFF"
-        strokeWidth="9"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
+      <rect x="10" y="6" width="48" height="74" rx="10" />
+      <circle cx="21" cy="27" r="4" fill={BRAND_BLUE} stroke="none" />
+      <line x1="33" y1="27" x2="49" y2="27" />
+      <circle cx="21" cy="43" r="4" fill={BRAND_BLUE} stroke="none" />
+      <line x1="33" y1="43" x2="49" y2="43" />
+      <circle cx="21" cy="59" r="4" fill={BRAND_BLUE} stroke="none" />
+      <line x1="33" y1="59" x2="45" y2="59" />
+      <circle cx="66" cy="62" r="16" />
+      <line x1="77" y1="73" x2="91" y2="87" strokeWidth={8} />
     </svg>
   );
 }
