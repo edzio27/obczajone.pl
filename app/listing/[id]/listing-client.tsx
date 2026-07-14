@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { ReviewForm } from '@/components/review-form';
 import { ReviewList } from '@/components/review-list';
 import { PriceHistory } from '@/components/price-history';
+import { ListingCard } from '@/components/listing-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ExternalLink, MapPin, Calendar, Heart, TrendingDown, TrendingUp } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -28,6 +29,8 @@ type Listing = {
   is_active: boolean;
   first_seen_at: string;
   last_checked_at: string;
+  image_url: string | null;
+  created_at: string;
 };
 
 type Snapshot = {
@@ -421,22 +424,9 @@ export function ListingClient({ listingId }: { listingId: string }) {
                 <CardTitle>Podobne ogłoszenia z {listing.source}</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {recommendedListings.map((rec) => (
-                    <a
-                      key={rec.id}
-                      href={`/listing/${rec.id}`}
-                      className="block border rounded-lg p-4 hover:border-primary transition-colors"
-                    >
-                      <h3 className="font-medium mb-2 line-clamp-2">{rec.title}</h3>
-                      <div className="flex items-center text-sm text-gray-600 mb-2">
-                        <MapPin className="h-3 w-3 mr-1" />
-                        {rec.location}
-                      </div>
-                      <div className="text-xl font-bold text-gray-900">
-                        {rec.current_price.toLocaleString('pl-PL')} zł
-                      </div>
-                    </a>
+                    <ListingCard key={rec.id} {...rec} />
                   ))}
                 </div>
               </CardContent>

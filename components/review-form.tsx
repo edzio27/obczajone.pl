@@ -28,11 +28,6 @@ export function ReviewForm({ listingId, onReviewAdded, hasUserReview }: ReviewFo
   const [loading, setLoading] = useState(false);
   const [visitedInPerson, setVisitedInPerson] = useState<string>('no');
   const [rating, setRating] = useState(3);
-  const [priceDifference, setPriceDifference] = useState('');
-  const [conditionDifference, setConditionDifference] = useState('');
-  const [sizeMileageDifference, setSizeMileageDifference] = useState('');
-  const [equipmentDifference, setEquipmentDifference] = useState('');
-  const [photosDifference, setPhotosDifference] = useState('');
   const [comment, setComment] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
@@ -142,11 +137,6 @@ export function ReviewForm({ listingId, onReviewAdded, hasUserReview }: ReviewFo
         user_id: user.id,
         visited_in_person: visitedInPerson === 'yes',
         rating,
-        price_difference: priceDifference,
-        condition_difference: conditionDifference,
-        size_mileage_difference: sizeMileageDifference,
-        equipment_difference: equipmentDifference,
-        photos_difference: photosDifference,
         comment,
       }).select().single();
 
@@ -200,11 +190,6 @@ export function ReviewForm({ listingId, onReviewAdded, hasUserReview }: ReviewFo
 
       setVisitedInPerson('no');
       setRating(3);
-      setPriceDifference('');
-      setConditionDifference('');
-      setSizeMileageDifference('');
-      setEquipmentDifference('');
-      setPhotosDifference('');
       setComment('');
       setSelectedFiles([]);
 
@@ -285,67 +270,12 @@ export function ReviewForm({ listingId, onReviewAdded, hasUserReview }: ReviewFo
           </div>
 
           <div className="space-y-3">
-            <Label htmlFor="price">Co było inne niż w ogłoszeniu - Cena</Label>
-            <Textarea
-              id="price"
-              value={priceDifference}
-              onChange={(e) => setPriceDifference(e.target.value)}
-              placeholder="np. Negocjował cenę w dół o 5000 zł"
-              rows={2}
-            />
-          </div>
-
-          <div className="space-y-3">
-            <Label htmlFor="condition">Stan</Label>
-            <Textarea
-              id="condition"
-              value={conditionDifference}
-              onChange={(e) => setConditionDifference(e.target.value)}
-              placeholder="np. Stan gorszy niż na zdjęciach, widoczne uszkodzenia"
-              rows={2}
-            />
-          </div>
-
-          <div className="space-y-3">
-            <Label htmlFor="size">Wielkość / Przebieg</Label>
-            <Textarea
-              id="size"
-              value={sizeMileageDifference}
-              onChange={(e) => setSizeMileageDifference(e.target.value)}
-              placeholder="np. Przebieg prawdopodobnie cofnięty"
-              rows={2}
-            />
-          </div>
-
-          <div className="space-y-3">
-            <Label htmlFor="equipment">Wyposażenie</Label>
-            <Textarea
-              id="equipment"
-              value={equipmentDifference}
-              onChange={(e) => setEquipmentDifference(e.target.value)}
-              placeholder="np. Brak klimatyzacji pomimo informacji w ogłoszeniu"
-              rows={2}
-            />
-          </div>
-
-          <div className="space-y-3">
-            <Label htmlFor="photos">Zdjęcia</Label>
-            <Textarea
-              id="photos"
-              value={photosDifference}
-              onChange={(e) => setPhotosDifference(e.target.value)}
-              placeholder="np. Zdjęcia były mocno przerobione, kolory inne"
-              rows={2}
-            />
-          </div>
-
-          <div className="space-y-3">
-            <Label htmlFor="comment">Dodatkowy komentarz</Label>
+            <Label htmlFor="comment">Twoja opinia</Label>
             <Textarea
               id="comment"
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              placeholder="Twoja szczegółowa opinia..."
+              placeholder="Opisz swoje doświadczenie z tym ogłoszeniem..."
               rows={4}
             />
           </div>
