@@ -5,7 +5,8 @@ import { supabase } from '@/lib/supabase';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ListingCard } from '@/components/listing-card';
 import { Button } from '@/components/ui/button';
-import { ChevronRight } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { ChevronRight, Search } from 'lucide-react';
 import { computePriceChangePercent } from '@/lib/price-change';
 
 type Listing = {
@@ -134,51 +135,76 @@ export function RecentListings({ pageSize = 9 }: { pageSize?: number }) {
     setLoadingMore(false);
   }
 
+  const searchBox = (
+    <div className="relative mb-6 max-w-md">
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <Input
+        type="text"
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        placeholder="Szukaj po tytule..."
+        className="pl-9"
+      />
+    </div>
+  );
+
   if (loading) {
     return (
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {[...Array(6)].map((_, i) => (
-          <Card key={i} className="border-gray-200">
-            <CardHeader>
-              <div className="space-y-3">
-                <div className="h-5 bg-gray-200 rounded animate-pulse w-3/4" />
-                <div className="h-4 bg-gray-100 rounded animate-pulse w-1/2" />
-              </div>
-            </CardHeader>
-          </Card>
-        ))}
+      <div>
+        {searchBox}
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[...Array(6)].map((_, i) => (
+            <Card key={i} className="border-gray-200">
+              <CardHeader>
+                <div className="space-y-3">
+                  <div className="h-5 bg-gray-200 rounded animate-pulse w-3/4" />
+                  <div className="h-4 bg-gray-100 rounded animate-pulse w-1/2" />
+                </div>
+              </CardHeader>
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <Card className="border-dashed border-2 border-red-200">
-        <CardHeader className="text-center py-12">
-          <CardTitle className="text-2xl">Nie udało się wczytać ogłoszeń</CardTitle>
-          <CardDescription className="text-base mt-2">
-            Wystąpił błąd podczas pobierania danych. Spróbuj odświeżyć stronę.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <div>
+        {searchBox}
+        <Card className="border-dashed border-2 border-red-200">
+          <CardHeader className="text-center py-12">
+            <CardTitle className="text-2xl">Nie udało się wczytać ogłoszeń</CardTitle>
+            <CardDescription className="text-base mt-2">
+              Wystąpił błąd podczas pobierania danych. Spróbuj odświeżyć stronę.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
     );
   }
 
   if (listings.length === 0) {
     return (
-      <Card className="border-dashed border-2">
-        <CardHeader className="text-center py-12">
-          <CardTitle className="text-2xl">Brak ogłoszeń</CardTitle>
-          <CardDescription className="text-base mt-2">
-            Dodaj pierwsze ogłoszenie używając formularza powyżej
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <div>
+        {searchBox}
+        <Card className="border-dashed border-2">
+          <CardHeader className="text-center py-12">
+            <CardTitle className="text-2xl">Brak ogłoszeń</CardTitle>
+            <CardDescription className="text-base mt-2">
+              {debouncedQuery
+                ? `Brak ogłoszeń pasujących do „${debouncedQuery}"`
+                : 'Dodaj pierwsze ogłoszenie używając formularza powyżej'}
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
     );
   }
 
   return (
     <div>
+      {searchBox}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         {listings.map((listing) => (
           <ListingCard key={listing.id} {...listing} />
