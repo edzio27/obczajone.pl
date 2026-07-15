@@ -6,11 +6,11 @@ Follow-up to an earlier ChatGPT design session (screenshots reviewed) that sketc
 
 Confirmed with the site owner:
 - Each branch is its own seller profile (not one company profile with a location list).
-- Address/city takes priority over phone number when deciding if two listings belong to the same seller — a shared central phone number across branches must not merge them.
 - Branches of the same network get auto-linked by normalized name matching (no manual admin linking step).
 - The map's primary purpose is a "dealers near me" search/browse page, not just a small map embedded on a profile.
-- Seller coordinates are geocoded automatically from the scraped address at profile-creation time; no manual pin correction in this iteration.
 - Seller rating = average of the ratings already left on that seller's cars (`reviews.rating`). No new rating field, no changes to the review form.
+
+**Revised during scraper research (real Otomoto ad fetched and its `__NEXT_DATA__` inspected — see Matching/Geocoding below):** the phone number is not usable for matching — Otomoto ships it as an obfuscated string (`ad.phoneNumbers`, e.g. `"mx2rqzMvI1joGNiDQuWD4T3/...=="`), decrypted client-side only after a user clicks "pokaż numer". The original plan to match on phone+city is replaced with `external_seller_id`+city (Otomoto exposes a stable `ad.seller.id`), falling back to normalized name+city. Otomoto also ships ready-made coordinates (`ad.seller.location.map.latitude/longitude`) for dealers, so geocoding is a fallback path, not the primary source of `lat`/`lng`.
 
 ## Data model
 
@@ -20,13 +20,13 @@ New table `sellers` — one row per **branch**, not per company:
 |---|---|---|
 | id | uuid | PK |
 | source | text | `'otomoto'` \| `'otodom'` |
-| external_seller_id | text, nullable | Seller/account ID from the source site, when present in scraped data |
-| name | text | e.g. "Auto Premium" |
-| phone | text, nullable | |
+| external_seller_id | text, nullable | Seller/account ID from the source site (e.g. Otomoto's `ad.seller.id`) — primary matching key |
+| name | text | e.g. "WINCARS" |
+| phone | text, nullable | Display-only; not used for matching (see Matching logic — Otomoto doesn't expose a plain phone number server-side) |
 | city | text | |
 | address | text, nullable | Full address string when available, beyond city |
-| lat | double precision, nullable | Geocoded |
-| lng | double precision, nullable | Geocoded |
+| lat | double precision, nullable | From the source site when provided, else geocoded (see Geocoding) |
+| lng | double precision, nullable | From the source site when provided, else geocoded (see Geocoding) |
 | created_at | timestamptz | default now() |
 
 `listings` gets a new nullable column `seller_id uuid references sellers(id)`. Nullable because private-seller listings (no dealer) never get a `sellers` row (see Non-goals).
@@ -36,10 +36,10 @@ New table `sellers` — one row per **branch**, not per company:
 Runs inside `scrape-listing` after a successful scrape, before writing the snapshot:
 
 1. If the scrape yielded an `external_seller_id` **and** an existing `sellers` row has the same `external_seller_id` **and** the same `city` → match. (Both must agree — an ID reused across a rebrand/city move should not silently merge.)
-2. Else, look for an existing row with the same `phone` **and** the same `city` (both required together — a shared central phone number across branches must not match on phone alone).
-3. Else, create a new `sellers` row and geocode its address (see Geocoding).
+2. Else, look for an existing row with the same normalized `name` (see Branch grouping for the normalization rule) **and** the same `city` (both required together — a common name shared by unrelated dealers across cities must not merge).
+3. Else, create a new `sellers` row (see Geocoding for how `lat`/`lng` get set).
 
-If the scrape found no seller name at all (private/individual seller, not a dealer) → `seller_id` stays null, no `sellers` row is created.
+Only dealers get a `sellers` row: the scraper only runs this logic when Otomoto's `ad.seller.type === 'PROFESSIONAL'` (confirmed on a real listing; the exact string for private individuals hasn't been observed yet — verify during Task 2 implementation and adjust if it differs). Private-seller listings leave `listings.seller_id` null and never create a `sellers` row.
 
 ## Branch grouping ("other locations of this network")
 
@@ -47,11 +47,13 @@ No join table. At render time on the seller profile page, query `sellers` for ot
 
 ## Scraper changes (`supabase/functions/scrape-listing/index.ts`)
 
-`scrapeOtomoto` already reads `ad.seller.location` (city only). Extend it to also pull, when present in the same `ad.seller` object:
-- `ad.seller.id` → `external_seller_id`
-- `ad.seller.name` (or `companyName`, whichever the payload uses) → `name`
-- `ad.seller.phones?.[0]` → `phone`
-- any address field beyond city, if present, → `address`
+`scrapeOtomoto` already reads `ad.seller.location.city`/`.region` (confirmed real shape via a fetched live listing, WINCARS dealer in Warszawa). Extend it to also pull, when `ad.seller.type === 'PROFESSIONAL'`:
+- `ad.seller.id` → `external_seller_id` (confirmed real value: a numeric-string account ID, e.g. `"16260395"`)
+- `ad.seller.name` → `name` (confirmed real value, e.g. `"WINCARS"`)
+- `ad.seller.location.address` → `address` (confirmed present, e.g. `"UL. ALEJA SOLIDARNOŚCI 163 , U010"`)
+- `ad.seller.location.city` → `city`
+- `ad.seller.location.map.latitude` / `ad.seller.location.map.longitude` → `lat`/`lng` directly (confirmed present — Otomoto already geocodes dealer addresses itself)
+- No phone field is scraped (see Context — not available as plain text).
 
 `scrapeOtodom` currently doesn't read seller/agency fields at all. Because Otodom's `__NEXT_DATA__` shape for the owner/agency block hasn't been inspected yet, implementing it is scoped as a small research-then-implement step in the plan rather than assumed to mirror Otomoto's shape.
 
@@ -59,7 +61,7 @@ After scraping, the function runs the matching logic above, then updates `listin
 
 ## Geocoding
 
-On creation of a new `sellers` row (not on every scrape — only once, when the row is first created), geocode `address` (or `city` if no street address) via the Nominatim (OpenStreetMap) public API — no API key, consistent with the project having no paid/keyed mapping integration today. Store `lat`/`lng` on the row. If geocoding fails or returns nothing, leave `lat`/`lng` null; the seller row and profile still work, it just won't appear on the map.
+`lat`/`lng` come directly from `ad.seller.location.map.latitude/longitude` when Otomoto provides them (the normal case for dealers, confirmed above) — no geocoding call needed. Only if a new `sellers` row is created without coordinates (Otomoto omitted them, or a future Otodom implementation has no equivalent field) does the scraper fall back to geocoding `address` (or `city` if no street address) via the Nominatim (OpenStreetMap) public API — no API key, consistent with the project having no paid/keyed mapping integration today. If that also fails or returns nothing, `lat`/`lng` stay null; the seller row and profile still work, it just won't appear on the map.
 
 ## Seller profile page — `app/seller/[id]/page.tsx`
 
@@ -85,7 +87,7 @@ Full-page Leaflet map, one pin per `sellers` row that has `lat`/`lng` (rows with
 
 ## Verification
 
-- Paste two Otomoto listings from the same real dealer, same city → confirm both attach to one `sellers` row.
+- Paste two Otomoto listings from the same real dealer, same city (e.g. two listings from `wincars.pl` / dealer id `16260395` in Warszawa) → confirm both attach to one `sellers` row.
 - Paste two Otomoto listings from what looks like the same dealer name but different cities → confirm two separate `sellers` rows, and that each profile's "other branches" section links to the other.
 - Paste a private-seller (non-dealer) Otomoto listing → confirm no `sellers` row is created and `listings.seller_id` stays null.
 - Seller profile page renders correctly for a seller with null `lat`/`lng` (geocoding failure case) — no map, rest of page intact.
