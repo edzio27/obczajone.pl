@@ -48,6 +48,17 @@ CREATE POLICY "Everyone can read sellers"
 
 -- Speeds up the matching lookups the scraper runs on every scrape
 CREATE INDEX IF NOT EXISTS idx_sellers_external_id_city ON sellers (external_seller_id, city);
+
+-- Prevents duplicate seller rows when concurrent scrapes race to create the
+-- same dealer (e.g. the daily cron re-checking multiple listings from a
+-- newly-seen dealer around the same time). Partial (WHERE clause) because
+-- external_seller_id is nullable and multiple private-seller-adjacent rows
+-- with a null external_seller_id should not be forced unique against each
+-- other.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_sellers_unique_external_id_city
+  ON sellers (source, external_seller_id, city)
+  WHERE external_seller_id IS NOT NULL;
+
 CREATE INDEX IF NOT EXISTS idx_sellers_name_city ON sellers (name, city);
 
 ALTER TABLE listings ADD COLUMN IF NOT EXISTS seller_id uuid REFERENCES sellers(id);

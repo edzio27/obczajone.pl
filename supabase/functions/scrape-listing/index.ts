@@ -341,6 +341,19 @@ async function resolveSellerId(
     .single();
 
   if (insertError) {
+    // A concurrent scrape may have won the race and inserted the same
+    // (source, external_seller_id, city) row first — re-fetch it instead
+    // of treating this as a real failure.
+    if (insertError.code === '23505') {
+      const { data: raceWinner } = await supabase
+        .from('sellers')
+        .select('id')
+        .eq('source', source)
+        .eq('external_seller_id', seller.externalId)
+        .eq('city', seller.city)
+        .maybeSingle();
+      return raceWinner?.id ?? null;
+    }
     console.error('Error creating seller:', insertError);
     return null;
   }
