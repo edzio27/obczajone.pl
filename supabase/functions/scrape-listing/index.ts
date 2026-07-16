@@ -45,6 +45,40 @@ function isAllowedUrl(rawUrl: string, source: 'otomoto' | 'otodom'): boolean {
   return ALLOWED_HOSTNAMES[source].includes(hostname);
 }
 
+type ScrapedSeller = {
+  externalId: string;
+  name: string;
+  city: string;
+  address: string;
+  lat: number | null;
+  lng: number | null;
+};
+
+// Only dealers ("PROFESSIONAL") get a seller profile. Confirmed via a real
+// fetched Otomoto listing that this field exists with this exact value for
+// a dealer account; the private-individual value hasn't been observed yet —
+// if private listings start creating seller rows, check the real value here.
+function extractSeller(ad: any): ScrapedSeller | null {
+  if (ad?.seller?.type !== 'PROFESSIONAL') return null;
+  if (!ad.seller.id || !ad.seller.name) return null;
+
+  const cityRaw = ad.seller.location?.city;
+  const city = typeof cityRaw === 'string' ? cityRaw : cityRaw?.name || '';
+
+  const mapCoords = ad.seller.location?.map;
+  const lat = typeof mapCoords?.latitude === 'number' ? mapCoords.latitude : null;
+  const lng = typeof mapCoords?.longitude === 'number' ? mapCoords.longitude : null;
+
+  return {
+    externalId: String(ad.seller.id),
+    name: ad.seller.name,
+    city,
+    address: ad.seller.location?.address || '',
+    lat,
+    lng,
+  };
+}
+
 async function scrapeOtomoto(url: string) {
   try {
     const response = await fetch(url, {
@@ -58,6 +92,7 @@ async function scrapeOtomoto(url: string) {
     let price = 0;
     let location = '';
     let photoUrl = '';
+    let seller: ScrapedSeller | null = null;
 
     // Szukaj danych w __NEXT_DATA__
     const nextDataMatch = html.match(/<script id="__NEXT_DATA__"[^>]*>(.*?)<\/script>/s);
@@ -73,6 +108,8 @@ async function scrapeOtomoto(url: string) {
           if (ad.price?.amount?.units) {
             price = parseInt(ad.price.amount.units);
           }
+
+          seller = extractSeller(ad);
 
           if (ad.seller?.location?.city) {
             location = typeof ad.seller.location.city === 'string'
@@ -137,6 +174,7 @@ async function scrapeOtomoto(url: string) {
       price,
       location,
       photoUrl,
+      seller,
     };
   } catch (error) {
     console.error('Error scraping Otomoto:', error);
@@ -213,11 +251,114 @@ async function scrapeOtodom(url: string) {
       price,
       location,
       photoUrl,
+      seller: null,
     };
   } catch (error) {
     console.error('Error scraping Otodom:', error);
     return null;
   }
+}
+
+function normalizeSellerName(name: string, city: string): string {
+  let normalized = name.trim().toLowerCase();
+  const cityLower = city.trim().toLowerCase();
+  if (cityLower && normalized.endsWith(cityLower)) {
+    normalized = normalized.slice(0, normalized.length - cityLower.length).trim();
+  }
+  return normalized.replace(/\s+/g, ' ');
+}
+
+async function geocodeAddress(query: string): Promise<{ lat: number; lng: number } | null> {
+  if (!query) return null;
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`;
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'obczajone.pl seller geocoder (https://obczajone.pl)' },
+    });
+    const results = await response.json();
+    if (Array.isArray(results) && results.length > 0) {
+      return { lat: parseFloat(results[0].lat), lng: parseFloat(results[0].lon) };
+    }
+    return null;
+  } catch (error) {
+    console.error('Error geocoding seller address:', error);
+    return null;
+  }
+}
+
+// Finds an existing sellers row for this (source, seller) pair, or creates one.
+// Returns null only on an unexpected insert failure — callers must not treat
+// null as "no seller" when `seller` was non-null going in.
+async function resolveSellerId(
+  supabase: ReturnType<typeof createClient>,
+  source: 'otomoto' | 'otodom',
+  seller: ScrapedSeller
+): Promise<string | null> {
+  const { data: byExternalId } = await supabase
+    .from('sellers')
+    .select('id')
+    .eq('source', source)
+    .eq('external_seller_id', seller.externalId)
+    .eq('city', seller.city)
+    .maybeSingle();
+
+  if (byExternalId) return byExternalId.id;
+
+  const normalizedName = normalizeSellerName(seller.name, seller.city);
+  const { data: sameCitySellers } = await supabase
+    .from('sellers')
+    .select('id, name, city')
+    .eq('source', source)
+    .eq('city', seller.city);
+
+  const nameMatch = sameCitySellers?.find(
+    (candidate: { name: string; city: string }) =>
+      normalizeSellerName(candidate.name, candidate.city) === normalizedName
+  );
+
+  if (nameMatch) return nameMatch.id;
+
+  let lat = seller.lat;
+  let lng = seller.lng;
+  if (lat == null || lng == null) {
+    const geocoded = await geocodeAddress(seller.address || seller.city);
+    lat = geocoded?.lat ?? null;
+    lng = geocoded?.lng ?? null;
+  }
+
+  const { data: newSeller, error: insertError } = await supabase
+    .from('sellers')
+    .insert({
+      source,
+      external_seller_id: seller.externalId,
+      name: seller.name,
+      city: seller.city,
+      address: seller.address || null,
+      lat,
+      lng,
+    })
+    .select('id')
+    .single();
+
+  if (insertError) {
+    // A concurrent scrape may have won the race and inserted the same
+    // (source, external_seller_id, city) row first — re-fetch it instead
+    // of treating this as a real failure.
+    if (insertError.code === '23505') {
+      const { data: raceWinner } = await supabase
+        .from('sellers')
+        .select('id')
+        .eq('source', source)
+        .eq('external_seller_id', seller.externalId)
+        .eq('city', seller.city)
+        .maybeSingle();
+      return raceWinner?.id ?? null;
+    }
+    console.error('Error creating seller:', insertError);
+    return null;
+  }
+
+  return newSeller?.id ?? null;
 }
 
 Deno.serve(async (req: Request) => {
@@ -278,16 +419,26 @@ Deno.serve(async (req: Request) => {
       throw new Error('Failed to scrape listing');
     }
 
-    await supabase
-      .from('listings')
-      .update({
-        title: scrapedData.title,
-        location: scrapedData.location,
-        current_price: scrapedData.price,
-        image_url: scrapedData.photoUrl || '',
-        last_checked_at: new Date().toISOString(),
-      })
-      .eq('id', listingId);
+    let sellerId: string | null = null;
+    if (scrapedData.seller) {
+      sellerId = await resolveSellerId(supabase, listing.source, scrapedData.seller);
+    }
+
+    // Only set seller_id when this scrape resolved one — never null out a
+    // previously-linked seller because a later re-scrape (e.g. the daily
+    // cron re-check) transiently failed to extract seller data.
+    const listingUpdate: Record<string, unknown> = {
+      title: scrapedData.title,
+      location: scrapedData.location,
+      current_price: scrapedData.price,
+      image_url: scrapedData.photoUrl || '',
+      last_checked_at: new Date().toISOString(),
+    };
+    if (sellerId) {
+      listingUpdate.seller_id = sellerId;
+    }
+
+    await supabase.from('listings').update(listingUpdate).eq('id', listingId);
 
     await supabase.from('listing_snapshots').insert({
       listing_id: listingId,
