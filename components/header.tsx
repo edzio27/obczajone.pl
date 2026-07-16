@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { LogoMark } from '@/components/brand/logo-mark';
 import { useAuth } from '@/lib/auth-context';
 import { AuthDialog } from '@/components/auth/auth-dialog';
-import { LogOut, CircleUser as UserCircle, Menu, X } from 'lucide-react';
+import { LogOut, CircleUser as UserCircle, Menu, X, MapPin } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 export function Header() {
@@ -32,6 +32,12 @@ export function Header() {
           </Link>
 
           <nav className="hidden md:flex items-center space-x-3">
+            <Link href="/posrednicy">
+              <Button variant="ghost" size="default" className="font-medium">
+                <MapPin className="h-4 w-4 mr-2" />
+                Pośrednicy
+              </Button>
+            </Link>
             {user ? (
               <>
                 <Link href="/profile">
@@ -56,46 +62,57 @@ export function Header() {
             )}
           </nav>
 
-          <div className="md:hidden">
-            {user ? (
-              <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-                <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon" aria-label="Otwórz menu">
-                    <Menu className="h-6 w-6" />
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="right" className="w-64">
-                  <div className="flex flex-col space-y-4 mt-8">
-                    <Link href="/profile" onClick={() => setMobileMenuOpen(false)}>
-                      <Button variant="ghost" size="default" className="w-full justify-start font-medium">
-                        <UserCircle className="h-4 w-4 mr-2" />
-                        Mój profil
+          <div className="md:hidden flex items-center gap-2">
+            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label="Otwórz menu">
+                  <Menu className="h-6 w-6" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-64">
+                <div className="flex flex-col space-y-4 mt-8">
+                  <Link href="/posrednicy" onClick={() => setMobileMenuOpen(false)}>
+                    <Button variant="ghost" size="default" className="w-full justify-start font-medium">
+                      <MapPin className="h-4 w-4 mr-2" />
+                      Pośrednicy
+                    </Button>
+                  </Link>
+                  {user ? (
+                    <>
+                      <Link href="/profile" onClick={() => setMobileMenuOpen(false)}>
+                        <Button variant="ghost" size="default" className="w-full justify-start font-medium">
+                          <UserCircle className="h-4 w-4 mr-2" />
+                          Mój profil
+                        </Button>
+                      </Link>
+                      <Button
+                        variant="outline"
+                        size="default"
+                        onClick={() => {
+                          signOut();
+                          setMobileMenuOpen(false);
+                        }}
+                        className="w-full justify-start font-medium"
+                      >
+                        <LogOut className="h-4 w-4 mr-2" />
+                        Wyloguj
                       </Button>
-                    </Link>
+                    </>
+                  ) : (
                     <Button
-                      variant="outline"
                       size="default"
                       onClick={() => {
-                        signOut();
+                        setAuthDialogOpen(true);
                         setMobileMenuOpen(false);
                       }}
-                      className="w-full justify-start font-medium"
+                      className="w-full shadow-md hover:shadow-lg transition-all font-medium"
                     >
-                      <LogOut className="h-4 w-4 mr-2" />
-                      Wyloguj
+                      Zaloguj się
                     </Button>
-                  </div>
-                </SheetContent>
-              </Sheet>
-            ) : (
-              <Button
-                size="default"
-                onClick={() => setAuthDialogOpen(true)}
-                className="shadow-md hover:shadow-lg transition-all font-medium"
-              >
-                Zaloguj się
-              </Button>
-            )}
+                  )}
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
       </header>

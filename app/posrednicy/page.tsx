@@ -28,7 +28,7 @@ type SellerWithRating = {
   reviewCount: number;
 };
 
-export default function KomisyPage() {
+export default function PosrednicyPage() {
   const [sellers, setSellers] = useState<SellerWithRating[]>([]);
   const [loading, setLoading] = useState(true);
   const [cityFilter, setCityFilter] = useState('');
@@ -103,7 +103,7 @@ export default function KomisyPage() {
     <div className="min-h-screen bg-background">
       <Header />
       <main className="container mx-auto px-4 py-8 space-y-4">
-        <h1 className="text-2xl font-semibold">Komisy na mapie</h1>
+        <h1 className="text-2xl font-semibold">Pośrednicy na mapie</h1>
 
         <div className="flex flex-wrap gap-3">
           <Input
@@ -129,13 +129,13 @@ export default function KomisyPage() {
         {loading ? (
           <Skeleton className="h-[600px] w-full" />
         ) : filteredSellers.length === 0 ? (
-          <p className="text-muted-foreground">Brak komisów spełniających kryteria.</p>
+          <p className="text-muted-foreground">Brak pośredników spełniających kryteria.</p>
         ) : (
           <LeafletMapView markers={markers} center={POLAND_CENTER} zoom={6} heightClassName="h-[600px]" />
         )}
 
         <p className="text-sm text-muted-foreground">
-          {filteredSellers.length} komis(ów) na mapie. Zobacz też{' '}
+          {filteredSellers.length} pośrednik(ów) na mapie. Zobacz też{' '}
           <Link href="/" className="text-primary hover:underline">
             stronę główną
           </Link>
