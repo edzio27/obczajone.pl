@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ListingCard } from '@/components/listing-card';
-import { LeafletMapView } from '@/components/leaflet-map';
+import { LeafletMapView, escapeHtml } from '@/components/leaflet-map';
 import { findOtherBranches, type SellerBranch } from '@/lib/seller-name';
 import { MapPin, Star } from 'lucide-react';
 
@@ -149,7 +149,7 @@ export function SellerClient({ sellerId }: { sellerId: string }) {
                     id: seller.id,
                     lat: seller.lat,
                     lng: seller.lng,
-                    popupHtml: seller.name,
+                    popupHtml: escapeHtml(seller.name),
                   },
                 ]}
                 center={[seller.lat, seller.lng]}
