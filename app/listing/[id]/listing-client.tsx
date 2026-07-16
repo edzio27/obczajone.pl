@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Header } from '@/components/header';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
@@ -12,7 +13,7 @@ import { ReviewList } from '@/components/review-list';
 import { PriceHistory } from '@/components/price-history';
 import { ListingCard } from '@/components/listing-card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ExternalLink, MapPin, Calendar, Heart, TrendingDown, TrendingUp, Share2 } from 'lucide-react';
+import { ExternalLink, MapPin, Calendar, Heart, TrendingDown, TrendingUp, Share2, Store } from 'lucide-react';
 import { formatDistanceToNow, differenceInDays } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -33,6 +34,7 @@ type Listing = {
   last_checked_at: string;
   image_url: string | null;
   created_at: string;
+  seller: { id: string; name: string; city: string } | null;
 };
 
 type Snapshot = {
@@ -66,7 +68,7 @@ export function ListingClient({ listingId }: { listingId: string }) {
     async function fetchData() {
       const { data: listingData, error: listingError } = await supabase
         .from('listings')
-        .select('*')
+        .select('*, seller:sellers(id, name, city)')
         .eq('id', listingId)
         .single();
 
@@ -364,6 +366,17 @@ export function ListingClient({ listingId }: { listingId: string }) {
                       <div className="flex items-center gap-1">
                         <MapPin className="h-4 w-4" />
                         {listing.location}
+                      </div>
+                    )}
+                    {listing.seller && (
+                      <div className="flex items-center gap-1">
+                        <Store className="h-4 w-4" />
+                        <Link
+                          href={`/seller/${listing.seller.id}`}
+                          className="text-primary hover:underline"
+                        >
+                          {listing.seller.name} ({listing.seller.city})
+                        </Link>
                       </div>
                     )}
                     <div className="flex items-center gap-1">
