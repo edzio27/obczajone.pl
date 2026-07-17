@@ -34,13 +34,21 @@ type Review = {
   photos?: Photo[];
 };
 
+type AiOpinion = {
+  rating: number;
+  summary: string;
+  priceNote: string;
+  watchOutFor: string[];
+};
+
 type ReviewListProps = {
   listingId: string;
   refreshTrigger?: number;
   onHasUserReview?: (hasReview: boolean, review: Review | null) => void;
+  aiOpinion?: AiOpinion | null;
 };
 
-export function ReviewList({ listingId, refreshTrigger, onHasUserReview }: ReviewListProps) {
+export function ReviewList({ listingId, refreshTrigger, onHasUserReview, aiOpinion }: ReviewListProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -151,7 +159,7 @@ export function ReviewList({ listingId, refreshTrigger, onHasUserReview }: Revie
     );
   }
 
-  if (reviews.length === 0 && pendingReviews.length === 0) {
+  if (reviews.length === 0 && pendingReviews.length === 0 && !aiOpinion) {
     return (
       <Card>
         <CardHeader>
@@ -166,6 +174,46 @@ export function ReviewList({ listingId, refreshTrigger, onHasUserReview }: Revie
 
   return (
     <div className="space-y-4">
+      {aiOpinion && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <Badge className="bg-blue-600 text-white hover:bg-blue-600">Opinia AI</Badge>
+              <div className="flex">
+                {[...Array(5)].map((_, i) => (
+                  <Star
+                    key={i}
+                    className={`h-5 w-5 ${
+                      i < aiOpinion.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-gray-700">{aiOpinion.summary}</p>
+            <div>
+              <h4 className="font-semibold text-sm text-gray-700 mb-1">Cena</h4>
+              <p className="text-gray-600">{aiOpinion.priceNote}</p>
+            </div>
+            {aiOpinion.watchOutFor.length > 0 && (
+              <div>
+                <h4 className="font-semibold text-sm text-gray-700 mb-1">Na co zwrócić uwagę</h4>
+                <ul className="list-disc list-inside text-gray-600 space-y-1">
+                  {aiOpinion.watchOutFor.map((point, i) => (
+                    <li key={i}>{point}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <p className="text-xs text-gray-500 pt-2 border-t">
+              Opinia wygenerowana automatycznie przez AI na podstawie opisu ogłoszenia. Może się mylić — nie zastępuje oceny na żywo.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {pendingReviews.length > 0 && (
         <div className="space-y-4">
           <h3 className="text-xl font-semibold">Twoja opinia (czeka na moderację)</h3>
