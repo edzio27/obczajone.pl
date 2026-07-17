@@ -515,6 +515,9 @@ Zwróć:
 - watch_out_for: lista 1-4 ostrożnych sugestii/pytań`;
 }
 
+// Requires the ANTHROPIC_API_KEY secret (`supabase secrets set ANTHROPIC_API_KEY=<key>`)
+// and migration 20260717130000_add_ai_listing_opinion.sql applied to this project.
+// Missing either causes this to no-op silently (by design — must never fail the scrape).
 async function generateAiOpinion(
   source: 'otomoto' | 'otodom',
   data: AiOpinionInput
