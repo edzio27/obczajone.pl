@@ -454,6 +454,121 @@ async function resolveSellerId(
   return newSeller?.id ?? null;
 }
 
+type AiOpinion = {
+  rating: number;
+  summary: string;
+  priceNote: string;
+  watchOutFor: string[];
+  model: string;
+};
+
+const AI_OPINION_MODEL = 'claude-haiku-4-5';
+
+const AI_OPINION_SCHEMA = {
+  type: 'object',
+  properties: {
+    rating: { type: 'integer' },
+    summary: { type: 'string' },
+    price_note: { type: 'string' },
+    watch_out_for: { type: 'array', items: { type: 'string' } },
+  },
+  required: ['rating', 'summary', 'price_note', 'watch_out_for'],
+  additionalProperties: false,
+};
+
+type AiOpinionInput = {
+  title: string;
+  price: number;
+  location: string;
+  description: string;
+  specs: Record<string, unknown>;
+};
+
+function buildAiOpinionPrompt(source: 'otomoto' | 'otodom', data: AiOpinionInput): string {
+  const specsLines = Object.entries(data.specs)
+    .filter(([, value]) => value !== null && value !== undefined && value !== '')
+    .map(([key, value]) => `- ${key}: ${value}`)
+    .join('\n');
+
+  const kindLabel = source === 'otomoto' ? 'ogłoszenia samochodowego' : 'ogłoszenia nieruchomości';
+  const sourceLabel = source === 'otomoto' ? 'Otomoto' : 'Otodom';
+
+  return `Poniżej dane ${kindLabel} ze strony ${sourceLabel}:
+
+Tytuł: ${data.title}
+Cena: ${data.price} PLN
+Lokalizacja: ${data.location}
+Parametry:
+${specsLines || '(brak dodatkowych parametrów)'}
+
+Opis:
+${data.description || '(brak opisu)'}
+
+Napisz krótką, pierwszą opinię o tym ogłoszeniu po polsku, na podstawie wyłącznie powyższego opisu i parametrów (nie masz dostępu do zdjęć ani do innych ofert w bazie, więc oceniaj cenę w sposób przybliżony).
+
+WAŻNE: nigdy nie formułuj stanowczych zarzutów wobec sprzedającego ani ogłoszenia. Punkty "na co zwrócić uwagę" pisz wyłącznie jako ostrożne pytania lub sugestie do zweryfikowania osobiście (np. "może warto dopytać o historię serwisową"), nigdy jako twierdzenia (np. nie pisz "przebieg wygląda podejrzanie").
+
+Zwróć:
+- rating: ocena 1-5 (liczba całkowita)
+- summary: 2-3 zdania podsumowania
+- price_note: jedno zdanie o cenie
+- watch_out_for: lista 1-4 ostrożnych sugestii/pytań`;
+}
+
+async function generateAiOpinion(
+  source: 'otomoto' | 'otodom',
+  data: AiOpinionInput
+): Promise<AiOpinion | null> {
+  const apiKey = Deno.env.get('ANTHROPIC_API_KEY');
+  if (!apiKey) {
+    console.error('ANTHROPIC_API_KEY not set; skipping AI opinion generation');
+    return null;
+  }
+
+  try {
+    const { default: Anthropic } = await import('npm:@anthropic-ai/sdk@0.71.0');
+    const client = new Anthropic({ apiKey });
+
+    // NOTE: verified against the actual @anthropic-ai/sdk@0.71.0 type
+    // definitions (not the newer API docs) - in this SDK version,
+    // structured-output parsing only exists on the beta namespace
+    // (`client.beta.messages.parse`, not `client.messages.parse`), and the
+    // JSON schema goes on a top-level `output_format` field, not nested
+    // under `output_config` (which in 0.71.0 only supports `{ effort }`).
+    // `client.beta.messages.parse` automatically adds the
+    // `structured-outputs-2025-11-13` beta header internally.
+    const response = await client.beta.messages.parse({
+      model: AI_OPINION_MODEL,
+      max_tokens: 1024,
+      messages: [{ role: 'user', content: buildAiOpinionPrompt(source, data) }],
+      output_format: { type: 'json_schema', schema: AI_OPINION_SCHEMA },
+    });
+
+    const parsed = response.parsed_output as {
+      rating: number;
+      summary: string;
+      price_note: string;
+      watch_out_for: string[];
+    } | null;
+
+    if (!parsed) {
+      console.error('AI opinion response did not parse against the schema');
+      return null;
+    }
+
+    return {
+      rating: Math.min(5, Math.max(1, Math.round(parsed.rating))),
+      summary: parsed.summary,
+      priceNote: parsed.price_note,
+      watchOutFor: parsed.watch_out_for,
+      model: AI_OPINION_MODEL,
+    };
+  } catch (error) {
+    console.error('Error generating AI opinion:', error);
+    return null;
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, {
@@ -541,6 +656,30 @@ Deno.serve(async (req: Request) => {
       photo_urls: scrapedData.photoUrl ? [scrapedData.photoUrl] : [],
       metadata: {},
     });
+
+    await supabase.from('listings').update({
+      description: scrapedData.description,
+      specs: scrapedData.specs,
+    }).eq('id', listingId);
+
+    const aiOpinion = await generateAiOpinion(listing.source, {
+      title: scrapedData.title,
+      price: scrapedData.price,
+      location: scrapedData.location,
+      description: scrapedData.description,
+      specs: scrapedData.specs,
+    });
+
+    if (aiOpinion) {
+      await supabase.from('listings').update({
+        ai_opinion_rating: aiOpinion.rating,
+        ai_opinion_summary: aiOpinion.summary,
+        ai_opinion_price_note: aiOpinion.priceNote,
+        ai_opinion_watch_out: aiOpinion.watchOutFor,
+        ai_opinion_model: aiOpinion.model,
+        ai_opinion_generated_at: new Date().toISOString(),
+      }).eq('id', listingId);
+    }
 
     return new Response(
       JSON.stringify({ success: true, data: scrapedData }),
