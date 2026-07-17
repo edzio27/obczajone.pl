@@ -224,6 +224,48 @@ async function scrapeOtomoto(url: string) {
   }
 }
 
+type OtodomSpecs = {
+  area: string | null;
+  rooms: string | null;
+  floor: string | null;
+  build_year: string | null;
+};
+
+// Otodom exposes property parameters on `ad.target` (PascalCase analytics
+// fields) and separately in an `ad.characteristics` array (snake_case keys,
+// e.g. {key: 'rooms_num', value: '4'}). Confirmed against two real fetched
+// listings (Task 3, Step 1) - one secondary-market resale flat, one
+// primary-market new-development flat:
+//   - `target.Area` and `target.Build_year` are plain strings when present.
+//   - `target.Rooms_num` and `target.Floor_no` are ARRAYS (e.g. ['4'],
+//     ['floor_4']), not plain strings - unwrap the first element.
+//   - `characteristics` uses key 'm' for area, NOT 'area'.
+//   - `build_year` is only present (in both target and characteristics) for
+//     primary-market listings; it's genuinely absent for resale listings, so
+//     null is an expected, common result there - not a bug.
+function unwrapTargetValue(value: unknown): string | null {
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value) && typeof value[0] === 'string') return value[0];
+  return null;
+}
+
+function extractOtodomSpecs(ad: any): OtodomSpecs {
+  const target = ad?.target ?? {};
+  const characteristics = Array.isArray(ad?.characteristics) ? ad.characteristics : [];
+
+  function fromCharacteristics(key: string): string | null {
+    const found = characteristics.find((c: any) => c?.key === key);
+    return found?.value ?? found?.localizedValue ?? null;
+  }
+
+  return {
+    area: unwrapTargetValue(target.Area) ?? fromCharacteristics('m') ?? null,
+    rooms: unwrapTargetValue(target.Rooms_num) ?? fromCharacteristics('rooms_num') ?? null,
+    floor: unwrapTargetValue(target.Floor_no) ?? fromCharacteristics('floor_no') ?? null,
+    build_year: unwrapTargetValue(target.Build_year) ?? fromCharacteristics('build_year') ?? null,
+  };
+}
+
 async function scrapeOtodom(url: string) {
   try {
     const response = await fetch(url, {
@@ -237,6 +279,8 @@ async function scrapeOtodom(url: string) {
     let price = 0;
     let location = '';
     let photoUrl = '';
+    let description = '';
+    let specs: OtodomSpecs = { area: null, rooms: null, floor: null, build_year: null };
 
     // Szukaj danych w formacie __NEXT_DATA__
     const nextDataMatch = html.match(/<script id="__NEXT_DATA__"[^>]*>(.*?)<\/script>/s);
@@ -261,6 +305,11 @@ async function scrapeOtodom(url: string) {
           if (ad.images && Array.isArray(ad.images) && ad.images.length > 0) {
             photoUrl = ad.images[0].large || ad.images[0].medium || ad.images[0].small || '';
           }
+
+          if (ad.description) {
+            description = String(ad.description).replace(/<[^>]*>/g, '').trim();
+          }
+          specs = extractOtodomSpecs(ad);
         }
       } catch (e) {
         console.error('Error parsing NEXT_DATA:', e);
@@ -294,6 +343,8 @@ async function scrapeOtodom(url: string) {
       location,
       photoUrl,
       seller: null,
+      description,
+      specs,
     };
   } catch (error) {
     console.error('Error scraping Otodom:', error);
