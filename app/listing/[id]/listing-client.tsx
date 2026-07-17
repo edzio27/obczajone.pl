@@ -35,6 +35,10 @@ type Listing = {
   image_url: string | null;
   created_at: string;
   seller: { id: string; name: string; city: string } | null;
+  ai_opinion_rating: number | null;
+  ai_opinion_summary: string | null;
+  ai_opinion_price_note: string | null;
+  ai_opinion_watch_out: string[] | null;
 };
 
 type Snapshot = {
@@ -506,6 +510,16 @@ export function ListingClient({ listingId }: { listingId: string }) {
                 listingId={listingId}
                 refreshTrigger={reviewRefresh}
                 onHasUserReview={(hasReview) => setHasUserReview(hasReview)}
+                aiOpinion={
+                  listing?.ai_opinion_rating != null
+                    ? {
+                        rating: listing.ai_opinion_rating,
+                        summary: listing.ai_opinion_summary ?? '',
+                        priceNote: listing.ai_opinion_price_note ?? '',
+                        watchOutFor: listing.ai_opinion_watch_out ?? [],
+                      }
+                    : null
+                }
               />
             </div>
           </div>
