@@ -85,8 +85,9 @@ When `ai_opinion_rating` is `null` (old listings, or generation failed), nothing
 
 ## Verification
 
-- Unit tests for the prompt-building function, covering both the `otomoto` and `otodom` templates with sample scraped data.
-- Unit tests for `generateAiOpinion` error paths: missing API key, API error, malformed JSON response — confirm it never throws and always resolves to `null`/leaves columns unset.
+No automated test framework exists in this repo (confirmed: no Jest/Vitest, no `test` script in `package.json`) — following the same precedent as the trust score feature ([[2026-07-14-listing-trust-score]]), this ships with manual verification only, not a new unit-test suite:
+
 - Manual end-to-end test: submit a real Otomoto URL and a real Otodom URL via the add-listing form, confirm `description`/`specs`/`ai_opinion_*` are populated correctly and the AI card renders on the listing page.
+- Manual check of `generateAiOpinion` error paths: temporarily unset `ANTHROPIC_API_KEY` (or point it at an invalid value) and confirm the scrape still succeeds with `ai_opinion_*` left `null`, with the error visible in the function logs.
 - Manual UI check: a listing with a populated AI opinion, and one without — confirm the card appears/doesn't appear correctly and the "Zatwierdzone opinie (N)" count is unaffected either way.
 - `npx tsc --noEmit` / `npx next lint` clean.
