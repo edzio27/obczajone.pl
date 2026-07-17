@@ -79,6 +79,39 @@ function extractSeller(ad: any): ScrapedSeller | null {
   };
 }
 
+type OtomotoSpecs = {
+  brand: string | null;
+  model: string | null;
+  year: string | null;
+  mileage: string | null;
+  fuel_type: string | null;
+};
+
+// Car parameters can appear under either `ad.parameters` or `ad.details`
+// depending on the Otomoto page variant — check both. Each entry may key
+// off `key` or `name`; confirmed against a real fetched listing (Task 2,
+// Step 1) that the live shape is `ad.details` with entries keyed by `key`
+// (e.g. {key: 'make', value: 'Volvo'}, {key: 'mileage', value: '85 597 km'}).
+function extractOtomotoParam(ad: any, keys: string[]): string | null {
+  const params = ad?.parameters ?? ad?.details ?? [];
+  if (!Array.isArray(params)) return null;
+  for (const key of keys) {
+    const found = params.find((p: any) => p?.key === key || p?.name === key);
+    if (found) return found.value ?? found.displayValue ?? found.normalizedValue ?? null;
+  }
+  return null;
+}
+
+function extractOtomotoSpecs(ad: any): OtomotoSpecs {
+  return {
+    brand: extractOtomotoParam(ad, ['make', 'brand']),
+    model: extractOtomotoParam(ad, ['model']),
+    year: extractOtomotoParam(ad, ['year']),
+    mileage: extractOtomotoParam(ad, ['mileage']),
+    fuel_type: extractOtomotoParam(ad, ['fuel_type', 'fuel']),
+  };
+}
+
 async function scrapeOtomoto(url: string) {
   try {
     const response = await fetch(url, {
@@ -93,6 +126,8 @@ async function scrapeOtomoto(url: string) {
     let location = '';
     let photoUrl = '';
     let seller: ScrapedSeller | null = null;
+    let description = '';
+    let specs: OtomotoSpecs = { brand: null, model: null, year: null, mileage: null, fuel_type: null };
 
     // Szukaj danych w __NEXT_DATA__
     const nextDataMatch = html.match(/<script id="__NEXT_DATA__"[^>]*>(.*?)<\/script>/s);
@@ -110,6 +145,11 @@ async function scrapeOtomoto(url: string) {
           }
 
           seller = extractSeller(ad);
+
+          if (ad.description) {
+            description = String(ad.description).replace(/<[^>]*>/g, '').trim();
+          }
+          specs = extractOtomotoSpecs(ad);
 
           if (ad.seller?.location?.city) {
             location = typeof ad.seller.location.city === 'string'
@@ -175,6 +215,8 @@ async function scrapeOtomoto(url: string) {
       location,
       photoUrl,
       seller,
+      description,
+      specs,
     };
   } catch (error) {
     console.error('Error scraping Otomoto:', error);
