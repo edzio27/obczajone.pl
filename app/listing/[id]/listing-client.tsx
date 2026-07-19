@@ -279,51 +279,65 @@ export function ListingClient({ listingId }: { listingId: string }) {
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
           <div className="mb-6">
-            <Card
-              className={reviewCount > 0 && averageRating ? 'mb-4 cursor-pointer transition-colors hover:bg-muted/50' : 'mb-4'}
-              onClick={
-                reviewCount > 0 && averageRating
-                  ? () => {
-                      document.getElementById('opinie-uzytkownikow')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }
-                  : undefined
-              }
-            >
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>Opinie użytkowników</CardTitle>
-                  {reviewCount > 0 && averageRating ? (
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-1">
-                        {[...Array(5)].map((_, i) => (
-                          <Star
-                            key={i}
-                            className={`h-5 w-5 ${
-                              i < Math.round(averageRating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
-                            }`}
-                          />
-                        ))}
-                      </div>
-                      <div className="text-3xl font-bold text-gray-900">
-                        {averageRating.toFixed(1)}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {reviewCount} {reviewCount === 1 ? 'opinia' : reviewCount < 5 ? 'opinie' : 'opinii'}
-                      </div>
+            {(() => {
+              const hasHumanReviews = reviewCount > 0 && !!averageRating;
+              const hasAiOnly = !hasHumanReviews && listing.ai_opinion_rating != null;
+              const showSummary = hasHumanReviews || hasAiOnly;
+              const displayRating = hasHumanReviews ? averageRating! : listing.ai_opinion_rating!;
+
+              return (
+                <Card
+                  className={showSummary ? 'mb-4 cursor-pointer transition-colors hover:bg-muted/50' : 'mb-4'}
+                  onClick={
+                    showSummary
+                      ? () => {
+                          document.getElementById('opinie-uzytkownikow')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                      : undefined
+                  }
+                >
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle>Opinie użytkowników</CardTitle>
+                      {showSummary ? (
+                        <div className="flex items-center gap-3">
+                          {hasAiOnly && (
+                            <Badge className="bg-blue-600 text-white hover:bg-blue-600">Opinia AI</Badge>
+                          )}
+                          <div className="flex items-center gap-1">
+                            {[...Array(5)].map((_, i) => (
+                              <Star
+                                key={i}
+                                className={`h-5 w-5 ${
+                                  i < Math.round(displayRating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                          <div className="text-3xl font-bold text-gray-900">
+                            {displayRating.toFixed(1)}
+                          </div>
+                          {hasHumanReviews && (
+                            <div className="text-sm text-gray-500">
+                              {reviewCount} {reviewCount === 1 ? 'opinia' : reviewCount < 5 ? 'opinie' : 'opinii'}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <Button onClick={() => {
+                          const reviewForm = document.querySelector('[data-review-form]');
+                          if (reviewForm) {
+                            reviewForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          }
+                        }}>
+                          Zostaw swoją opinię
+                        </Button>
+                      )}
                     </div>
-                  ) : (
-                    <Button onClick={() => {
-                      const reviewForm = document.querySelector('[data-review-form]');
-                      if (reviewForm) {
-                        reviewForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                      }
-                    }}>
-                      Zostaw swoją opinię
-                    </Button>
-                  )}
-                </div>
-              </CardHeader>
-            </Card>
+                  </CardHeader>
+                </Card>
+              );
+            })()}
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
