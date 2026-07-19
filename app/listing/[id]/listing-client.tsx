@@ -13,7 +13,7 @@ import { ReviewList } from '@/components/review-list';
 import { PriceHistory } from '@/components/price-history';
 import { ListingCard } from '@/components/listing-card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ExternalLink, MapPin, Calendar, Heart, TrendingDown, TrendingUp, Share2, Store } from 'lucide-react';
+import { ExternalLink, MapPin, Calendar, Heart, TrendingDown, TrendingUp, Share2, Store, Star } from 'lucide-react';
 import { formatDistanceToNow, differenceInDays } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -279,12 +279,31 @@ export function ListingClient({ listingId }: { listingId: string }) {
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
           <div className="mb-6">
-            <Card className="mb-4">
+            <Card
+              className={reviewCount > 0 && averageRating ? 'mb-4 cursor-pointer transition-colors hover:bg-muted/50' : 'mb-4'}
+              onClick={
+                reviewCount > 0 && averageRating
+                  ? () => {
+                      document.getElementById('opinie-uzytkownikow')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                  : undefined
+              }
+            >
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle>Opinie użytkowników</CardTitle>
                   {reviewCount > 0 && averageRating ? (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1">
+                        {[...Array(5)].map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`h-5 w-5 ${
+                              i < Math.round(averageRating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
+                            }`}
+                          />
+                        ))}
+                      </div>
                       <div className="text-3xl font-bold text-gray-900">
                         {averageRating.toFixed(1)}
                       </div>
@@ -498,7 +517,7 @@ export function ListingClient({ listingId }: { listingId: string }) {
             </Card>
           )}
 
-          <div>
+          <div id="opinie-uzytkownikow">
             <ReviewForm
               listingId={listingId}
               onReviewAdded={() => setReviewRefresh(prev => prev + 1)}
