@@ -15,11 +15,11 @@ type AuthDialogProps = {
 };
 
 export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [mode, setMode] = useState<'login' | 'register' | 'reset'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, resetPassword } = useAuth();
   const { toast } = useToast();
 
   const passwordValidation = {
@@ -52,16 +52,27 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
           title: 'Zalogowano pomyślnie',
           description: 'Witaj ponownie!',
         });
-      } else {
+        onOpenChange(false);
+        setEmail('');
+        setPassword('');
+      } else if (mode === 'register') {
         await signUp(email, password);
         toast({
           title: 'Konto utworzone',
           description: 'Możesz się teraz zalogować',
         });
+        onOpenChange(false);
+        setEmail('');
+        setPassword('');
+      } else {
+        await resetPassword(email);
+        toast({
+          title: 'Link wysłany',
+          description: 'Sprawdź swoją skrzynkę e-mail, aby zresetować hasło',
+        });
+        setMode('login');
+        setEmail('');
       }
-      onOpenChange(false);
-      setEmail('');
-      setPassword('');
     } catch (error: any) {
       toast({
         title: 'Błąd',
@@ -78,12 +89,14 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {mode === 'login' ? 'Zaloguj się' : 'Utwórz konto'}
+            {mode === 'login' ? 'Zaloguj się' : mode === 'register' ? 'Utwórz konto' : 'Zresetuj hasło'}
           </DialogTitle>
           <DialogDescription>
             {mode === 'login'
               ? 'Zaloguj się, aby dodać opinię'
-              : 'Utwórz konto, aby móc dodawać opinie'}
+              : mode === 'register'
+              ? 'Utwórz konto, aby móc dodawać opinie'
+              : 'Podaj swój e-mail, wyślemy link do ustawienia nowego hasła'}
           </DialogDescription>
         </DialogHeader>
 
@@ -101,6 +114,7 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
               />
             </div>
 
+            {mode !== 'reset' && (
             <div className="space-y-2">
               <Label htmlFor="password">Hasło</Label>
               <Input
@@ -112,6 +126,15 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
                 required
                 minLength={mode === 'register' ? 8 : 6}
               />
+              {mode === 'login' && (
+                <button
+                  type="button"
+                  onClick={() => setMode('reset')}
+                  className="text-sm text-primary hover:underline"
+                >
+                  Nie pamiętasz hasła?
+                </button>
+              )}
               {mode === 'register' && password && (
                 <div className="text-sm space-y-1 mt-2">
                   <div className={`flex items-center gap-1 ${passwordValidation.minLength ? 'text-green-600' : 'text-gray-500'}`}>
@@ -133,9 +156,16 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
                 </div>
               )}
             </div>
+            )}
 
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Ładowanie...' : mode === 'login' ? 'Zaloguj' : 'Zarejestruj'}
+              {loading
+                ? 'Ładowanie...'
+                : mode === 'login'
+                ? 'Zaloguj'
+                : mode === 'register'
+                ? 'Zarejestruj'
+                : 'Wyślij link resetujący'}
             </Button>
 
             <div className="text-center text-sm">
@@ -150,7 +180,7 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
                     Zarejestruj się
                   </button>
                 </>
-              ) : (
+              ) : mode === 'register' ? (
                 <>
                   Masz już konto?{' '}
                   <button
@@ -161,6 +191,14 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
                     Zaloguj się
                   </button>
                 </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setMode('login')}
+                  className="text-primary hover:underline"
+                >
+                  Powrót do logowania
+                </button>
               )}
             </div>
           </form>

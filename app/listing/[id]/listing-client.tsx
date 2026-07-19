@@ -51,6 +51,16 @@ type Snapshot = {
   scraped_at: string;
 };
 
+const TWO_WORD_BRANDS = ['Alfa Romeo', 'Land Rover', 'Aston Martin', 'Rolls Royce', 'Great Wall'];
+
+function extractBrand(title: string): string {
+  const trimmed = title.trim();
+  const lower = trimmed.toLowerCase();
+  const twoWordMatch = TWO_WORD_BRANDS.find((brand) => lower.startsWith(brand.toLowerCase()));
+  if (twoWordMatch) return twoWordMatch;
+  return trimmed.split(/\s+/)[0] || '';
+}
+
 export function ListingClient({ listingId }: { listingId: string }) {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -104,19 +114,48 @@ export function ListingClient({ listingId }: { listingId: string }) {
         setHasReportedReview(reviewsData.some((r) => r.is_reported));
       }
 
-      const { data: recommendedData } = await supabase
-        .from('listings')
-        .select('*')
-        .eq('source', listingData.source)
-        .neq('id', listingId)
-        .eq('is_active', true)
-        .gt('current_price', 0)
-        .order('created_at', { ascending: false })
-        .limit(3);
+      const brand = extractBrand(listingData.title || '');
+      let recommended: Listing[] = [];
 
-      if (recommendedData) {
-        setRecommendedListings(recommendedData);
+      if (brand) {
+        let brandQuery = supabase
+          .from('listings')
+          .select('*')
+          .eq('source', listingData.source)
+          .neq('id', listingId)
+          .eq('is_active', true)
+          .gt('current_price', 0)
+          .ilike('title', `${brand}%`);
+
+        if (listingData.current_price > 0) {
+          brandQuery = brandQuery
+            .gte('current_price', listingData.current_price * 0.5)
+            .lte('current_price', listingData.current_price * 1.8);
+        }
+
+        const { data: brandMatches } = await brandQuery
+          .order('created_at', { ascending: false })
+          .limit(3);
+
+        recommended = brandMatches || [];
       }
+
+      if (recommended.length < 3) {
+        const excludeIds = [listingId, ...recommended.map((r) => r.id)];
+        const { data: fallbackMatches } = await supabase
+          .from('listings')
+          .select('*')
+          .eq('source', listingData.source)
+          .not('id', 'in', `(${excludeIds.join(',')})`)
+          .eq('is_active', true)
+          .gt('current_price', 0)
+          .order('created_at', { ascending: false })
+          .limit(3 - recommended.length);
+
+        recommended = [...recommended, ...(fallbackMatches || [])];
+      }
+
+      setRecommendedListings(recommended);
 
       setListing(listingData);
       setLoading(false);

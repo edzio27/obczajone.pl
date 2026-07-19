@@ -14,6 +14,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Card } from '@/components/ui/card';
+import { MapPin, Star } from 'lucide-react';
 
 const POLAND_CENTER: [number, number] = [52.0, 19.0];
 const MIN_RATING_OPTIONS = [0, 3, 4, 4.5];
@@ -131,7 +133,34 @@ export default function PosrednicyPage() {
         ) : filteredSellers.length === 0 ? (
           <p className="text-muted-foreground">Brak pośredników spełniających kryteria.</p>
         ) : (
-          <LeafletMapView markers={markers} center={POLAND_CENTER} zoom={6} heightClassName="h-[600px]" />
+          <div className="grid lg:grid-cols-2 gap-4">
+            <LeafletMapView markers={markers} center={POLAND_CENTER} zoom={6} heightClassName="h-[600px]" />
+
+            <div className="h-[600px] overflow-y-auto space-y-3 pr-1">
+              {filteredSellers.map((seller) => (
+                <Link key={seller.id} href={`/seller/${seller.id}`}>
+                  <Card className="p-4 hover:shadow-md hover:border-primary/30 transition-all cursor-pointer">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-semibold">{seller.name}</p>
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground mt-0.5">
+                          <MapPin className="h-3.5 w-3.5" />
+                          {seller.city}
+                        </div>
+                      </div>
+                      {seller.averageRating != null && (
+                        <div className="flex items-center gap-1 text-sm flex-shrink-0">
+                          <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                          <span className="font-semibold">{seller.averageRating.toFixed(1)}</span>
+                          <span className="text-muted-foreground">({seller.reviewCount})</span>
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          </div>
         )}
 
         <p className="text-sm text-muted-foreground">

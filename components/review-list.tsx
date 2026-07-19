@@ -19,6 +19,12 @@ type Photo = {
   order_index: number;
 };
 
+type Profile = {
+  display_name: string;
+  is_partner: boolean;
+  partner_logo_url: string | null;
+};
+
 type Review = {
   id: string;
   user_id: string;
@@ -32,7 +38,31 @@ type Review = {
   comment: string;
   created_at: string;
   photos?: Photo[];
+  profile?: Profile | null;
 };
+
+function ReviewAuthor({ profile }: { profile?: Profile | null }) {
+  if (!profile) return null;
+
+  if (profile.is_partner) {
+    return (
+      <div className="flex items-center gap-2 mb-2">
+        {profile.partner_logo_url && (
+          <img
+            src={profile.partner_logo_url}
+            alt={profile.display_name}
+            className="h-6 w-6 rounded-full object-cover"
+          />
+        )}
+        <span className="text-sm font-semibold text-gray-700">{profile.display_name}</span>
+      </div>
+    );
+  }
+
+  return (
+    <span className="text-sm text-gray-500 mb-2 block">{profile.display_name}</span>
+  );
+}
 
 type AiOpinion = {
   rating: number;
@@ -65,7 +95,28 @@ export function ReviewList({ listingId, refreshTrigger, onHasUserReview, aiOpini
       .eq('is_approved', true)
       .order('created_at', { ascending: false });
 
+    const profilesById = new Map<string, Profile>();
+    async function loadProfiles(userIds: string[]) {
+      const missingIds = Array.from(new Set(userIds)).filter((id) => !profilesById.has(id));
+      if (missingIds.length === 0) return;
+
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, display_name, is_partner, partner_logo_url')
+        .in('id', missingIds);
+
+      (profilesData || []).forEach((p) => {
+        profilesById.set(p.id, {
+          display_name: p.display_name,
+          is_partner: p.is_partner,
+          partner_logo_url: p.partner_logo_url,
+        });
+      });
+    }
+
     if (!error && data) {
+      await loadProfiles(data.map((r) => r.user_id));
+
       const reviewsWithPhotos = await Promise.all(
         data.map(async (review) => {
           const { data: photos } = await supabase
@@ -74,7 +125,7 @@ export function ReviewList({ listingId, refreshTrigger, onHasUserReview, aiOpini
             .eq('review_id', review.id)
             .order('order_index');
 
-          return { ...review, photos: photos || [] };
+          return { ...review, photos: photos || [], profile: profilesById.get(review.user_id) ?? null };
         })
       );
       setReviews(reviewsWithPhotos);
@@ -90,6 +141,8 @@ export function ReviewList({ listingId, refreshTrigger, onHasUserReview, aiOpini
         .order('created_at', { ascending: false });
 
       if (!pendingError && userPendingReviews) {
+        await loadProfiles(userPendingReviews.map((r) => r.user_id));
+
         const pendingWithPhotos = await Promise.all(
           userPendingReviews.map(async (review) => {
             const { data: photos } = await supabase
@@ -98,7 +151,7 @@ export function ReviewList({ listingId, refreshTrigger, onHasUserReview, aiOpini
               .eq('review_id', review.id)
               .order('order_index');
 
-            return { ...review, photos: photos || [] };
+            return { ...review, photos: photos || [], profile: profilesById.get(review.user_id) ?? null };
           })
         );
         setPendingReviews(pendingWithPhotos);
@@ -220,6 +273,7 @@ export function ReviewList({ listingId, refreshTrigger, onHasUserReview, aiOpini
           {pendingReviews.map((review) => (
             <Card key={review.id} className="border-amber-200 bg-amber-50">
               <CardHeader>
+                <ReviewAuthor profile={review.profile} />
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
                     <div className="flex">
@@ -328,6 +382,7 @@ export function ReviewList({ listingId, refreshTrigger, onHasUserReview, aiOpini
           {reviews.map((review) => (
         <Card key={review.id}>
           <CardHeader>
+            <ReviewAuthor profile={review.profile} />
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
                 <div className="flex">

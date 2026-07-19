@@ -92,7 +92,16 @@ export function ListingCard({
               </Badge>
               {average_rating && review_count > 0 && (
                 <div className="flex items-center gap-1 text-sm">
-                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                  <div className="flex items-center">
+                    {[...Array(5)].map((_, i) => (
+                      <Star
+                        key={i}
+                        className={`h-3.5 w-3.5 ${
+                          i < Math.round(average_rating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
+                        }`}
+                      />
+                    ))}
+                  </div>
                   <span className="font-semibold">{average_rating.toFixed(1)}</span>
                   <span className="text-muted-foreground">({review_count})</span>
                 </div>
