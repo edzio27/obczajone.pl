@@ -484,7 +484,7 @@ const AI_OPINION_MODEL = 'claude-haiku-4-5';
 const AI_OPINION_SCHEMA = {
   type: 'object',
   properties: {
-    rating: { type: 'integer' },
+    rating: { type: 'number' },
     summary: { type: 'string' },
     price_note: { type: 'string' },
     watch_out_for: { type: 'array', items: { type: 'string' } },
@@ -526,7 +526,7 @@ Napisz krótką, pierwszą opinię o tym ogłoszeniu po polsku, na podstawie wy�
 WAŻNE: nigdy nie formułuj stanowczych zarzutów wobec sprzedającego ani ogłoszenia. Punkty "na co zwrócić uwagę" pisz wyłącznie jako ostrożne pytania lub sugestie do zweryfikowania osobiście (np. "może warto dopytać o historię serwisową"), nigdy jako twierdzenia (np. nie pisz "przebieg wygląda podejrzanie").
 
 Zwróć:
-- rating: ocena 1-5 (liczba całkowita)
+- rating: ocena 1.0-5.0 z dokładnością do jednego miejsca po przecinku (np. 3.6, 4.2) — unikaj okrągłych wartości typu 3.0 czy 4.0, chyba że ogłoszenie naprawdę na to zasługuje; oceniaj z niuansem, żeby oceny różnych ogłoszeń faktycznie się od siebie różniły
 - summary: 2-3 zdania podsumowania
 - price_note: jedno zdanie o cenie
 - watch_out_for: lista 1-4 ostrożnych sugestii/pytań`;
@@ -577,7 +577,7 @@ async function generateAiOpinion(
     }
 
     return {
-      rating: Math.min(5, Math.max(1, Math.round(parsed.rating))),
+      rating: Math.min(5, Math.max(1, Math.round(parsed.rating * 10) / 10)),
       summary: parsed.summary,
       priceNote: parsed.price_note,
       watchOutFor: parsed.watch_out_for,
