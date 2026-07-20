@@ -3,6 +3,8 @@ export type ScoreLevel = 'green' | 'yellow' | 'red';
 export type ListingScoreRow = {
   level: ScoreLevel;
   label: string;
+  points: number;
+  maxPoints: number;
 };
 
 export type ListingScoreInput = {
@@ -57,30 +59,70 @@ export function computeListingScore(input: ListingScoreInput): ListingScore {
 
   const total = Math.round(priceScore + reviewScore + activityScore);
 
+  const priceScoreRounded = Math.round(priceScore);
+  const reviewScoreRounded = Math.round(reviewScore);
+
   const priceRow: ListingScoreRow =
     priceChangePercent == null || priceChangePercent === 0
       ? {
           level: 'yellow',
           label: priceChangePercent === 0 ? 'Cena bez zmian' : 'Za mało danych o cenie',
+          points: priceScoreRounded,
+          maxPoints: 40,
         }
       : priceChangePercent < 0
-        ? { level: 'green', label: `Cena spadła o ${Math.abs(priceChangePercent).toFixed(0)}%` }
-        : { level: 'red', label: `Cena wzrosła o ${priceChangePercent.toFixed(0)}%` };
+        ? {
+            level: 'green',
+            label: `Cena spadła o ${Math.abs(priceChangePercent).toFixed(0)}%`,
+            points: priceScoreRounded,
+            maxPoints: 40,
+          }
+        : {
+            level: 'red',
+            label: `Cena wzrosła o ${priceChangePercent.toFixed(0)}%`,
+            points: priceScoreRounded,
+            maxPoints: 40,
+          };
 
   const reviewsRow: ListingScoreRow =
     reviewCount === 0
-      ? { level: 'yellow', label: 'Brak opinii' }
+      ? { level: 'yellow', label: 'Brak opinii', points: reviewScoreRounded, maxPoints: 40 }
       : hasReportedReview
-        ? { level: 'red', label: 'Jedna z opinii została zgłoszona' }
+        ? {
+            level: 'red',
+            label: 'Jedna z opinii została zgłoszona',
+            points: reviewScoreRounded,
+            maxPoints: 40,
+          }
         : (averageRating ?? 0) >= 4
-          ? { level: 'green', label: `Ocena ${averageRating!.toFixed(1)}/5 z ${reviewCountLabel(reviewCount)}` }
+          ? {
+              level: 'green',
+              label: `Ocena ${averageRating!.toFixed(1)}/5 z ${reviewCountLabel(reviewCount)}`,
+              points: reviewScoreRounded,
+              maxPoints: 40,
+            }
           : (averageRating ?? 0) >= 2.5
-            ? { level: 'yellow', label: `Ocena ${averageRating!.toFixed(1)}/5 z ${reviewCountLabel(reviewCount)}` }
-            : { level: 'red', label: `Ocena ${averageRating!.toFixed(1)}/5 z ${reviewCountLabel(reviewCount)}` };
+            ? {
+                level: 'yellow',
+                label: `Ocena ${averageRating!.toFixed(1)}/5 z ${reviewCountLabel(reviewCount)}`,
+                points: reviewScoreRounded,
+                maxPoints: 40,
+              }
+            : {
+                level: 'red',
+                label: `Ocena ${averageRating!.toFixed(1)}/5 z ${reviewCountLabel(reviewCount)}`,
+                points: reviewScoreRounded,
+                maxPoints: 40,
+              };
 
   const activityRow: ListingScoreRow = isActive
-    ? { level: 'green', label: `Aktywne od ${daysSinceFirstSeen} dni` }
-    : { level: 'yellow', label: 'Zdjęte z rynku' };
+    ? {
+        level: 'green',
+        label: `Aktywne od ${daysSinceFirstSeen} dni`,
+        points: activityScore,
+        maxPoints: 20,
+      }
+    : { level: 'yellow', label: 'Zdjęte z rynku', points: activityScore, maxPoints: 20 };
 
   const level: ScoreLevel = total >= 70 ? 'green' : total >= 40 ? 'yellow' : 'red';
 
