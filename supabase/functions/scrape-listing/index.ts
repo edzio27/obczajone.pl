@@ -128,6 +128,7 @@ async function scrapeOtomoto(url: string) {
     let seller: ScrapedSeller | null = null;
     let description = '';
     let specs: OtomotoSpecs = { brand: null, model: null, year: null, mileage: null, fuel_type: null };
+    let originalPostedAt: string | null = null;
 
     // Szukaj danych w __NEXT_DATA__
     const nextDataMatch = html.match(/<script id="__NEXT_DATA__"[^>]*>(.*?)<\/script>/s);
@@ -145,6 +146,13 @@ async function scrapeOtomoto(url: string) {
           }
 
           seller = extractSeller(ad);
+
+          // `createdAt` is refreshed whenever the seller "bumps"/renews the
+          // ad, so it does not reflect how long the car has actually been
+          // listed. `originalCreatedAt` is the true first-publish date and
+          // survives bumps; fall back to `createdAt` for the rare case it's
+          // missing.
+          originalPostedAt = ad.originalCreatedAt || ad.createdAt || null;
 
           if (ad.description) {
             description = String(ad.description).replace(/<[^>]*>/g, '').trim();
@@ -217,6 +225,7 @@ async function scrapeOtomoto(url: string) {
       seller,
       description,
       specs,
+      originalPostedAt,
     };
   } catch (error) {
     console.error('Error scraping Otomoto:', error);
@@ -281,6 +290,7 @@ async function scrapeOtodom(url: string) {
     let photoUrl = '';
     let description = '';
     let specs: OtodomSpecs = { area: null, rooms: null, floor: null, build_year: null };
+    let originalPostedAt: string | null = null;
 
     // Szukaj danych w formacie __NEXT_DATA__
     const nextDataMatch = html.match(/<script id="__NEXT_DATA__"[^>]*>(.*?)<\/script>/s);
@@ -310,6 +320,12 @@ async function scrapeOtodom(url: string) {
             description = String(ad.description).replace(/<[^>]*>/g, '').trim();
           }
           specs = extractOtodomSpecs(ad);
+
+          // Unlike Otomoto, Otodom's `createdAt` is not reset by bumps
+          // (confirmed against a live listing: `pushedUpAt` was null and
+          // `createdAt` predated `modifiedAt` by months) - it already is the
+          // true original publish date.
+          originalPostedAt = ad.createdAt || null;
         }
       } catch (e) {
         console.error('Error parsing NEXT_DATA:', e);
@@ -345,6 +361,7 @@ async function scrapeOtodom(url: string) {
       seller: null,
       description,
       specs,
+      originalPostedAt,
     };
   } catch (error) {
     console.error('Error scraping Otodom:', error);
@@ -647,6 +664,9 @@ Deno.serve(async (req: Request) => {
     };
     if (sellerId) {
       listingUpdate.seller_id = sellerId;
+    }
+    if (scrapedData.originalPostedAt) {
+      listingUpdate.original_posted_at = scrapedData.originalPostedAt;
     }
 
     await supabase.from('listings').update(listingUpdate).eq('id', listingId);

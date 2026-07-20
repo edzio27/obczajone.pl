@@ -31,6 +31,7 @@ type Listing = {
   current_price: number;
   is_active: boolean;
   first_seen_at: string;
+  original_posted_at: string | null;
   last_checked_at: string;
   image_url: string | null;
   created_at: string;
@@ -335,7 +336,10 @@ export function ListingClient({ listingId }: { listingId: string }) {
     reviewCount,
     hasReportedReview,
     isActive: listing.is_active,
-    daysSinceFirstSeen: differenceInDays(new Date(), new Date(listing.first_seen_at)),
+    daysSinceFirstSeen: differenceInDays(
+      new Date(),
+      new Date(listing.original_posted_at || listing.first_seen_at)
+    ),
   });
 
   return (
