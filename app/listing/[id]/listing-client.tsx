@@ -66,6 +66,11 @@ export function ListingClient({ listingId }: { listingId: string }) {
   const { toast } = useToast();
 
   const [listing, setListing] = useState<Listing | null>(null);
+  const [sellerStats, setSellerStats] = useState<{
+    averageRating: number | null;
+    reviewCount: number;
+    listingsCount: number;
+  } | null>(null);
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [loading, setLoading] = useState(true);
   const [reviewRefresh, setReviewRefresh] = useState(0);
@@ -156,6 +161,28 @@ export function ListingClient({ listingId }: { listingId: string }) {
       }
 
       setRecommendedListings(recommended);
+
+      if (listingData.seller) {
+        const sellerId = listingData.seller.id;
+
+        const { count: listingsCount } = await supabase
+          .from('listings')
+          .select('id', { count: 'exact', head: true })
+          .eq('seller_id', sellerId);
+
+        const { data: sellerReviews } = await supabase
+          .from('reviews')
+          .select('rating, listing:listings!inner(seller_id)')
+          .eq('is_approved', true)
+          .eq('listing.seller_id', sellerId);
+
+        const ratings = (sellerReviews || []).map((r) => r.rating);
+        setSellerStats({
+          averageRating: ratings.length > 0 ? ratings.reduce((sum, r) => sum + r, 0) / ratings.length : null,
+          reviewCount: ratings.length,
+          listingsCount: listingsCount ?? 0,
+        });
+      }
 
       setListing(listingData);
       setLoading(false);
@@ -445,14 +472,41 @@ export function ListingClient({ listingId }: { listingId: string }) {
                       </div>
                     )}
                     {listing.seller && (
-                      <div className="flex items-center gap-1">
-                        <Store className="h-4 w-4" />
-                        <Link
-                          href={`/seller/${listing.seller.id}`}
-                          className="text-primary hover:underline"
-                        >
-                          {listing.seller.name} ({listing.seller.city})
-                        </Link>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex items-center gap-1">
+                          <Store className="h-4 w-4" />
+                          <Link
+                            href={`/seller/${listing.seller.id}`}
+                            className="text-primary hover:underline"
+                          >
+                            {listing.seller.name} ({listing.seller.city})
+                          </Link>
+                        </div>
+                        {sellerStats && (
+                          <div className="flex items-center gap-2 text-sm">
+                            {sellerStats.averageRating != null && (
+                              <div className="flex items-center gap-1">
+                                {[...Array(5)].map((_, i) => (
+                                  <Star
+                                    key={i}
+                                    className={`h-3.5 w-3.5 ${
+                                      i < Math.round(sellerStats.averageRating!)
+                                        ? 'fill-yellow-400 text-yellow-400'
+                                        : 'text-gray-300'
+                                    }`}
+                                  />
+                                ))}
+                                <span className="font-semibold">{sellerStats.averageRating.toFixed(1)}</span>
+                                <span className="text-muted-foreground">
+                                  ({sellerStats.reviewCount})
+                                </span>
+                              </div>
+                            )}
+                            <span className="text-muted-foreground">
+                              {sellerStats.listingsCount} sprawdzonych aut
+                            </span>
+                          </div>
+                        )}
                       </div>
                     )}
                     <div className="flex items-center gap-1">

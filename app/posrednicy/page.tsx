@@ -19,6 +19,12 @@ import { MapPin, Star } from 'lucide-react';
 
 const POLAND_CENTER: [number, number] = [52.0, 19.0];
 const MIN_RATING_OPTIONS = [0, 3, 4, 4.5];
+const SORT_OPTIONS = [
+  { value: 'rating', label: 'Najlepiej oceniani' },
+  { value: 'reviewCount', label: 'Najwięcej ocen' },
+  { value: 'listingsCount', label: 'Najczęściej sprawdzani' },
+  { value: 'recent', label: 'Ostatnio ocenieni' },
+] as const;
 
 type SellerWithRating = {
   id: string;
@@ -28,6 +34,8 @@ type SellerWithRating = {
   lng: number;
   averageRating: number | null;
   reviewCount: number;
+  listingsCount: number;
+  lastReviewAt: string | null;
 };
 
 export default function PosrednicyPage() {
@@ -35,6 +43,7 @@ export default function PosrednicyPage() {
   const [loading, setLoading] = useState(true);
   const [cityFilter, setCityFilter] = useState('');
   const [minRating, setMinRating] = useState(0);
+  const [sortBy, setSortBy] = useState<(typeof SORT_OPTIONS)[number]['value']>('rating');
 
   useEffect(() => {
     async function fetchSellers() {
@@ -49,22 +58,38 @@ export default function PosrednicyPage() {
         return;
       }
 
+      const sellerIds = sellersData.map((s) => s.id);
+
       const { data: reviewsData } = await supabase
         .from('reviews')
-        .select('rating, listing:listings!inner(seller_id)')
+        .select('rating, created_at, listing:listings!inner(seller_id)')
         .eq('is_approved', true)
-        .in(
-          'listing.seller_id',
-          sellersData.map((s) => s.id)
-        );
+        .in('listing.seller_id', sellerIds);
+
+      const { data: listingsData } = await supabase
+        .from('listings')
+        .select('seller_id')
+        .in('seller_id', sellerIds);
 
       const ratingsBySeller = new Map<string, number[]>();
+      const lastReviewBySeller = new Map<string, string>();
       (reviewsData || []).forEach((review: any) => {
         const sellerId = review.listing?.seller_id;
         if (!sellerId) return;
         const existing = ratingsBySeller.get(sellerId) || [];
         existing.push(review.rating);
         ratingsBySeller.set(sellerId, existing);
+
+        const current = lastReviewBySeller.get(sellerId);
+        if (!current || review.created_at > current) {
+          lastReviewBySeller.set(sellerId, review.created_at);
+        }
+      });
+
+      const listingsCountBySeller = new Map<string, number>();
+      (listingsData || []).forEach((l) => {
+        if (!l.seller_id) return;
+        listingsCountBySeller.set(l.seller_id, (listingsCountBySeller.get(l.seller_id) || 0) + 1);
       });
 
       setSellers(
@@ -75,6 +100,8 @@ export default function PosrednicyPage() {
             averageRating:
               ratings.length > 0 ? ratings.reduce((sum, r) => sum + r, 0) / ratings.length : null,
             reviewCount: ratings.length,
+            listingsCount: listingsCountBySeller.get(s.id) || 0,
+            lastReviewAt: lastReviewBySeller.get(s.id) || null,
           };
         })
       );
@@ -84,13 +111,27 @@ export default function PosrednicyPage() {
     fetchSellers();
   }, []);
 
-  const filteredSellers = sellers.filter((s) => {
-    const matchesCity = cityFilter
-      ? s.city.toLowerCase().includes(cityFilter.toLowerCase())
-      : true;
-    const matchesRating = minRating > 0 ? (s.averageRating ?? 0) >= minRating : true;
-    return matchesCity && matchesRating;
-  });
+  const filteredSellers = sellers
+    .filter((s) => {
+      const matchesCity = cityFilter
+        ? s.city.toLowerCase().includes(cityFilter.toLowerCase())
+        : true;
+      const matchesRating = minRating > 0 ? (s.averageRating ?? 0) >= minRating : true;
+      return matchesCity && matchesRating;
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'reviewCount':
+          return b.reviewCount - a.reviewCount;
+        case 'listingsCount':
+          return b.listingsCount - a.listingsCount;
+        case 'recent':
+          return (b.lastReviewAt || '').localeCompare(a.lastReviewAt || '');
+        case 'rating':
+        default:
+          return (b.averageRating ?? -1) - (a.averageRating ?? -1);
+      }
+    });
 
   const markers: MapMarker[] = filteredSellers.map((s) => ({
     id: s.id,
@@ -126,6 +167,18 @@ export default function PosrednicyPage() {
               ))}
             </SelectContent>
           </Select>
+          <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+            <SelectTrigger className="max-w-xs">
+              <SelectValue placeholder="Sortuj" />
+            </SelectTrigger>
+            <SelectContent>
+              {SORT_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {loading ? (
@@ -148,13 +201,18 @@ export default function PosrednicyPage() {
                           {seller.city}
                         </div>
                       </div>
-                      {seller.averageRating != null && (
-                        <div className="flex items-center gap-1 text-sm flex-shrink-0">
-                          <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                          <span className="font-semibold">{seller.averageRating.toFixed(1)}</span>
-                          <span className="text-muted-foreground">({seller.reviewCount})</span>
-                        </div>
-                      )}
+                      <div className="text-right flex-shrink-0">
+                        {seller.averageRating != null && (
+                          <div className="flex items-center gap-1 text-sm">
+                            <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                            <span className="font-semibold">{seller.averageRating.toFixed(1)}</span>
+                            <span className="text-muted-foreground">({seller.reviewCount})</span>
+                          </div>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {seller.listingsCount} sprawdzonych aut
+                        </p>
+                      </div>
                     </div>
                   </Card>
                 </Link>

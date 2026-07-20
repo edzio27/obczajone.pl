@@ -8,6 +8,7 @@ import { HowItWorks } from '@/components/home/how-it-works';
 import { WhyUs } from '@/components/home/why-us';
 import { BiggestPriceDrops } from '@/components/biggest-price-drops';
 import { RecentlyChecked } from '@/components/recently-checked';
+import { DealerMapTeaser } from '@/components/dealer-map-teaser';
 import { Faq, faqs } from '@/components/home/faq';
 import { ShieldCheck, Search } from 'lucide-react';
 
@@ -52,6 +53,10 @@ export default function Home() {
                 <ShieldCheck className="w-4 h-4 text-success" />
                 Ponad 10 000 sprawdzonych ogłoszeń
               </div>
+            </div>
+
+            <div className="mt-10">
+              <DealerMapTeaser />
             </div>
 
             <div className="mb-8 mt-16">
