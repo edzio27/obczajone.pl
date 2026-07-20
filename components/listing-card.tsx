@@ -15,6 +15,7 @@ type ListingCardProps = {
   image_url: string | null;
   average_rating?: number;
   review_count?: number;
+  ai_opinion_rating?: number | null;
   priceChangePercent?: number | null;
   userReview?: {
     rating: number;
@@ -56,12 +57,17 @@ export function ListingCard({
   image_url,
   average_rating,
   review_count = 0,
+  ai_opinion_rating,
   priceChangePercent,
   userReview,
 }: ListingCardProps) {
   const getStarRating = (rating: number) => {
     return '⭐'.repeat(rating);
   };
+
+  const hasHumanReviews = !!average_rating && review_count > 0;
+  const hasAiOnly = !hasHumanReviews && ai_opinion_rating != null;
+  const displayRating = hasHumanReviews ? average_rating! : ai_opinion_rating!;
 
   return (
     <Link href={`/listing/${id}`}>
@@ -90,20 +96,23 @@ export function ListingCard({
               >
                 {source}
               </Badge>
-              {average_rating && review_count > 0 && (
+              {(hasHumanReviews || hasAiOnly) && (
                 <div className="flex items-center gap-1 text-sm flex-shrink-0">
+                  {hasAiOnly && (
+                    <Badge className="bg-blue-600 text-white hover:bg-blue-600 text-xs px-1.5 py-0">AI</Badge>
+                  )}
                   <div className="flex items-center">
                     {[...Array(5)].map((_, i) => (
                       <Star
                         key={i}
                         className={`h-3.5 w-3.5 ${
-                          i < Math.round(average_rating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
+                          i < Math.round(displayRating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
                         }`}
                       />
                     ))}
                   </div>
-                  <span className="font-semibold">{average_rating.toFixed(1)}</span>
-                  <span className="text-muted-foreground">({review_count})</span>
+                  <span className="font-semibold">{displayRating.toFixed(1)}</span>
+                  {hasHumanReviews && <span className="text-muted-foreground">({review_count})</span>}
                 </div>
               )}
             </div>

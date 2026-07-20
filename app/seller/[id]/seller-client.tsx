@@ -29,6 +29,7 @@ type SellerListing = {
   source: string;
   created_at: string;
   image_url: string | null;
+  ai_opinion_rating: number | null;
 };
 
 export function SellerClient({ sellerId }: { sellerId: string }) {
@@ -57,7 +58,7 @@ export function SellerClient({ sellerId }: { sellerId: string }) {
 
       const { data: listingsData } = await supabase
         .from('listings')
-        .select('id, title, location, current_price, source, created_at, image_url')
+        .select('id, title, location, current_price, source, created_at, image_url, ai_opinion_rating')
         .eq('seller_id', sellerId)
         .order('created_at', { ascending: false });
 

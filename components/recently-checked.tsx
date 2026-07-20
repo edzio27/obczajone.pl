@@ -12,6 +12,7 @@ type Listing = {
   source: string;
   created_at: string;
   image_url: string;
+  ai_opinion_rating: number | null;
 };
 
 export function RecentlyChecked() {
@@ -22,7 +23,7 @@ export function RecentlyChecked() {
     async function fetchRecentlyChecked() {
       const { data, error } = await supabase
         .from('listings')
-        .select('id, title, location, current_price, source, created_at, image_url')
+        .select('id, title, location, current_price, source, created_at, image_url, ai_opinion_rating')
         .eq('is_active', true)
         .gt('current_price', 0)
         .order('last_checked_at', { ascending: false })

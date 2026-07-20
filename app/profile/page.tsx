@@ -26,6 +26,7 @@ type Listing = {
   review_count: number;
   image_url: string | null;
   average_rating?: number;
+  ai_opinion_rating?: number | null;
   is_active: boolean;
 };
 
@@ -45,6 +46,7 @@ type Review = {
     current_price: number;
     created_at: string;
     average_rating?: number;
+    ai_opinion_rating?: number | null;
     review_count?: number;
   };
 };
@@ -82,6 +84,7 @@ export default function ProfilePage() {
           current_price,
           image_url,
           is_active,
+          ai_opinion_rating,
           listing_snapshots (
             price,
             scraped_at
@@ -126,6 +129,7 @@ export default function ProfilePage() {
           review_count: reviews.length,
           image_url: listing.image_url,
           average_rating: avgRating,
+          ai_opinion_rating: listing.ai_opinion_rating,
           is_active: listing.is_active,
         };
       });
@@ -150,6 +154,7 @@ export default function ProfilePage() {
             location,
             current_price,
             created_at,
+            ai_opinion_rating,
             reviews (rating)
           )
         `)
@@ -185,6 +190,7 @@ export default function ProfilePage() {
               current_price: review.listings.current_price || 0,
               created_at: review.listings.created_at,
               average_rating: avgRating,
+              ai_opinion_rating: review.listings.ai_opinion_rating,
               review_count: reviews.length,
             },
           };
@@ -208,6 +214,7 @@ export default function ProfilePage() {
             current_price,
             image_url,
             is_active,
+            ai_opinion_rating,
             listing_snapshots (
               price,
               scraped_at
@@ -258,6 +265,7 @@ export default function ProfilePage() {
             review_count: reviews.length,
             image_url: listing.image_url,
             average_rating: avgRating,
+            ai_opinion_rating: listing.ai_opinion_rating,
             is_active: listing.is_active,
           };
         });
@@ -408,6 +416,7 @@ export default function ProfilePage() {
                   image_url={review.listing.image_url}
                   average_rating={review.listing.average_rating}
                   review_count={review.listing.review_count}
+                  ai_opinion_rating={review.listing.ai_opinion_rating}
                 />
               ))}
             </div>
