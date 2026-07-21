@@ -323,7 +323,7 @@ export function ListingClient({ listingId }: { listingId: string }) {
   }
 
   const latestSnapshot = snapshots[0];
-  const earliestSnapshot = snapshots.length > 0
+  const earliestSnapshot = snapshots.length > 1
     ? [...snapshots].sort((a, b) => new Date(a.scraped_at).getTime() - new Date(b.scraped_at).getTime())[0]
     : null;
   const priceChangePercent = earliestSnapshot
@@ -335,6 +335,7 @@ export function ListingClient({ listingId }: { listingId: string }) {
     averageRating,
     reviewCount,
     hasReportedReview,
+    aiOpinionRating: listing.ai_opinion_rating,
     isActive: listing.is_active,
     daysSinceFirstSeen: differenceInDays(
       new Date(),

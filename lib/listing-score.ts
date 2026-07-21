@@ -12,6 +12,7 @@ export type ListingScoreInput = {
   averageRating: number | null;
   reviewCount: number;
   hasReportedReview: boolean;
+  aiOpinionRating: number | null;
   isActive: boolean;
   daysSinceFirstSeen: number;
 };
@@ -41,6 +42,7 @@ export function computeListingScore(input: ListingScoreInput): ListingScore {
     averageRating,
     reviewCount,
     hasReportedReview,
+    aiOpinionRating,
     isActive,
     daysSinceFirstSeen,
   } = input;
@@ -49,11 +51,13 @@ export function computeListingScore(input: ListingScoreInput): ListingScore {
     priceChangePercent == null ? 25 : clamp(30 - priceChangePercent * 1.5, 5, 40);
 
   const reviewScore =
-    reviewCount === 0
-      ? 20
-      : hasReportedReview
+    reviewCount > 0
+      ? hasReportedReview
         ? Math.max(0, ((averageRating ?? 0) / 5) * 40 - 10)
-        : ((averageRating ?? 0) / 5) * 40;
+        : ((averageRating ?? 0) / 5) * 40
+      : aiOpinionRating != null
+        ? (aiOpinionRating / 5) * 40
+        : 20;
 
   const activityScore = isActive ? 20 : 10;
 
@@ -85,9 +89,8 @@ export function computeListingScore(input: ListingScoreInput): ListingScore {
           };
 
   const reviewsRow: ListingScoreRow =
-    reviewCount === 0
-      ? { level: 'yellow', label: 'Brak opinii', points: reviewScoreRounded, maxPoints: 40 }
-      : hasReportedReview
+    reviewCount > 0
+      ? hasReportedReview
         ? {
             level: 'red',
             label: 'Jedna z opinii została zgłoszona',
@@ -113,7 +116,29 @@ export function computeListingScore(input: ListingScoreInput): ListingScore {
                 label: `Ocena ${averageRating!.toFixed(1)}/5 z ${reviewCountLabel(reviewCount)}`,
                 points: reviewScoreRounded,
                 maxPoints: 40,
-              };
+              }
+      : aiOpinionRating != null
+        ? aiOpinionRating >= 4
+          ? {
+              level: 'green',
+              label: `Opinia AI ${aiOpinionRating.toFixed(1)}/5`,
+              points: reviewScoreRounded,
+              maxPoints: 40,
+            }
+          : aiOpinionRating >= 2.5
+            ? {
+                level: 'yellow',
+                label: `Opinia AI ${aiOpinionRating.toFixed(1)}/5`,
+                points: reviewScoreRounded,
+                maxPoints: 40,
+              }
+            : {
+                level: 'red',
+                label: `Opinia AI ${aiOpinionRating.toFixed(1)}/5`,
+                points: reviewScoreRounded,
+                maxPoints: 40,
+              }
+        : { level: 'yellow', label: 'Brak opinii', points: reviewScoreRounded, maxPoints: 40 };
 
   const activityRow: ListingScoreRow = isActive
     ? {
