@@ -15,6 +15,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card } from '@/components/ui/card';
 import { MapPin } from 'lucide-react';
+import { logPartnerClick } from '@/lib/partner-clicks';
 
 const POLAND_CENTER: [number, number] = [52.0, 19.0];
 
@@ -154,6 +155,7 @@ export default function PartnersMapPage() {
                   href={partner.contact_url}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={() => logPartnerClick(partner.id, 'partners_page')}
                   className="block"
                 >
                   <Card className="p-4 hover:shadow-md hover:border-primary/30 transition-all cursor-pointer">

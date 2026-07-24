@@ -584,7 +584,7 @@ export function ListingClient({ listingId }: { listingId: string }) {
 
           <ListingScoreCard score={listingScore} />
 
-          <PartnerCta source={listing.source as 'otomoto' | 'otodom'} />
+          <PartnerCta source={listing.source as 'otomoto' | 'otodom'} listingId={listingId} />
 
           {latestSnapshot?.description && (
             <Card className="mb-6">

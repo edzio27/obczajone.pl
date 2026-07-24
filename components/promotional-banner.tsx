@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { Instagram, Mail } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { supabase } from '@/lib/supabase';
+import { logPartnerClick } from '@/lib/partner-clicks';
 
 type Partner = {
   id: string;
@@ -66,6 +67,7 @@ export function PartnersSection() {
                 href={partner.contact_url}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => logPartnerClick(partner.id, 'homepage')}
                 className="inline-flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary/90 transition-all font-medium shadow-md hover:shadow-lg"
               >
                 Zobacz ofertę
