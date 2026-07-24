@@ -20,6 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import { computePriceChangePercent } from '@/lib/price-change';
 import { computeListingScore } from '@/lib/listing-score';
 import { ListingScoreCard } from '@/components/listing-score-card';
+import { PartnerCta } from '@/components/partner-cta';
 
 type Listing = {
   id: string;
@@ -583,6 +584,8 @@ export function ListingClient({ listingId }: { listingId: string }) {
 
           <ListingScoreCard score={listingScore} />
 
+          <PartnerCta source={listing.source as 'otomoto' | 'otodom'} />
+
           {latestSnapshot?.description && (
             <Card className="mb-6">
               <CardHeader>
@@ -639,7 +642,6 @@ export function ListingClient({ listingId }: { listingId: string }) {
             <div className="mt-4">
               <ReviewList
                 listingId={listingId}
-                source={listing.source as 'otomoto' | 'otodom'}
                 refreshTrigger={reviewRefresh}
                 onHasUserReview={(hasReview) => setHasUserReview(hasReview)}
                 aiOpinion={
