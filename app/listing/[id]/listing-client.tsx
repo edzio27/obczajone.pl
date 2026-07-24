@@ -639,6 +639,7 @@ export function ListingClient({ listingId }: { listingId: string }) {
             <div className="mt-4">
               <ReviewList
                 listingId={listingId}
+                source={listing.source as 'otomoto' | 'otodom'}
                 refreshTrigger={reviewRefresh}
                 onHasUserReview={(hasReview) => setHasUserReview(hasReview)}
                 aiOpinion={

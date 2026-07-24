@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,7 +10,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { pl } from 'date-fns/locale';
-import { Star, Flag, Pencil } from 'lucide-react';
+import { Star, Flag, Pencil, ShieldCheck } from 'lucide-react';
 import { ReviewEditDialog } from './review-edit-dialog';
 
 type Photo = {
@@ -73,12 +74,13 @@ type AiOpinion = {
 
 type ReviewListProps = {
   listingId: string;
+  source: 'otomoto' | 'otodom';
   refreshTrigger?: number;
   onHasUserReview?: (hasReview: boolean, review: Review | null) => void;
   aiOpinion?: AiOpinion | null;
 };
 
-export function ReviewList({ listingId, refreshTrigger, onHasUserReview, aiOpinion }: ReviewListProps) {
+export function ReviewList({ listingId, source, refreshTrigger, onHasUserReview, aiOpinion }: ReviewListProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -86,6 +88,22 @@ export function ReviewList({ listingId, refreshTrigger, onHasUserReview, aiOpini
   const [loading, setLoading] = useState(true);
   const [editingReview, setEditingReview] = useState<Review | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [hasMatchingPartner, setHasMatchingPartner] = useState(false);
+
+  useEffect(() => {
+    async function checkPartners() {
+      const category = source === 'otomoto' ? 'car' : 'home';
+      const { count } = await supabase
+        .from('partners')
+        .select('id', { count: 'exact', head: true })
+        .eq('category', category)
+        .eq('is_active', true);
+
+      setHasMatchingPartner((count ?? 0) > 0);
+    }
+
+    checkPartners();
+  }, [source]);
 
   const fetchReviews = useCallback(async () => {
     const { data, error } = await supabase
@@ -263,6 +281,26 @@ export function ReviewList({ listingId, refreshTrigger, onHasUserReview, aiOpini
             <p className="text-xs text-gray-500 pt-2 border-t">
               Opinia wygenerowana automatycznie przez AI na podstawie opisu ogłoszenia. Może się mylić — nie zastępuje oceny na żywo.
             </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {aiOpinion && hasMatchingPartner && (
+        <Card className="border-primary/20 bg-primary/5">
+          <CardContent className="py-5 flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-3">
+              <ShieldCheck className="h-6 w-6 text-primary flex-shrink-0" />
+              <div>
+                <p className="font-semibold text-gray-900">Chcesz mieć pewność przed zakupem?</p>
+                <p className="text-sm text-gray-600">
+                  Opinia AI to dobry pierwszy sygnał, ale nie zastąpi oględzin na żywo. Zamów
+                  profesjonalne sprawdzenie u jednego z naszych zaufanych partnerów.
+                </p>
+              </div>
+            </div>
+            <Link href="/#partnerzy" className="flex-shrink-0">
+              <Button variant="outline">Zobacz partnerów</Button>
+            </Link>
           </CardContent>
         </Card>
       )}
