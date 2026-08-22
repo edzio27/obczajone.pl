@@ -69,13 +69,6 @@ export const metadata: Metadata = {
   applicationName: 'obczajone.pl',
   referrer: 'origin-when-cross-origin',
 
-  // Alternate languages
-  alternates: {
-    canonical: 'https://obczajone.pl',
-    languages: {
-      'pl': 'https://obczajone.pl',
-    },
-  },
 };
 
 export default function RootLayout({
@@ -120,7 +113,6 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
         />
-        <link rel="canonical" href="https://obczajone.pl" />
       </head>
       <body className={`${inter.variable} ${manrope.variable} ${baloo2.variable}`}>
         <AuthProvider>
