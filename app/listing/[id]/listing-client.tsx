@@ -471,7 +471,15 @@ export function ListingClient({
 
           <ListingScoreCard score={listingScore} />
 
-          <PartnerCta source={listing.source as 'otomoto' | 'otodom'} listingId={listingId} />
+          <PartnerCta
+            source={listing.source as 'otomoto' | 'otodom'}
+            listingId={listingId}
+            listingLocation={
+              listing.seller?.lat != null && listing.seller?.lng != null
+                ? { lat: listing.seller.lat, lng: listing.seller.lng }
+                : null
+            }
+          />
 
           {latestSnapshot?.description && (
             <Card className="mb-6">

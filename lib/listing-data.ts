@@ -14,7 +14,7 @@ export type Listing = {
   last_checked_at: string;
   image_url: string | null;
   created_at: string;
-  seller: { id: string; name: string; city: string } | null;
+  seller: { id: string; name: string; city: string; lat: number | null; lng: number | null } | null;
   ai_opinion_rating: number | null;
   ai_opinion_summary: string | null;
   ai_opinion_price_note: string | null;
@@ -220,7 +220,7 @@ export async function fetchListingPageData(
 ): Promise<ListingPageData | null> {
   const { data: listing, error } = await supabase
     .from('listings')
-    .select('*, seller:sellers(id, name, city)')
+    .select('*, seller:sellers(id, name, city, lat, lng)')
     .eq('id', listingId)
     .maybeSingle();
 
