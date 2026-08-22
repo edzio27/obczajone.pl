@@ -11,35 +11,14 @@ import { formatDistanceToNow } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { Star, Flag, Pencil } from 'lucide-react';
 import { ReviewEditDialog } from './review-edit-dialog';
+import {
+  attachReviewDetails,
+  type ReviewProfile,
+  type ReviewWithDetails,
+} from '@/lib/listing-data';
 
-type Photo = {
-  id: string;
-  photo_url: string;
-  file_size: number;
-  order_index: number;
-};
-
-type Profile = {
-  display_name: string;
-  is_partner: boolean;
-  partner_logo_url: string | null;
-};
-
-type Review = {
-  id: string;
-  user_id: string;
-  visited_in_person: boolean;
-  rating: number;
-  price_difference: string;
-  condition_difference: string;
-  size_mileage_difference: string;
-  equipment_difference: string;
-  photos_difference: string;
-  comment: string;
-  created_at: string;
-  photos?: Photo[];
-  profile?: Profile | null;
-};
+type Profile = ReviewProfile;
+type Review = ReviewWithDetails;
 
 function ReviewAuthor({ profile }: { profile?: Profile | null }) {
   if (!profile) return null;
@@ -76,14 +55,24 @@ type ReviewListProps = {
   refreshTrigger?: number;
   onHasUserReview?: (hasReview: boolean, review: Review | null) => void;
   aiOpinion?: AiOpinion | null;
+  /** Zatwierdzone opinie pobrane serwerowo - trafiaja do HTML-a przed hydracja. */
+  initialReviews?: Review[];
 };
 
-export function ReviewList({ listingId, refreshTrigger, onHasUserReview, aiOpinion }: ReviewListProps) {
+export function ReviewList({
+  listingId,
+  refreshTrigger,
+  onHasUserReview,
+  aiOpinion,
+  initialReviews,
+}: ReviewListProps) {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviews, setReviews] = useState<Review[]>(initialReviews ?? []);
   const [pendingReviews, setPendingReviews] = useState<Review[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Majac opinie z serwera nie pokazujemy "Ladowanie opinii..." - tresc jest
+  // juz wyrenderowana, a doczytujemy tylko oczekujace opinie zalogowanego.
+  const [loading, setLoading] = useState(initialReviews === undefined);
   const [editingReview, setEditingReview] = useState<Review | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
 
@@ -115,20 +104,7 @@ export function ReviewList({ listingId, refreshTrigger, onHasUserReview, aiOpini
     }
 
     if (!error && data) {
-      await loadProfiles(data.map((r) => r.user_id));
-
-      const reviewsWithPhotos = await Promise.all(
-        data.map(async (review) => {
-          const { data: photos } = await supabase
-            .from('user_listing_photos')
-            .select('id, photo_url, file_size, order_index')
-            .eq('review_id', review.id)
-            .order('order_index');
-
-          return { ...review, photos: photos || [], profile: profilesById.get(review.user_id) ?? null };
-        })
-      );
-      setReviews(reviewsWithPhotos);
+      setReviews(await attachReviewDetails(supabase, data));
     }
 
     if (user) {

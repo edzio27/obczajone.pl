@@ -1,47 +1,30 @@
+import { cache } from 'react';
 import { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
+import { fetchListingPageData, type ListingPageData } from '@/lib/listing-data';
 import { ListingClient } from './listing-client';
 
 type Props = {
   params: { id: string };
 };
 
-async function getListingData(id: string) {
+// Next.js domyslnie cache'uje zapytania wykonane w komponencie serwerowym bez
+// terminu waznosci - strona z historia cen serwowalaby wtedy nieaktualne dane
+// po kazdym przebiegu scrapera. 10 minut daje swiezosc, a jednoczesnie zdejmuje
+// z bazy ruch od crawlerow.
+export const revalidate = 600;
+
+// cache() sprawia, że generateMetadata i sam render dzielą jeden komplet
+// zapytań w obrębie tego samego requestu, zamiast odpytywać bazę dwa razy.
+const getListingData = cache(async (id: string): Promise<ListingPageData | null> => {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
-  const { data: listing } = await supabase
-    .from('listings')
-    .select('*')
-    .eq('id', id)
-    .maybeSingle();
-
-  if (!listing) return null;
-
-  const { data: snapshot } = await supabase
-    .from('listing_snapshots')
-    .select('photo_urls, title, description')
-    .eq('listing_id', id)
-    .order('scraped_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  const { data: reviews } = await supabase
-    .from('reviews')
-    .select('rating, comment, created_at')
-    .eq('listing_id', id)
-    .eq('is_approved', true)
-    .order('created_at', { ascending: false });
-
-  const reviewCount = reviews?.length || 0;
-  const averageRating = reviewCount > 0
-    ? reviews!.reduce((sum, r) => sum + r.rating, 0) / reviewCount
-    : null;
-
-  return { listing, snapshot, reviewCount, averageRating, reviews: reviews || [] };
-}
+  return fetchListingPageData(supabase, id);
+});
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const data = await getListingData(params.id);
@@ -50,17 +33,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return {
       title: 'Ogłoszenie nie znalezione | obczajone.pl',
       description: 'Ogłoszenie nie istnieje w bazie danych obczajone.pl',
+      robots: { index: false, follow: true },
     };
   }
 
-  const { listing, snapshot, reviewCount, averageRating } = data;
+  const { listing, snapshots, reviewCount, averageRating } = data;
 
   const title = `${listing.title} - ${listing.location} | obczajone.pl`;
   const description = averageRating
     ? `Sprawdź historię cen i ${reviewCount} opinii dla: ${listing.title}. Aktualna cena: ${listing.current_price.toLocaleString('pl-PL')} zł. Ocena: ${averageRating.toFixed(1)}/5.`
     : `Sprawdź historię cen dla: ${listing.title}. Aktualna cena: ${listing.current_price.toLocaleString('pl-PL')} zł. Bądź pierwszy który doda opinię!`;
 
-  const imageUrl = snapshot?.photo_urls?.[0] || 'https://obczajone.pl/opengraph-image';
+  const imageUrl = snapshots[0]?.photo_urls?.[0] || 'https://obczajone.pl/opengraph-image';
   const pageUrl = `https://obczajone.pl/listing/${params.id}`;
 
   return {
@@ -107,28 +91,30 @@ function safeJsonLdString(value: unknown): string {
 
 export default async function ListingPage({ params }: Props) {
   const data = await getListingData(params.id);
-  const jsonLd = data ? buildListingJsonLd(params.id, data) : null;
+
+  // Bez tego nieistniejace ogloszenie odpowiadalo kodem 200 z komunikatem o
+  // bledzie - dla Google to soft 404, ktory smieci w indeksie.
+  if (!data) {
+    notFound();
+  }
+
+  const jsonLd = buildListingJsonLd(params.id, data);
 
   return (
     <>
-      {jsonLd && (
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: safeJsonLdString(jsonLd) }}
-        />
-      )}
-      <ListingClient listingId={params.id} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: safeJsonLdString(jsonLd) }}
+      />
+      <ListingClient listingId={params.id} initialData={data} />
     </>
   );
 }
 
-function buildListingJsonLd(
-  id: string,
-  data: NonNullable<Awaited<ReturnType<typeof getListingData>>>
-) {
-  const { listing, snapshot, reviewCount, averageRating, reviews } = data;
+function buildListingJsonLd(id: string, data: ListingPageData) {
+  const { listing, snapshots, reviewCount, averageRating, reviews } = data;
   const pageUrl = `https://obczajone.pl/listing/${id}`;
-  const imageUrl = snapshot?.photo_urls?.[0] || 'https://obczajone.pl/opengraph-image';
+  const imageUrl = snapshots[0]?.photo_urls?.[0] || 'https://obczajone.pl/opengraph-image';
 
   const product: Record<string, any> = {
     '@context': 'https://schema.org',
@@ -168,7 +154,7 @@ function buildListingJsonLd(
       },
       author: {
         '@type': 'Person',
-        name: 'Użytkownik obczajone.pl',
+        name: review.profile?.display_name || 'Użytkownik obczajone.pl',
       },
       datePublished: review.created_at,
       reviewBody: review.comment || undefined,

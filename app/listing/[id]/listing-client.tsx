@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Header } from '@/components/header';
 import { supabase } from '@/lib/supabase';
@@ -12,185 +12,84 @@ import { ReviewForm } from '@/components/review-form';
 import { ReviewList } from '@/components/review-list';
 import { PriceHistory } from '@/components/price-history';
 import { ListingCard } from '@/components/listing-card';
-import { Skeleton } from '@/components/ui/skeleton';
 import { ExternalLink, MapPin, Calendar, Heart, TrendingDown, TrendingUp, Share2, Store, Star } from 'lucide-react';
 import { formatDistanceToNow, differenceInDays } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { computePriceChangePercent } from '@/lib/price-change';
+import {
+  fetchListingPageData,
+  type Listing,
+  type ListingPageData,
+  type SellerStats,
+  type Snapshot,
+} from '@/lib/listing-data';
 import { computeListingScore } from '@/lib/listing-score';
 import { ListingScoreCard } from '@/components/listing-score-card';
 import { PartnerCta } from '@/components/partner-cta';
 
-type Listing = {
-  id: string;
-  listing_id: string;
-  source: string;
-  url: string;
-  title: string;
-  location: string;
-  current_price: number;
-  is_active: boolean;
-  first_seen_at: string;
-  original_posted_at: string | null;
-  last_checked_at: string;
-  image_url: string | null;
-  created_at: string;
-  seller: { id: string; name: string; city: string } | null;
-  ai_opinion_rating: number | null;
-  ai_opinion_summary: string | null;
-  ai_opinion_price_note: string | null;
-  ai_opinion_watch_out: string[] | null;
-};
-
-type Snapshot = {
-  id: string;
-  price: number;
-  title: string;
-  description: string;
-  photo_urls: string[];
-  metadata: any;
-  scraped_at: string;
-};
-
-const TWO_WORD_BRANDS = ['Alfa Romeo', 'Land Rover', 'Aston Martin', 'Rolls Royce', 'Great Wall'];
-
-function extractBrand(title: string): string {
-  const trimmed = title.trim();
-  const lower = trimmed.toLowerCase();
-  const twoWordMatch = TWO_WORD_BRANDS.find((brand) => lower.startsWith(brand.toLowerCase()));
-  if (twoWordMatch) return twoWordMatch;
-  return trimmed.split(/\s+/)[0] || '';
-}
-
-export function ListingClient({ listingId }: { listingId: string }) {
+export function ListingClient({
+  listingId,
+  initialData,
+}: {
+  listingId: string;
+  initialData: ListingPageData | null;
+}) {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const [listing, setListing] = useState<Listing | null>(null);
-  const [sellerStats, setSellerStats] = useState<{
-    averageRating: number | null;
-    reviewCount: number;
-    listingsCount: number;
-  } | null>(null);
-  const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [listing, setListing] = useState<Listing | null>(initialData?.listing ?? null);
+  const [sellerStats, setSellerStats] = useState<SellerStats | null>(
+    initialData?.sellerStats ?? null
+  );
+  const [snapshots, setSnapshots] = useState<Snapshot[]>(initialData?.snapshots ?? []);
   const [reviewRefresh, setReviewRefresh] = useState(0);
   const [hasUserReview, setHasUserReview] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
-  const [reviewCount, setReviewCount] = useState(0);
-  const [averageRating, setAverageRating] = useState<number | null>(null);
-  const [hasReportedReview, setHasReportedReview] = useState(false);
+  const [reviewCount, setReviewCount] = useState(initialData?.reviewCount ?? 0);
+  const [averageRating, setAverageRating] = useState<number | null>(
+    initialData?.averageRating ?? null
+  );
+  const [hasReportedReview, setHasReportedReview] = useState(
+    initialData?.hasReportedReview ?? false
+  );
   const [selectedPhoto, setSelectedPhoto] = useState(0);
-  const [recommendedListings, setRecommendedListings] = useState<Listing[]>([]);
+  const [recommendedListings, setRecommendedListings] = useState<Listing[]>(
+    initialData?.recommendedListings ?? []
+  );
+
+  // Pierwszy render dostaje komplet danych z serwera, wiec odpytujemy baze
+  // dopiero gdy uzytkownik doda opinie - inaczej skasowalibysmy tresc, ktora
+  // jest juz w HTML-u, i strona mrugnelaby pustym stanem.
+  const isFirstRender = useRef(true);
 
   useEffect(() => {
-    async function fetchData() {
-      const { data: listingData, error: listingError } = await supabase
-        .from('listings')
-        .select('*, seller:sellers(id, name, city)')
-        .eq('id', listingId)
-        .single();
-
-      if (listingError) {
-        console.error('Error fetching listing:', listingError);
-        setLoading(false);
-        return;
-      }
-
-      const { data: snapshotsData, error: snapshotsError } = await supabase
-        .from('listing_snapshots')
-        .select('*')
-        .eq('listing_id', listingId)
-        .order('scraped_at', { ascending: false });
-
-      if (!snapshotsError) {
-        setSnapshots(snapshotsData || []);
-      }
-
-      const { data: reviewsData } = await supabase
-        .from('reviews')
-        .select('rating, is_reported')
-        .eq('listing_id', listingId);
-
-      if (reviewsData && reviewsData.length > 0) {
-        setReviewCount(reviewsData.length);
-        const avg = reviewsData.reduce((sum, r) => sum + r.rating, 0) / reviewsData.length;
-        setAverageRating(avg);
-        setHasReportedReview(reviewsData.some((r) => r.is_reported));
-      }
-
-      const brand = extractBrand(listingData.title || '');
-      let recommended: Listing[] = [];
-
-      if (brand) {
-        let brandQuery = supabase
-          .from('listings')
-          .select('*')
-          .eq('source', listingData.source)
-          .neq('id', listingId)
-          .eq('is_active', true)
-          .gt('current_price', 0)
-          .ilike('title', `${brand}%`);
-
-        if (listingData.current_price > 0) {
-          brandQuery = brandQuery
-            .gte('current_price', listingData.current_price * 0.5)
-            .lte('current_price', listingData.current_price * 1.8);
-        }
-
-        const { data: brandMatches } = await brandQuery
-          .order('created_at', { ascending: false })
-          .limit(3);
-
-        recommended = brandMatches || [];
-      }
-
-      if (recommended.length < 3) {
-        const excludeIds = [listingId, ...recommended.map((r) => r.id)];
-        const { data: fallbackMatches } = await supabase
-          .from('listings')
-          .select('*')
-          .eq('source', listingData.source)
-          .not('id', 'in', `(${excludeIds.join(',')})`)
-          .eq('is_active', true)
-          .gt('current_price', 0)
-          .order('created_at', { ascending: false })
-          .limit(3 - recommended.length);
-
-        recommended = [...recommended, ...(fallbackMatches || [])];
-      }
-
-      setRecommendedListings(recommended);
-
-      if (listingData.seller) {
-        const sellerId = listingData.seller.id;
-
-        const { count: listingsCount } = await supabase
-          .from('listings')
-          .select('id', { count: 'exact', head: true })
-          .eq('seller_id', sellerId);
-
-        const { data: sellerReviews } = await supabase
-          .from('reviews')
-          .select('rating, listing:listings!inner(seller_id)')
-          .eq('is_approved', true)
-          .eq('listing.seller_id', sellerId);
-
-        const ratings = (sellerReviews || []).map((r) => r.rating);
-        setSellerStats({
-          averageRating: ratings.length > 0 ? ratings.reduce((sum, r) => sum + r, 0) / ratings.length : null,
-          reviewCount: ratings.length,
-          listingsCount: listingsCount ?? 0,
-        });
-      }
-
-      setListing(listingData);
-      setLoading(false);
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
     }
 
-    fetchData();
+    let cancelled = false;
+
+    async function refreshListingData() {
+      const data = await fetchListingPageData(supabase, listingId);
+      if (cancelled || !data) return;
+
+      setListing(data.listing);
+      setSnapshots(data.snapshots);
+      setReviewCount(data.reviewCount);
+      setAverageRating(data.averageRating);
+      setHasReportedReview(data.hasReportedReview);
+      setSellerStats(data.sellerStats);
+      setRecommendedListings(data.recommendedListings);
+    }
+
+    refreshListingData();
+
+    return () => {
+      cancelled = true;
+    };
   }, [listingId, reviewRefresh]);
 
   useEffect(() => {
@@ -292,18 +191,6 @@ export function ListingClient({ listingId }: { listingId: string }) {
       });
     }
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <main className="container mx-auto px-4 py-8">
-          <Skeleton className="h-48 w-full mb-4" />
-          <Skeleton className="h-96 w-full" />
-        </main>
-      </div>
-    );
-  }
 
   if (!listing) {
     return (
@@ -643,6 +530,7 @@ export function ListingClient({ listingId }: { listingId: string }) {
               <ReviewList
                 listingId={listingId}
                 refreshTrigger={reviewRefresh}
+                initialReviews={initialData?.reviews}
                 onHasUserReview={(hasReview) => setHasUserReview(hasReview)}
                 aiOpinion={
                   listing?.ai_opinion_rating != null
