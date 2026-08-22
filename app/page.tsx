@@ -11,8 +11,91 @@ import { RecentlyChecked } from '@/components/recently-checked';
 import { DealerMapTeaser } from '@/components/dealer-map-teaser';
 import { Faq, faqs } from '@/components/home/faq';
 import { ShieldCheck, Search } from 'lucide-react';
+import type { Metadata } from 'next';
+import { createClient } from '@supabase/supabase-js';
+import {
+  fetchBiggestPriceDrops,
+  fetchDealerMapCounts,
+  fetchRecentListings,
+  fetchRecentlyChecked,
+  fetchRecentlyReviewedListings,
+} from '@/lib/home-data';
 
-export default function Home() {
+export const metadata: Metadata = {
+  alternates: {
+    canonical: '/',
+  },
+};
+
+// Odswiezamy raz na godzine - licznik nie musi byc co do sekundy aktualny,
+// a strona zostaje w cache zamiast renderowac sie przy kazdym wejsciu.
+export const revalidate = 3600;
+
+// Pokazujemy prawdziwa liczbe sprawdzonych ogloszen zamiast zahardkodowanej.
+// Ponizej progu chowamy plakietke - mala liczba dziala gorzej niz jej brak.
+const LISTING_COUNT_BADGE_THRESHOLD = 100;
+
+const RECENT_LISTINGS_PAGE_SIZE = 9;
+
+/**
+ * Wszystkie sekcje strony glownej pobieramy serwerowo i rownolegle. Wczesniej
+ * kazda z nich odpytywala baze dopiero w przegladarce, przez co w HTML-u nie
+ * bylo ani jednego linku do ogloszenia - a to jedyne wewnetrzne linkowanie,
+ * jakie prowadzi do stron ogloszen.
+ */
+async function getHomeData() {
+  try {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+
+    const [
+      countResult,
+      recentListings,
+      recentlyReviewed,
+      priceDrops,
+      recentlyChecked,
+      dealerMapCounts,
+    ] = await Promise.all([
+      supabase.from('listings').select('id', { count: 'exact', head: true }),
+      fetchRecentListings(supabase, { pageSize: RECENT_LISTINGS_PAGE_SIZE }),
+      fetchRecentlyReviewedListings(supabase, 10),
+      fetchBiggestPriceDrops(supabase),
+      fetchRecentlyChecked(supabase),
+      fetchDealerMapCounts(supabase),
+    ]);
+
+    return {
+      listingCount: countResult.count ?? null,
+      recentListings,
+      recentlyReviewed,
+      priceDrops,
+      recentlyChecked,
+      dealerMapCounts,
+    };
+  } catch (error) {
+    console.error('Nie udalo sie pobrac danych strony glownej:', error);
+    return {
+      listingCount: null,
+      recentListings: [],
+      recentlyReviewed: [],
+      priceDrops: [],
+      recentlyChecked: [],
+      dealerMapCounts: { sellerCount: null, reviewCount: null },
+    };
+  }
+}
+
+export default async function Home() {
+  const {
+    listingCount,
+    recentListings,
+    recentlyReviewed,
+    priceDrops,
+    recentlyChecked,
+    dealerMapCounts,
+  } = await getHomeData();
   const faqJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'FAQPage',
@@ -48,20 +131,25 @@ export default function Home() {
               <ListingUrlForm />
             </div>
 
-            <div className="flex justify-center mt-6">
-              <div className="inline-flex items-center gap-2 bg-primary/5 border border-primary/10 text-primary px-4 py-2 rounded-full text-sm font-medium">
-                <ShieldCheck className="w-4 h-4 text-success" />
-                Ponad 10 000 sprawdzonych ogłoszeń
+            {listingCount !== null && listingCount >= LISTING_COUNT_BADGE_THRESHOLD && (
+              <div className="flex justify-center mt-6">
+                <div className="inline-flex items-center gap-2 bg-primary/5 border border-primary/10 text-primary px-4 py-2 rounded-full text-sm font-medium">
+                  <ShieldCheck className="w-4 h-4 text-success" />
+                  {listingCount.toLocaleString('pl-PL')} sprawdzonych ogłoszeń
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="mt-10">
-              <DealerMapTeaser />
+              <DealerMapTeaser
+                sellerCount={dealerMapCounts.sellerCount}
+                reviewCount={dealerMapCounts.reviewCount}
+              />
             </div>
 
             <div className="mb-8 mt-16">
               <h3 className="text-lg font-semibold text-foreground mb-4 text-left">Zobacz co inni znaleźli:</h3>
-              <RecentReviews limit={10} showMoreButton={true} />
+              <RecentReviews listings={recentlyReviewed} showMoreButton={true} />
             </div>
           </div>
 
@@ -73,11 +161,11 @@ export default function Home() {
           <WhyUs />
 
           <div className="mt-8">
-            <BiggestPriceDrops />
+            <BiggestPriceDrops listings={priceDrops} />
           </div>
 
           <div className="mt-8">
-            <RecentlyChecked />
+            <RecentlyChecked listings={recentlyChecked} />
           </div>
 
           <div className="mt-8">
@@ -87,7 +175,10 @@ export default function Home() {
                 Wszystkie sprawdzone ogłoszenia
               </h2>
             </div>
-            <RecentListings />
+            <RecentListings
+              pageSize={RECENT_LISTINGS_PAGE_SIZE}
+              initialListings={recentListings}
+            />
           </div>
 
           <Faq />
@@ -98,7 +189,7 @@ export default function Home() {
               Gotowy na bezpieczne zakupy?
             </h2>
             <p className="text-lg text-white/80 mb-6 max-w-2xl mx-auto">
-              Dołącz do tysięcy użytkowników, którzy chronią się przed oszustwami korzystając z obczajone.pl
+              Wklej link do ogłoszenia z Otomoto lub Otodom i sprawdź, czy sprzedający już obniżał cenę.
             </p>
             <div className="flex justify-center">
               <ListingUrlForm />

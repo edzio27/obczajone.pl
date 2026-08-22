@@ -19,6 +19,7 @@ type Partner = {
 
 export function PartnersSection() {
   const [partners, setPartners] = useState<Partner[]>([]);
+  const hasPartners = partners.length > 0;
 
   useEffect(() => {
     async function fetchPartners() {
@@ -38,14 +39,16 @@ export function PartnersSection() {
     <section id="partnerzy" aria-labelledby="partnerzy-heading">
       <div className="text-center mb-8">
         <h2 id="partnerzy-heading" className="text-2xl md:text-3xl font-bold text-foreground mb-3">
-          Zaufani partnerzy
+          {hasPartners ? 'Zaufani partnerzy' : 'Współpraca'}
         </h2>
         <p className="text-gray-600 max-w-2xl mx-auto">
-          Dla nas samochody i nieruchomości sprawdzają takie firmy — profesjonalna diagnostyka przed zakupem.
+          {hasPartners
+            ? 'Dla nas samochody i nieruchomości sprawdzają takie firmy — profesjonalna diagnostyka przed zakupem.'
+            : 'Szukamy firm, które sprawdzają samochody i nieruchomości przed zakupem.'}
         </p>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className={hasPartners ? 'grid md:grid-cols-2 gap-6' : 'max-w-2xl mx-auto'}>
         {partners.map((partner) => (
           <Card key={partner.id} className="bg-primary/5 border-primary/20 overflow-hidden">
             <div className="p-6 flex items-center justify-between gap-4 flex-wrap h-full">

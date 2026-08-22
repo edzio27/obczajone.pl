@@ -1,44 +1,8 @@
-'use client';
-
-import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
 import { ListingCard } from '@/components/listing-card';
+import type { HomeListing } from '@/lib/home-data';
 
-type Listing = {
-  id: string;
-  title: string;
-  location: string;
-  current_price: number;
-  source: string;
-  created_at: string;
-  image_url: string;
-  ai_opinion_rating: number | null;
-};
-
-export function RecentlyChecked() {
-  const [listings, setListings] = useState<Listing[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchRecentlyChecked() {
-      const { data, error } = await supabase
-        .from('listings')
-        .select('id, title, location, current_price, source, created_at, image_url, ai_opinion_rating')
-        .eq('is_active', true)
-        .gt('current_price', 0)
-        .order('last_checked_at', { ascending: false })
-        .limit(3);
-
-      if (!error && data) {
-        setListings(data);
-      }
-      setLoading(false);
-    }
-
-    fetchRecentlyChecked();
-  }, []);
-
-  if (loading || listings.length === 0) return null;
+export function RecentlyChecked({ listings }: { listings: HomeListing[] }) {
+  if (listings.length === 0) return null;
 
   return (
     <section aria-labelledby="ostatnio-sprawdzane">

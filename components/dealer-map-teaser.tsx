@@ -1,35 +1,16 @@
-'use client';
-
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { MapPin, Star } from 'lucide-react';
 
-export function DealerMapTeaser() {
-  const [sellerCount, setSellerCount] = useState<number | null>(null);
-  const [reviewCount, setReviewCount] = useState<number | null>(null);
+type DealerMapTeaserProps = {
+  sellerCount: number | null;
+  reviewCount: number | null;
+};
 
-  useEffect(() => {
-    async function fetchCounts() {
-      const { count: sellers } = await supabase
-        .from('sellers')
-        .select('id', { count: 'exact', head: true })
-        .not('lat', 'is', null)
-        .not('lng', 'is', null);
-
-      const { count: reviews } = await supabase
-        .from('reviews')
-        .select('id, listing:listings!inner(seller_id)', { count: 'exact', head: true })
-        .eq('is_approved', true)
-        .not('listing.seller_id', 'is', null);
-
-      setSellerCount(sellers ?? 0);
-      setReviewCount(reviews ?? 0);
-    }
-
-    fetchCounts();
-  }, []);
+export function DealerMapTeaser({ sellerCount, reviewCount }: DealerMapTeaserProps) {
+  // Przy pustej mapie licznik brzmialby "Ponad 0 posrednikow" - wtedy lepiej
+  // pokazac sam opis bez liczb.
+  const hasNumbers = sellerCount != null && reviewCount != null && sellerCount > 0;
 
   return (
     <Link href="/posrednicy">
@@ -42,9 +23,9 @@ export function DealerMapTeaser() {
             Zobacz miejsca, gdzie inni oglądali samochody
           </h3>
           <p className="text-muted-foreground">
-            {sellerCount != null && reviewCount != null ? (
+            {hasNumbers ? (
               <>
-                Ponad {sellerCount} pośredników i komisów, {reviewCount} ocen użytkowników na mapie Polski
+                {sellerCount} pośredników i komisów, {reviewCount} ocen użytkowników na mapie Polski
               </>
             ) : (
               'Komisy i pośrednicy oceniani przez użytkowników na mapie Polski'
