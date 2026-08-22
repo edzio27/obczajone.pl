@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { LogoMark } from '@/components/brand/logo-mark';
 import { useAuth } from '@/lib/auth-context';
 import { AuthDialog } from '@/components/auth/auth-dialog';
-import { LogOut, CircleUser as UserCircle, Menu, X, MapPin } from 'lucide-react';
+import { LogOut, CircleUser as UserCircle, Menu, X, MapPin, ShieldCheck } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 export function Header() {
@@ -36,6 +36,12 @@ export function Header() {
               <Button variant="ghost" size="default" className="font-medium">
                 <MapPin className="h-4 w-4 mr-2" />
                 Pośrednicy
+              </Button>
+            </Link>
+            <Link href="/partnerzy">
+              <Button variant="ghost" size="default" className="font-medium">
+                <ShieldCheck className="h-4 w-4 mr-2" />
+                Sprawdzanie aut
               </Button>
             </Link>
             {user ? (
@@ -75,6 +81,12 @@ export function Header() {
                     <Button variant="ghost" size="default" className="w-full justify-start font-medium">
                       <MapPin className="h-4 w-4 mr-2" />
                       Pośrednicy
+                    </Button>
+                  </Link>
+                  <Link href="/partnerzy" onClick={() => setMobileMenuOpen(false)}>
+                    <Button variant="ghost" size="default" className="w-full justify-start font-medium">
+                      <ShieldCheck className="h-4 w-4 mr-2" />
+                      Sprawdzanie aut
                     </Button>
                   </Link>
                   {user ? (
