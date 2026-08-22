@@ -8,9 +8,11 @@ type DealerMapTeaserProps = {
 };
 
 export function DealerMapTeaser({ sellerCount, reviewCount }: DealerMapTeaserProps) {
-  // Przy pustej mapie licznik brzmialby "Ponad 0 posrednikow" - wtedy lepiej
-  // pokazac sam opis bez liczb.
-  const hasNumbers = sellerCount != null && reviewCount != null && sellerCount > 0;
+  // Mapa ma dzis 157 posrednikow i zero ocen, a "157 posrednikow, 0 ocen"
+  // reklamuje wlasnie to, czego brakuje. Liczby pokazujemy dopiero, gdy obie
+  // mowia cos dobrego.
+  const hasNumbers =
+    sellerCount != null && reviewCount != null && sellerCount > 0 && reviewCount > 0;
 
   return (
     <Link href="/posrednicy">
