@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { fetchPriceComparison, type CarSpecs, type PriceComparison } from './price-comparison';
 
 export type Listing = {
   id: string;
@@ -19,6 +20,7 @@ export type Listing = {
   ai_opinion_summary: string | null;
   ai_opinion_price_note: string | null;
   ai_opinion_watch_out: string[] | null;
+  specs: CarSpecs | null;
 };
 
 export type Snapshot = {
@@ -76,6 +78,7 @@ export type ListingPageData = {
   hasReportedReview: boolean;
   sellerStats: SellerStats | null;
   recommendedListings: Listing[];
+  priceComparison: PriceComparison | null;
 };
 
 const TWO_WORD_BRANDS = ['Alfa Romeo', 'Land Rover', 'Aston Martin', 'Rolls Royce', 'Great Wall'];
@@ -250,10 +253,11 @@ export async function fetchListingPageData(
       ? approvedReviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount
       : null;
 
-  const [reviews, recommendedListings, sellerStats] = await Promise.all([
+  const [reviews, recommendedListings, sellerStats, priceComparison] = await Promise.all([
     attachReviewDetails(supabase, approvedReviews),
     fetchRecommendedListings(supabase, listing as Listing),
     listing.seller ? fetchSellerStats(supabase, listing.seller.id) : Promise.resolve(null),
+    fetchPriceComparison(supabase, listing as Listing),
   ]);
 
   return {
@@ -265,5 +269,6 @@ export async function fetchListingPageData(
     hasReportedReview: approvedReviews.some((r) => r.is_reported),
     sellerStats,
     recommendedListings,
+    priceComparison,
   };
 }

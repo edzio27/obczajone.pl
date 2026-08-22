@@ -26,6 +26,7 @@ import {
 } from '@/lib/listing-data';
 import { computeListingScore } from '@/lib/listing-score';
 import { ListingScoreCard } from '@/components/listing-score-card';
+import { PriceComparisonCard } from '@/components/price-comparison-card';
 import { PartnerCta } from '@/components/partner-cta';
 
 export function ListingClient({
@@ -220,6 +221,7 @@ export function ListingClient({
 
   const listingScore = computeListingScore({
     priceChangePercent,
+    priceVsMedianPercent: initialData?.priceComparison?.percentVsMedian ?? null,
     averageRating,
     reviewCount,
     hasReportedReview,
@@ -468,6 +470,10 @@ export function ListingClient({
               </Card>
             </div>
           </div>
+
+          {initialData?.priceComparison && (
+            <PriceComparisonCard comparison={initialData.priceComparison} />
+          )}
 
           <ListingScoreCard score={listingScore} />
 
