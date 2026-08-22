@@ -4,6 +4,7 @@ import { Baloo_2, Inter, Manrope } from 'next/font/google';
 import { AuthProvider } from '@/lib/auth-context';
 import { Toaster } from '@/components/ui/toaster';
 import { CookieConsent } from '@/components/cookie-consent';
+import { ReferralTracker } from '@/components/referral-tracker';
 
 const inter = Inter({
   subsets: ['latin', 'latin-ext'],
@@ -119,6 +120,7 @@ export default function RootLayout({
           {children}
           <Toaster />
           <CookieConsent />
+          <ReferralTracker />
         </AuthProvider>
       </body>
     </html>
