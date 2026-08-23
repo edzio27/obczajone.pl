@@ -24,8 +24,11 @@ export const OPERATOR = {
 
   /** Region projektu Supabase - decyduje, czy dane są przechowywane w UE. */
   supabaseRegion: 'Frankfurt, Niemcy (eu-central-1)',
-  /** Faktycznie używany hosting. */
-  hostingProvider: 'Netlify, Inc., 512 2nd Street, San Francisco, CA 94107, USA',
+  /**
+   * Faktycznie używany hosting - ustalone z nagłówków produkcji
+   * (server: Vercel, x-vercel-id: arn1, czyli region sztokholmski).
+   */
+  hostingProvider: 'Vercel Inc. (USA), z serwerami brzegowymi w regionie UE',
 } as const;
 
 /** Pełne oznaczenie operatora w jednym zdaniu, gotowe do wstawienia w tekst. */
