@@ -1,5 +1,5 @@
 import { Fragment } from 'react';
-import { OPERATOR } from '@/lib/legal-operator';
+import { missingOperatorData } from '@/lib/legal-operator';
 
 export type LegalBlock =
   | { type: 'p'; text: string }
@@ -28,16 +28,13 @@ function withPlaceholders(text: string) {
   );
 }
 
-function ExampleDataNotice() {
+function IncompleteDataNotice({ missing }: { missing: string[] }) {
   return (
     <div className="mb-8 rounded-lg border border-amber-300 bg-amber-50 p-4">
       <p className="text-sm text-amber-900">
-        <strong>Dokument zawiera dane przykładowe.</strong> Oznaczenie operatora, NIP, REGON
-        oraz informacje o hostingu i regionie bazy danych są wypełnione wartościami
-        testowymi. Przed publikacją podmień je w pliku{' '}
-        <code className="rounded bg-amber-100 px-1">lib/legal-operator.ts</code> i ustaw tam{' '}
-        <code className="rounded bg-amber-100 px-1">isExampleData: false</code>, żeby ten
-        komunikat zniknął.
+        <strong>Dokument jest niekompletny.</strong> Brakuje: {missing.join(', ')}. Uzupełnij te
+        pola w pliku <code className="rounded bg-amber-100 px-1">lib/legal-operator.ts</code>,
+        a ten komunikat zniknie sam.
       </p>
     </div>
   );
@@ -61,7 +58,9 @@ export function LegalDocument({
         Ostatnia aktualizacja: {lastUpdated}
       </p>
 
-      {OPERATOR.isExampleData && <ExampleDataNotice />}
+      {missingOperatorData().length > 0 && (
+        <IncompleteDataNotice missing={missingOperatorData()} />
+      )}
       <p className="text-gray-700 leading-relaxed mb-10">{withPlaceholders(intro)}</p>
 
       <div className="space-y-8">

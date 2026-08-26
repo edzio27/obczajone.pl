@@ -92,7 +92,9 @@ const sections: LegalSection[] = [
       {
         type: 'ul',
         items: [
-          `Supabase — baza danych, uwierzytelnianie i przechowywanie zdjęć. Projekt uruchomiono w regionie: ${OPERATOR.supabaseRegion}.`,
+          OPERATOR.supabaseRegion
+            ? `Supabase — baza danych, uwierzytelnianie i przechowywanie zdjęć. Projekt uruchomiono w regionie: ${OPERATOR.supabaseRegion}.`
+            : 'Supabase — baza danych, uwierzytelnianie i przechowywanie zdjęć.',
           `Hosting serwisu — ${OPERATOR.hostingProvider}.`,
           'Anthropic — dostawca modelu językowego generującego opinię AI. Przekazujemy mu treść ogłoszenia; nie przekazujemy danych konta ani treści opinii użytkowników.',
           'OpenStreetMap Foundation — kafelki map oraz geokodowanie adresów. Wyświetlenie mapy powoduje połączenie przeglądarki użytkownika z serwerami tej organizacji, której udostępniany jest adres IP.',
