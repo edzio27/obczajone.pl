@@ -3,7 +3,8 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { pl } from 'date-fns/locale';
-import { ImageOff, Star, TrendingDown, TrendingUp } from 'lucide-react';
+import { Star, TrendingDown, TrendingUp } from 'lucide-react';
+import { ListingThumbnail } from '@/components/listing-thumbnail';
 
 type ListingCardProps = {
   id: string;
@@ -74,18 +75,7 @@ export function ListingCard({
       <Card className="group hover:shadow-xl hover:border-primary/30 transition-all duration-300 cursor-pointer h-full border-gray-200 hover:-translate-y-1 overflow-hidden">
         <div className="flex gap-4 p-4">
           <div className="w-[154px] h-[154px] flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
-            {image_url ? (
-              <img
-                src={image_url}
-                alt={title || 'Zdjęcie ogłoszenia'}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                }}
-              />
-            ) : (
-              <ImageOff className="h-6 w-6 text-gray-300" />
-            )}
+            <ListingThumbnail src={image_url} alt={title || 'Zdjęcie ogłoszenia'} />
           </div>
 
           <div className="flex-1 min-w-0 flex flex-col">
