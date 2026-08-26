@@ -30,10 +30,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   try {
+    // Nieudany scrape zostawia wiersz z pustym tytułem i ceną 0. Interfejs takie
+    // ogłoszenia ukrywa (listy filtrują po current_price > 0), więc sitemapa nie
+    // może ich zgłaszać - inaczej karmimy Google stronami, które sami uznaliśmy
+    // za zbyt zepsute, żeby je pokazać.
     const { data: listings } = await supabase
       .from('listings')
-      .select('id, last_checked_at, is_active')
+      .select('id, last_checked_at, is_active, title')
       .eq('is_active', true)
+      .gt('current_price', 0)
+      .neq('title', '')
       .order('last_checked_at', { ascending: false })
       .limit(1000);
 
