@@ -25,7 +25,7 @@ export const OPERATOR = {
   dataProtectionOfficer: null as string | null,
 
   /** Region projektu Supabase - decyduje, czy dane są przechowywane w UE. */
-  supabaseRegion: null as string | null,
+  supabaseRegion: 'Frankfurt, Niemcy (eu-central-1)' as string | null,
   /**
    * Faktycznie używany hosting - ustalone z nagłówków produkcji
    * (server: Vercel, x-vercel-id: arn1, czyli region sztokholmski).

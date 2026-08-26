@@ -101,9 +101,17 @@ const sections: LegalSection[] = [
           'Google Ireland Limited i Meta Platforms Ireland Limited — wyłącznie w zakresie obsługi logowania, jeżeli użytkownik wybierze tę metodę.',
         ],
       },
+      ...(OPERATOR.supabaseRegion
+        ? [
+            {
+              type: 'p' as const,
+              text: `Baza danych, konta użytkowników oraz przesłane zdjęcia są przechowywane w regionie ${OPERATOR.supabaseRegion}, czyli na terenie Unii Europejskiej.`,
+            },
+          ]
+        : []),
       {
         type: 'p',
-        text: 'Dane mogą być przekazywane poza Europejski Obszar Gospodarczy, w szczególności do Stanów Zjednoczonych. Przekazanie odbywa się na podstawie decyzji Komisji Europejskiej o odpowiednim stopniu ochrony albo standardowych klauzul umownych.',
+        text: 'Poza Europejski Obszar Gospodarczy trafiają natomiast dane przekazywane tym z wymienionych wyżej dostawców, którzy mają siedzibę w Stanach Zjednoczonych — dotyczy to treści ogłoszenia wysyłanej do wygenerowania opinii AI oraz danych technicznych obsługiwanych przez dostawcę hostingu. Przekazanie odbywa się na podstawie decyzji Komisji Europejskiej o odpowiednim stopniu ochrony albo standardowych klauzul umownych.',
       },
     ],
   },
