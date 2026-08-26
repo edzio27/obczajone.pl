@@ -11,6 +11,8 @@ export type ListingScoreInput = {
   priceChangePercent: number | null;
   /** Odchylenie od mediany podobnych ofert w procentach. Ujemne = taniej. */
   priceVsMedianPercent: number | null;
+  /** Czy porównanie było ścisłe na tyle, żeby uzasadniać ostrzeżenie. */
+  priceComparisonStrict: boolean;
   averageRating: number | null;
   reviewCount: number;
   hasReportedReview: boolean;
@@ -47,17 +49,27 @@ function scoreAgainstMedian(percent: number): number {
   return 16;
 }
 
-function marketPriceRow(percent: number): ListingScoreRow {
+function marketPriceRow(percent: number, strict: boolean): ListingScoreRow {
   const points = scoreAgainstMedian(percent);
   const away = Math.abs(percent).toFixed(0);
 
   if (percent <= SUSPICIOUS_THRESHOLD_PERCENT) {
-    return {
-      level: 'red',
-      label: `${away}% poniżej mediany — duża różnica, sprawdź stan i historię`,
-      points,
-      maxPoints: 40,
-    };
+    // Bez ścisłego dopasowania duże odchylenie równie dobrze może wynikać z tego,
+    // że porównaliśmy inną wersję silnika albo starszy rocznik. To za słaba
+    // podstawa, żeby oznaczyć czyjeś ogłoszenie jako podejrzane.
+    return strict
+      ? {
+          level: 'red',
+          label: `${away}% poniżej mediany — duża różnica, sprawdź stan i historię`,
+          points,
+          maxPoints: 40,
+        }
+      : {
+          level: 'yellow',
+          label: `${away}% poniżej mediany dla tego modelu — porównanie orientacyjne`,
+          points: Math.max(points, 22),
+          maxPoints: 40,
+        };
   }
 
   if (percent <= BARGAIN_THRESHOLD_PERCENT) {
@@ -99,6 +111,7 @@ export function computeListingScore(input: ListingScoreInput): ListingScore {
   const {
     priceChangePercent,
     priceVsMedianPercent,
+    priceComparisonStrict,
     averageRating,
     reviewCount,
     hasReportedReview,
@@ -137,7 +150,7 @@ export function computeListingScore(input: ListingScoreInput): ListingScore {
   const reviewScoreRounded = Math.round(reviewScore);
 
   const priceRow: ListingScoreRow = priceVsMedianPercent != null
-    ? marketPriceRow(priceVsMedianPercent)
+    ? marketPriceRow(priceVsMedianPercent, priceComparisonStrict)
     : priceChangePercent == null || priceChangePercent === 0
       ? {
           level: 'yellow',

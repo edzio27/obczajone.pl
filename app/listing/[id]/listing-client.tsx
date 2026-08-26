@@ -222,6 +222,7 @@ export function ListingClient({
   const listingScore = computeListingScore({
     priceChangePercent,
     priceVsMedianPercent: initialData?.priceComparison?.percentVsMedian ?? null,
+    priceComparisonStrict: initialData?.priceComparison?.strict ?? false,
     averageRating,
     reviewCount,
     hasReportedReview,

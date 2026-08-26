@@ -14,6 +14,15 @@ const MIN_SAMPLE_SIZE = 5;
 /** Ile ofert maksymalnie pobieramy do policzenia mediany. */
 const CANDIDATE_LIMIT = 500;
 
+/**
+ * Górny kwartyl podzielony przez dolny. Powyżej tej wartości porównywane oferty
+ * są tak różne, że mediana przestaje cokolwiek znaczyć - typowo dzieje się tak,
+ * gdy jeden model obejmuje kilkanaście roczników (BMW Seria 3 z 2006 i z 2023 w
+ * jednym worku). Wtedy wolimy powiedzieć "za mało danych" niż podać liczbę,
+ * na podstawie której ktoś negocjuje cenę auta.
+ */
+const MAX_QUARTILE_SPREAD = 2;
+
 export type CarSpecs = {
   brand: string | null;
   model: string | null;
@@ -33,6 +42,12 @@ export type PriceComparison = {
   upperQuartile: number | null;
   /** Czytelny opis tego, co porównywaliśmy - bez tego liczba jest nieweryfikowalna. */
   criteriaLabel: string;
+  /**
+   * Czy dopasowanie było na tyle ścisłe, żeby oprzeć na nim ostrzeżenie.
+   * Porównanie "ten sam model, dowolny rocznik" wystarcza za orientację, ale nie
+   * za podstawę do oznaczenia ogłoszenia jako podejrzanego.
+   */
+  strict: boolean;
 };
 
 /** Otomoto zapisuje parametry jako tekst, więc nie ufamy typom. */
@@ -70,25 +85,24 @@ type Candidate = { price: number; year: number | null; mileage: number | null; f
 type MatchLevel = {
   label: (base: string) => string;
   matches: (c: Candidate, subject: Candidate) => boolean;
+  strict: boolean;
 };
 
 const MATCH_LEVELS: MatchLevel[] = [
   {
     label: (base) => `${base}, rocznik ±2 lata, ten sam rodzaj paliwa, przebieg ±40%`,
-    matches: (c, s) =>
-      yearWithin(c, s, 2) && sameFuel(c, s) && mileageWithin(c, s, 0.4),
+    matches: (c, s) => yearWithin(c, s, 2) && sameFuel(c, s) && mileageWithin(c, s, 0.4),
+    strict: true,
   },
   {
     label: (base) => `${base}, rocznik ±2 lata, ten sam rodzaj paliwa`,
     matches: (c, s) => yearWithin(c, s, 2) && sameFuel(c, s),
+    strict: true,
   },
   {
     label: (base) => `${base}, rocznik ±3 lata`,
     matches: (c, s) => yearWithin(c, s, 3),
-  },
-  {
-    label: (base) => `${base}, wszystkie roczniki`,
-    matches: () => true,
+    strict: false,
   },
 ];
 
@@ -153,15 +167,24 @@ export async function fetchPriceComparison(
     if (matched.length >= MIN_SAMPLE_SIZE) {
       const prices = matched.map((c) => c.price).sort((a, b) => a - b);
       const med = median(prices);
+      const p25 = quantile(prices, 0.25);
+      const p75 = quantile(prices, 0.75);
+
+      // Zbyt rozstrzelone ceny - schodzimy niżej nie ma sensu (kolejne poziomy
+      // są tylko luźniejsze), więc kończymy z informacją o braku danych.
+      if (p25 > 0 && p75 / p25 > MAX_QUARTILE_SPREAD) {
+        break;
+      }
 
       return {
         sufficient: true,
         sampleSize: matched.length,
         medianPrice: med,
         percentVsMedian: med > 0 ? ((listing.current_price - med) / med) * 100 : null,
-        lowerQuartile: quantile(prices, 0.25),
-        upperQuartile: quantile(prices, 0.75),
+        lowerQuartile: p25,
+        upperQuartile: p75,
         criteriaLabel: level.label(baseLabel),
+        strict: level.strict,
       };
     }
   }
@@ -176,5 +199,6 @@ export async function fetchPriceComparison(
     lowerQuartile: null,
     upperQuartile: null,
     criteriaLabel: baseLabel,
+    strict: false,
   };
 }
