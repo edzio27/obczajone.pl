@@ -13,7 +13,8 @@ export const OPERATOR = {
   /** Adres wykonywania działalności / siedziby. */
   address: 'ul. Kłodzka 32/9, 50-536 Wrocław',
 
-  nip: null as string | null,
+  nip: '6572799496' as string | null,
+  /** Opcjonalny - ustawa o świadczeniu usług drogą elektroniczną go nie wymaga. */
   regon: null as string | null,
   /** Numer KRS i sąd rejestrowy - tylko dla spółek, dla JDG zostaw null. */
   registryEntry: null as string | null,
@@ -33,16 +34,17 @@ export const OPERATOR = {
 };
 
 /**
- * Pola, bez których dokumenty nie powinny trafić na produkcję. NIP wynika
- * wprost z ustawy o świadczeniu usług drogą elektroniczną, region bazy danych
- * decyduje o tym, co możemy napisać o przechowywaniu danych w UE.
+ * Pola, bez których dokumenty nie powinny trafić na produkcję. NIP wynika wprost
+ * z ustawy o świadczeniu usług drogą elektroniczną (REGON już nie, dlatego go tu
+ * nie ma), a region bazy danych decyduje o tym, co możemy napisać o
+ * przechowywaniu danych w UE.
  */
 const REQUIRED_FIELDS: Array<[keyof typeof OPERATOR, string]> = [
-  ['legalName', 'oznaczenie operatora'],
-  ['address', 'adres'],
-  ['nip', 'NIP'],
-  ['regon', 'REGON'],
-  ['supabaseRegion', 'region bazy danych'],
+  // Etykiety w dopełniaczu - wchodzą do zdania "Brakuje: ...".
+  ['legalName', 'oznaczenia operatora'],
+  ['address', 'adresu'],
+  ['nip', 'numeru NIP'],
+  ['supabaseRegion', 'regionu bazy danych'],
 ];
 
 export function missingOperatorData(): string[] {
