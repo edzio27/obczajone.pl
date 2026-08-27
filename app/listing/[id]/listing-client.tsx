@@ -12,7 +12,7 @@ import { ReviewForm } from '@/components/review-form';
 import { ReviewList } from '@/components/review-list';
 import { PriceHistory } from '@/components/price-history';
 import { ListingCard } from '@/components/listing-card';
-import { ExternalLink, MapPin, Calendar, Heart, TrendingDown, TrendingUp, Share2, Store, Star } from 'lucide-react';
+import { ExternalLink, MapPin, Calendar, Heart, TrendingDown, TrendingUp, Share2, Store, Star, Bell, BellRing } from 'lucide-react';
 import { formatDistanceToNow, differenceInDays } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -48,6 +48,8 @@ export function ListingClient({
   const [hasUserReview, setHasUserReview] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
+  const [alertEnabled, setAlertEnabled] = useState(false);
+  const [alertLoading, setAlertLoading] = useState(false);
   const [reviewCount, setReviewCount] = useState(initialData?.reviewCount ?? 0);
   const [averageRating, setAverageRating] = useState<number | null>(
     initialData?.averageRating ?? null
@@ -99,12 +101,13 @@ export function ListingClient({
 
       const { data } = await supabase
         .from('favorites')
-        .select('id')
+        .select('id, notify_on_price_drop')
         .eq('user_id', user.id)
         .eq('listing_id', listingId)
         .maybeSingle();
 
       setIsFavorite(!!data);
+      setAlertEnabled(!!data?.notify_on_price_drop);
     }
 
     checkFavorite();
@@ -162,6 +165,58 @@ export function ListingClient({
       });
     } finally {
       setFavoriteLoading(false);
+    }
+  };
+
+  /**
+   * Włączenie alertu zakłada wpis w ulubionych, jeżeli go jeszcze nie ma -
+   * użytkownik chce dostać maila, a nie wykonywać dwa kliknięcia. Zapamiętujemy
+   * przy tym bieżącą cenę jako punkt odniesienia dla przyszłych spadków.
+   */
+  const togglePriceAlert = async () => {
+    if (!user) {
+      toast({
+        title: 'Zaloguj się, żeby dostać powiadomienie',
+        description: 'Wyślemy Ci maila, gdy sprzedający obniży cenę tego ogłoszenia.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setAlertLoading(true);
+    const next = !alertEnabled;
+
+    try {
+      const { error } = await supabase.from('favorites').upsert(
+        {
+          user_id: user.id,
+          listing_id: listingId,
+          notify_on_price_drop: next,
+          last_notified_price: next ? listing?.current_price ?? null : null,
+        },
+        { onConflict: 'user_id,listing_id' }
+      );
+
+      if (error) throw error;
+
+      setAlertEnabled(next);
+      if (next) setIsFavorite(true);
+
+      toast({
+        title: next ? 'Powiadomienie włączone' : 'Powiadomienie wyłączone',
+        description: next
+          ? 'Napiszemy do Ciebie, gdy cena tego ogłoszenia spadnie.'
+          : 'Nie będziemy już informować o zmianach ceny tego ogłoszenia.',
+      });
+    } catch (error) {
+      console.error('Error toggling price alert:', error);
+      toast({
+        title: 'Błąd',
+        description: 'Nie udało się zmienić powiadomienia',
+        variant: 'destructive',
+      });
+    } finally {
+      setAlertLoading(false);
     }
   };
 
@@ -452,6 +507,19 @@ export function ListingClient({
                     Zobacz oryginalne ogłoszenie
                     <ExternalLink className="h-4 w-4" />
                   </a>
+                  <Button
+                    onClick={togglePriceAlert}
+                    disabled={alertLoading}
+                    variant={alertEnabled ? 'default' : 'outline'}
+                    className="w-full"
+                  >
+                    {alertEnabled ? (
+                      <BellRing className="h-4 w-4 mr-2 fill-current" />
+                    ) : (
+                      <Bell className="h-4 w-4 mr-2" />
+                    )}
+                    {alertEnabled ? 'Powiadomimy o spadku ceny' : 'Powiadom mnie o spadku ceny'}
+                  </Button>
                   <Button onClick={handleShare} variant="outline" className="w-full">
                     <Share2 className="h-4 w-4 mr-2" />
                     Udostępnij
