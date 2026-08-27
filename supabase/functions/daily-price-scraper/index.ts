@@ -37,7 +37,30 @@ function isAllowedUrl(rawUrl: string, source: 'otomoto' | 'otodom'): boolean {
   return ALLOWED_HOSTNAMES[source].includes(hostname);
 }
 
-async function scrapeOtomoto(url: string) {
+type ScrapeResult = { price: number | null; specs: Record<string, unknown> | null };
+
+// Te same klucze co extractOtomotoSpecs w funkcji scrape-listing.
+function extractOtomotoParam(ad: any, keys: string[]): string | null {
+  const params = ad?.parameters ?? ad?.details ?? [];
+  if (!Array.isArray(params)) return null;
+  for (const key of keys) {
+    const found = params.find((p: any) => p?.key === key || p?.name === key);
+    if (found) return found.value ?? found.displayValue ?? found.normalizedValue ?? null;
+  }
+  return null;
+}
+
+function extractOtomotoSpecs(ad: any): Record<string, unknown> {
+  return {
+    brand: extractOtomotoParam(ad, ['make', 'brand']),
+    model: extractOtomotoParam(ad, ['model']),
+    year: extractOtomotoParam(ad, ['year']),
+    mileage: extractOtomotoParam(ad, ['mileage']),
+    fuel_type: extractOtomotoParam(ad, ['fuel_type', 'fuel']),
+  };
+}
+
+async function scrapeOtomoto(url: string): Promise<ScrapeResult> {
   try {
     const response = await fetch(url, {
       headers: {
@@ -47,6 +70,11 @@ async function scrapeOtomoto(url: string) {
     const html = await response.text();
 
     let price = 0;
+    // Ten sam obiekt __NEXT_DATA__ niesie parametry auta, wiec pobieramy je przy
+    // okazji sprawdzania ceny - ogloszenia dodane przed wprowadzeniem kolumny
+    // specs inaczej nigdy ich nie dostana, a bez marki i modelu nie wchodza do
+    // porownan cenowych.
+    let specs: Record<string, unknown> | null = null;
 
     const nextDataMatch = html.match(/<script id="__NEXT_DATA__"[^>]*>(.*?)<\/script>/s);
     if (nextDataMatch) {
@@ -55,6 +83,12 @@ async function scrapeOtomoto(url: string) {
         const ad = nextData?.props?.pageProps?.advert;
         if (ad?.price?.amount?.units) {
           price = parseInt(ad.price.amount.units);
+        }
+        if (ad) {
+          const extracted = extractOtomotoSpecs(ad);
+          if (extracted.brand && extracted.model) {
+            specs = extracted;
+          }
         }
       } catch (e) {
         console.error('Error parsing __NEXT_DATA__:', e);
@@ -68,14 +102,14 @@ async function scrapeOtomoto(url: string) {
       }
     }
 
-    return price;
+    return { price, specs };
   } catch (error) {
     console.error('Error scraping Otomoto:', error);
-    return null;
+    return { price: null, specs: null };
   }
 }
 
-async function scrapeOtodom(url: string) {
+async function scrapeOtodom(url: string): Promise<ScrapeResult> {
   try {
     const response = await fetch(url, {
       headers: {
@@ -113,10 +147,10 @@ async function scrapeOtodom(url: string) {
       }
     }
 
-    return price;
+    return { price, specs: null };
   } catch (error) {
     console.error('Error scraping Otodom:', error);
-    return null;
+    return { price: null, specs: null };
   }
 }
 
@@ -135,7 +169,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: listings, error: listingsError } = await supabase
       .from('listings')
-      .select('id, url, source, current_price')
+      .select('id, url, source, current_price, specs')
       .order('created_at', { ascending: false });
 
     if (listingsError) {
@@ -145,10 +179,11 @@ Deno.serve(async (req: Request) => {
     const results = [];
     let successCount = 0;
     let failCount = 0;
+    let backfilledSpecs = 0;
 
     for (const listing of listings || []) {
       try {
-        let newPrice = null;
+        let scraped: ScrapeResult = { price: null, specs: null };
 
         if (
           (listing.source === 'otomoto' || listing.source === 'otodom') &&
@@ -165,9 +200,20 @@ Deno.serve(async (req: Request) => {
         }
 
         if (listing.source === 'otomoto') {
-          newPrice = await scrapeOtomoto(listing.url);
+          scraped = await scrapeOtomoto(listing.url);
         } else if (listing.source === 'otodom') {
-          newPrice = await scrapeOtodom(listing.url);
+          scraped = await scrapeOtodom(listing.url);
+        }
+
+        const newPrice = scraped.price;
+
+        // Uzupelniamy parametry tylko wtedy, gdy ich brakuje. Nadpisywanie
+        // istniejacych groziloby wyczyszczeniem dobrych danych przy jednym
+        // nieudanym odczycie strony.
+        const specsMissing = !listing.specs?.brand || !listing.specs?.model;
+        if (scraped.specs && specsMissing) {
+          await supabase.from('listings').update({ specs: scraped.specs }).eq('id', listing.id);
+          backfilledSpecs++;
         }
 
         if (newPrice && newPrice > 0) {
@@ -220,6 +266,7 @@ Deno.serve(async (req: Request) => {
         total: listings?.length || 0,
         successCount,
         failCount,
+        backfilledSpecs,
         results,
       }),
       {
