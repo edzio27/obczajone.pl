@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   alternates: { canonical: '/regulamin' },
 };
 
-const LAST_UPDATED = '22 sierpnia 2026';
+const LAST_UPDATED = '27 sierpnia 2026';
 
 const sections: LegalSection[] = [
   {
@@ -47,7 +47,10 @@ const sections: LegalSection[] = [
           'Sprzedający — podmiot lub osoba wskazana w Ogłoszeniu jako oferujący przedmiot sprzedaży, w tym pośrednik lub komis.',
           'Opinia — treść dodana przez Użytkownika, dotycząca Ogłoszenia lub kontaktu ze Sprzedającym, wraz z oceną liczbową i ewentualnymi zdjęciami.',
           'Opinia AI — automatycznie wygenerowane podsumowanie Ogłoszenia, oznaczone w Serwisie jako pochodzące od systemu sztucznej inteligencji.',
-          'Partner — podmiot świadczący usługi sprawdzania pojazdów lub nieruchomości, prezentowany w Serwisie.',
+          'Partner — podmiot świadczący usługi sprawdzania pojazdów lub nieruchomości, prezentowany w Serwisie na podstawie odrębnej umowy o współpracy z Operatorem.',
+          'Zapytanie — przekazanie Partnerowi danych kontaktowych Użytkownika wraz z informacją, jakiej usługi dotyczy, za pośrednictwem formularza w Serwisie.',
+          'Opinia o Partnerze — ocena i komentarz Użytkownika dotyczące usług konkretnego Partnera.',
+          'Oględziny — opis wyniku badania konkretnego przedmiotu Ogłoszenia, opublikowany w Serwisie przez Partnera, który to badanie wykonał.',
         ],
       },
     ],
@@ -64,6 +67,9 @@ const sections: LegalSection[] = [
           'Opinię AI dotyczącą Ogłoszenia,',
           'możliwość czytania i dodawania Opinii innych Użytkowników,',
           'mapę Sprzedających i pośredników wraz z ocenami,',
+          'katalog Partnerów wraz z ich profilami, ocenami i Opiniami o Partnerach,',
+          'możliwość wysłania Zapytania do wybranego Partnera,',
+          'dostęp do Oględzin opublikowanych przez Partnerów przy Ogłoszeniach,',
           'Konto wraz z listą zapisanych Ogłoszeń.',
         ],
       },
@@ -130,7 +136,40 @@ const sections: LegalSection[] = [
     ],
   },
   {
-    title: '7. Dane pochodzące z serwisów ogłoszeniowych',
+    title: '7. Partnerzy, Zapytania i Opinie o Partnerach',
+    blocks: [
+      {
+        type: 'p',
+        text: 'Partnerzy są odrębnymi przedsiębiorcami. Operator nie jest stroną umowy zawieranej między Użytkownikiem a Partnerem, nie pośredniczy w płatnościach i nie odpowiada za wykonanie usługi ani za treść wydanej przez Partnera ekspertyzy. Prezentacja Partnera w Serwisie nie stanowi poręczenia za jakość jego usług.',
+      },
+      {
+        type: 'p',
+        text: 'Wysłanie Zapytania powoduje przekazanie Partnerowi podanych danych kontaktowych w celu skontaktowania się z Użytkownikiem. Zapytanie jest niezobowiązujące i nie stanowi zawarcia umowy. Zasady przetwarzania tych danych opisuje Polityka prywatności.',
+      },
+      {
+        type: 'p',
+        text: 'Opinię o Partnerze może dodać wyłącznie zalogowany Użytkownik, jedną w odniesieniu do danego Partnera. Opinia musi opierać się na rzeczywistym skorzystaniu z usług tego Partnera. Partner nie może oceniać samego siebie, a Opinie o Partnerach podlegają moderacji na zasadach określonych w pkt 6.',
+      },
+      {
+        type: 'p',
+        text: 'Oznaczenie „Kontakt przez obczajone.pl" otrzymuje Opinia o Partnerze, której autor wcześniej wysłał do tego Partnera Zapytanie za pośrednictwem Serwisu. Jest to jedyna okoliczność, którą Operator jest w stanie zweryfikować technicznie; brak tego oznaczenia nie oznacza, że Opinia jest nieprawdziwa.',
+      },
+      {
+        type: 'p',
+        text: 'Partnerowi przysługuje prawo do opublikowania odpowiedzi pod każdą Opinią o Partnerze. Operator nie usuwa Opinii wyłącznie z powodu jej negatywnej wymowy ani w zamian za jakiekolwiek świadczenie ze strony Partnera.',
+      },
+      {
+        type: 'p',
+        text: 'Pozycja Partnera w katalogu i w zestawieniach zależy od statusu weryfikacji, oceny Użytkowników i liczby Opinii. Jeżeli wyższa pozycja wynika z odpłatnego wyróżnienia, jest ono oznaczone w Serwisie etykietą „Promowane". Odznaka „Zweryfikowany partner" oznacza wyłącznie, że Operator sprawdził istnienie i dane identyfikacyjne przedsiębiorcy oraz że Partner posiada opublikowane Opinie; nie jest gwarancją jakości ani ubezpieczeniem.',
+      },
+      {
+        type: 'p',
+        text: 'Oględziny publikuje Partner na własną odpowiedzialność, za zgodą osoby, która zleciła badanie, i wyłącznie w odniesieniu do przedmiotu, który faktycznie zbadał. Oględziny podlegają moderacji przed publikacją, wyrażają stanowisko Partnera, a nie Operatora, i nie zastępują samodzielnej weryfikacji przez Użytkownika.',
+      },
+    ],
+  },
+  {
+    title: '8. Dane pochodzące z serwisów ogłoszeniowych',
     blocks: [
       {
         type: 'p',
@@ -143,7 +182,7 @@ const sections: LegalSection[] = [
     ],
   },
   {
-    title: '8. Opinia AI',
+    title: '9. Opinia AI',
     blocks: [
       {
         type: 'p',
@@ -156,7 +195,7 @@ const sections: LegalSection[] = [
     ],
   },
   {
-    title: '9. Zgłaszanie treści bezprawnych',
+    title: '10. Zgłaszanie treści bezprawnych',
     blocks: [
       {
         type: 'p',
@@ -183,7 +222,7 @@ const sections: LegalSection[] = [
     ],
   },
   {
-    title: '10. Odpowiedzialność',
+    title: '11. Odpowiedzialność',
     blocks: [
       {
         type: 'ul',
@@ -198,7 +237,7 @@ const sections: LegalSection[] = [
     ],
   },
   {
-    title: '11. Reklamacje',
+    title: '12. Reklamacje',
     blocks: [
       {
         type: 'p',
@@ -211,7 +250,7 @@ const sections: LegalSection[] = [
     ],
   },
   {
-    title: '12. Zmiany Regulaminu',
+    title: '13. Zmiany Regulaminu',
     blocks: [
       {
         type: 'p',
@@ -224,7 +263,7 @@ const sections: LegalSection[] = [
     ],
   },
   {
-    title: '13. Postanowienia końcowe',
+    title: '14. Postanowienia końcowe',
     blocks: [
       {
         type: 'p',

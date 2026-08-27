@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   alternates: { canonical: '/polityka-prywatnosci' },
 };
 
-const LAST_UPDATED = '22 sierpnia 2026';
+const LAST_UPDATED = '27 sierpnia 2026';
 
 const sections: LegalSection[] = [
   {
@@ -48,6 +48,8 @@ const sections: LegalSection[] = [
           'Treść opinii, ocena liczbowa oraz dodane zdjęcia — w celu publikacji w serwisie. Podstawa: art. 6 ust. 1 lit. b RODO. Opinie są publicznie dostępne, w tym w wynikach wyszukiwarek.',
           'Lista zapisanych ogłoszeń — w celu udostępnienia funkcji ulubionych. Podstawa: art. 6 ust. 1 lit. b RODO.',
           'Zgłoszenia opinii wraz z podaną przyczyną — w celu moderacji treści. Podstawa: art. 6 ust. 1 lit. c oraz lit. f RODO (obowiązek prawny i prawnie uzasadniony interes polegający na zapewnieniu zgodności treści z prawem).',
+          'Dane podane w formularzu zapytania do partnera (imię, numer telefonu lub adres e-mail, treść zapytania oraz wskazanie ogłoszenia, którego dotyczy) — w celu przekazania ich wskazanemu partnerowi, aby mógł się skontaktować i przedstawić ofertę. Podstawa: art. 6 ust. 1 lit. b RODO (podjęcie działań na żądanie osoby przed zawarciem umowy). Podanie tych danych jest dobrowolne, ale bez nich zapytania nie da się zrealizować.',
+          'Dane podane w formularzu zgłoszenia firmy do programu partnerskiego (dane firmy, dane osoby kontaktowej, adres e-mail, telefon) — w celu rozpatrzenia zgłoszenia i kontaktu w sprawie współpracy. Podstawa: art. 6 ust. 1 lit. b oraz lit. f RODO.',
           'Dane techniczne przetwarzane przez dostawcę infrastruktury, w tym adres IP i informacje o przeglądarce zapisywane w logach serwera — w celu zapewnienia bezpieczeństwa i przeciwdziałania nadużyciom. Podstawa: art. 6 ust. 1 lit. f RODO.',
         ],
       },
@@ -111,6 +113,10 @@ const sections: LegalSection[] = [
         : []),
       {
         type: 'p',
+        text: 'Odrębną kategorią odbiorców są partnerzy serwisu, czyli firmy sprawdzające pojazdy i nieruchomości. Dane podane w formularzu zapytania przekazujemy wskazanemu przez użytkownika partnerowi, który staje się wobec nich samodzielnym administratorem i przetwarza je na własnych zasadach w celu kontaktu i wykonania usługi. Przekazujemy wyłącznie dane z tego formularza — nigdy historii przeglądania, listy zapisanych ogłoszeń ani treści opinii. Partner nie ma dostępu do żadnych danych użytkownika, dopóki użytkownik sam nie wyśle do niego zapytania.',
+      },
+      {
+        type: 'p',
         text: 'Poza Europejski Obszar Gospodarczy trafiają natomiast dane przekazywane tym z wymienionych wyżej dostawców, którzy mają siedzibę w Stanach Zjednoczonych — dotyczy to treści ogłoszenia wysyłanej do wygenerowania opinii AI oraz danych technicznych obsługiwanych przez dostawcę hostingu. Przekazanie odbywa się na podstawie decyzji Komisji Europejskiej o odpowiednim stopniu ochrony albo standardowych klauzul umownych.',
       },
     ],
@@ -124,6 +130,8 @@ const sections: LegalSection[] = [
           'Dane konta — przez czas jego istnienia, a po usunięciu konta przez okres niezbędny do ustalenia lub dochodzenia roszczeń, nie dłużej niż 3 lata.',
           'Opinie i zdjęcia — do czasu ich usunięcia przez autora lub przez nas, przy czym po usunięciu konta mogą pozostać w serwisie bez powiązania z kontem, o ile autor nie zażąda ich usunięcia.',
           'Zgłoszenia treści i korespondencja reklamacyjna — 3 lata od zakończenia sprawy.',
+          'Zapytania wysłane do partnerów — 12 miesięcy od wysłania, w celu rozliczenia współpracy z partnerem i obsługi ewentualnych reklamacji.',
+          'Zgłoszenia firm do programu partnerskiego — 12 miesięcy od rozpatrzenia, a w przypadku nawiązania współpracy przez czas jej trwania i 3 lata po zakończeniu.',
           'Logi techniczne — zgodnie z polityką dostawcy infrastruktury, standardowo nie dłużej niż 12 miesięcy.',
         ],
       },
