@@ -5,21 +5,14 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Mail, ShieldCheck } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { logPartnerClick } from '@/lib/partner-clicks';
 import { distanceKm, formatDistance } from '@/lib/geo';
-
-type Partner = {
-  id: string;
-  name: string;
-  city: string | null;
-  logo_url: string | null;
-  contact_url: string;
-  description: string;
-  lat: number | null;
-  lng: number | null;
-};
+import { PartnerStars } from '@/components/partner/partner-stars';
+import { VerifiedBadge } from '@/components/partner/partner-badges';
+import { PartnerLeadDialog } from '@/components/partner/partner-lead-dialog';
+import { comparePartners, PARTNER_COLUMNS, type Partner } from '@/lib/partner-data';
 
 type PartnerWithDistance = Partner & { distance: number | null };
 
@@ -46,11 +39,11 @@ export function PartnerCta({ source, listingId, listingLocation }: PartnerCtaPro
       const category = source === 'otomoto' ? 'car' : 'home';
       const { data } = await supabase
         .from('partners')
-        .select('id, name, city, logo_url, contact_url, description, lat, lng')
+        .select(PARTNER_COLUMNS)
         .eq('category', category)
         .eq('is_active', true);
 
-      const all = (data || []) as Partner[];
+      const all = ((data as unknown as Partner[]) || []).sort(comparePartners);
 
       // Bez współrzędnych ogłoszenia nie mamy jak ocenić odległości, więc
       // pokazujemy wszystkich zamiast zgadywać.
@@ -98,13 +91,16 @@ export function PartnerCta({ source, listingId, listingLocation }: PartnerCtaPro
             Szukamy firm, które sprawdzają auta przed zakupem w okolicy tego ogłoszenia.
             Znasz kogoś dobrego albo sam prowadzisz taką firmę? Daj znać.
           </p>
-          <a
-            href="mailto:kontakt@obczajone.pl?subject=Polecam%20firm%C4%99%20sprawdzaj%C4%85c%C4%85%20auta"
-            className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
-          >
-            <Mail className="h-4 w-4" />
-            Poleć firmę
-          </a>
+          <div className="flex flex-wrap gap-3">
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/dla-firm">Zasady współpracy</Link>
+            </Button>
+            <Button variant="ghost" size="sm" asChild>
+              <a href="mailto:kontakt@obczajone.pl?subject=Polecam%20firm%C4%99%20sprawdzaj%C4%85c%C4%85%20auta">
+                Poleć firmę
+              </a>
+            </Button>
+          </div>
         </CardContent>
       </Card>
     );
@@ -124,28 +120,55 @@ export function PartnerCta({ source, listingId, listingLocation }: PartnerCtaPro
 
         <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
           {partners.map((partner) => (
-            <a
+            <div
               key={partner.id}
-              href={partner.contact_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => logPartnerClick(partner.id, 'listing_cta', listingId)}
-              className="flex-shrink-0 w-56 rounded-lg border bg-white p-3 hover:shadow-md hover:border-primary/30 transition-all"
+              className="flex-shrink-0 w-60 rounded-lg border bg-white p-3 flex flex-col"
             >
-              <div className="flex items-center gap-2 mb-1.5">
-                {partner.logo_url && (
-                  <div className="relative w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
-                    <Image src={partner.logo_url} alt={partner.name} fill className="object-cover" />
-                  </div>
+              <Link
+                href={`/partner/${partner.slug}`}
+                onClick={() => logPartnerClick(partner.id, 'listing_cta', listingId)}
+                className="flex-1"
+              >
+                <div className="flex items-center gap-2 mb-1.5">
+                  {partner.logo_url && (
+                    <div className="relative w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
+                      <Image
+                        src={partner.logo_url}
+                        alt={partner.name}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                  )}
+                  <p className="font-medium text-sm truncate">{partner.name}</p>
+                </div>
+
+                {partner.rating_count > 0 ? (
+                  <PartnerStars rating={partner.rating_avg} count={partner.rating_count} size="sm" />
+                ) : (
+                  partner.is_verified && <VerifiedBadge />
                 )}
-                <p className="font-medium text-sm truncate">{partner.name}</p>
-              </div>
-              <p className="text-xs text-gray-500 line-clamp-2">{partner.description}</p>
-              <p className="text-xs text-gray-400 mt-1">
-                {partner.city}
-                {partner.distance != null && ` · ${formatDistance(partner.distance)}`}
-              </p>
-            </a>
+
+                <p className="text-xs text-gray-500 line-clamp-2 mt-1.5">{partner.description}</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  {partner.city}
+                  {partner.distance != null && ` · ${formatDistance(partner.distance)}`}
+                  {partner.price_from != null &&
+                    ` · od ${Number(partner.price_from).toLocaleString('pl-PL')} zł`}
+                </p>
+              </Link>
+
+              <PartnerLeadDialog
+                partnerId={partner.id}
+                partnerName={partner.name}
+                listingId={listingId}
+                context="listing_cta"
+              >
+                <Button size="sm" className="w-full mt-3">
+                  Zamów sprawdzenie
+                </Button>
+              </PartnerLeadDialog>
+            </div>
           ))}
         </div>
 

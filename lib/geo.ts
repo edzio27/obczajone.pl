@@ -24,3 +24,27 @@ export function formatDistance(km: number): string {
   if (km < 10) return 'w tej samej okolicy';
   return `ok. ${Math.round(km / 10) * 10} km od ogłoszenia`;
 }
+
+/**
+ * Lista województw używana przez filtry katalogu partnerów i formularz
+ * zgłoszeniowy. Trzymana w jednym miejscu, bo rozjazd w pisowni (np. "łódzkie"
+ * vs "Łódzkie") po cichu wypada z filtrowania po równości.
+ */
+export const VOIVODESHIPS = [
+  'dolnośląskie',
+  'kujawsko-pomorskie',
+  'lubelskie',
+  'lubuskie',
+  'łódzkie',
+  'małopolskie',
+  'mazowieckie',
+  'opolskie',
+  'podkarpackie',
+  'podlaskie',
+  'pomorskie',
+  'śląskie',
+  'świętokrzyskie',
+  'warmińsko-mazurskie',
+  'wielkopolskie',
+  'zachodniopomorskie',
+] as const;

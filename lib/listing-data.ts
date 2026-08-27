@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { fetchPriceComparison, type CarSpecs, type PriceComparison } from './price-comparison';
+import { fetchListingInspections, type PartnerInspection } from './partner-data';
 
 export type Listing = {
   id: string;
@@ -79,6 +80,8 @@ export type ListingPageData = {
   sellerStats: SellerStats | null;
   recommendedListings: Listing[];
   priceComparison: PriceComparison | null;
+  /** Opublikowane oględziny partnerów przy tym ogłoszeniu. */
+  inspections: PartnerInspection[];
 };
 
 const TWO_WORD_BRANDS = ['Alfa Romeo', 'Land Rover', 'Aston Martin', 'Rolls Royce', 'Great Wall'];
@@ -253,12 +256,14 @@ export async function fetchListingPageData(
       ? approvedReviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount
       : null;
 
-  const [reviews, recommendedListings, sellerStats, priceComparison] = await Promise.all([
-    attachReviewDetails(supabase, approvedReviews),
-    fetchRecommendedListings(supabase, listing as Listing),
-    listing.seller ? fetchSellerStats(supabase, listing.seller.id) : Promise.resolve(null),
-    fetchPriceComparison(supabase, listing as Listing),
-  ]);
+  const [reviews, recommendedListings, sellerStats, priceComparison, inspections] =
+    await Promise.all([
+      attachReviewDetails(supabase, approvedReviews),
+      fetchRecommendedListings(supabase, listing as Listing),
+      listing.seller ? fetchSellerStats(supabase, listing.seller.id) : Promise.resolve(null),
+      fetchPriceComparison(supabase, listing as Listing),
+      fetchListingInspections(supabase, listingId),
+    ]);
 
   return {
     listing: listing as Listing,
@@ -270,5 +275,6 @@ export async function fetchListingPageData(
     sellerStats,
     recommendedListings,
     priceComparison,
+    inspections,
   };
 }

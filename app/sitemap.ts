@@ -27,6 +27,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'weekly',
       priority: 0.6,
     },
+    {
+      url: `${baseUrl}/dla-firm`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.5,
+    },
   ];
 
   try {
@@ -50,7 +56,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
     }));
 
-    return [...staticPages, ...listingPages];
+    // Profile partnerów to strony, które sprzedajemy firmom jako realną wartość -
+    // muszą być w sitemapie, inaczej obietnica "własnej podstrony w Google" jest
+    // pusta.
+    const { data: partners } = await supabase
+      .from('partners')
+      .select('slug')
+      .eq('is_active', true);
+
+    const partnerPages: MetadataRoute.Sitemap = (partners || []).map((partner) => ({
+      url: `${baseUrl}/partner/${partner.slug}`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly' as const,
+      priority: 0.6,
+    }));
+
+    return [...staticPages, ...listingPages, ...partnerPages];
   } catch (error) {
     console.error('Error generating sitemap:', error);
     return staticPages;

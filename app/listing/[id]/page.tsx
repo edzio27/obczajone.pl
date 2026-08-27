@@ -3,6 +3,7 @@ import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import { fetchListingPageData, type ListingPageData } from '@/lib/listing-data';
+import { safeJsonLdString } from '@/lib/json-ld';
 import { ListingClient } from './listing-client';
 
 type Props = {
@@ -76,17 +77,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       canonical: pageUrl,
     },
   };
-}
-
-// JSON.stringify does not escape "<", so a value like listing.title or
-// review.comment (both attacker-controllable - listing.title has no RLS
-// column-level restriction on insert, and review.comment is free user text)
-// containing "</script><script>...</script>" would break out of this
-// <script type="application/ld+json"> tag and execute as real markup/script
-// when injected via dangerouslySetInnerHTML. Escaping "<" as the unicode
-// escape neutralizes that while remaining valid, semantically identical JSON.
-function safeJsonLdString(value: unknown): string {
-  return JSON.stringify(value).replace(/</g, '\\u003c');
 }
 
 export default async function ListingPage({ params }: Props) {

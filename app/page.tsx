@@ -13,6 +13,7 @@ import { Faq, faqs } from '@/components/home/faq';
 import { ShieldCheck, Search } from 'lucide-react';
 import type { Metadata } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { fetchPartners } from '@/lib/partner-data';
 import {
   fetchBiggestPriceDrops,
   fetchDealerMapCounts,
@@ -57,6 +58,7 @@ async function getHomeData() {
       priceDrops,
       recentlyChecked,
       dealerMapCounts,
+      partners,
     ] = await Promise.all([
       supabase.from('listings').select('id', { count: 'exact', head: true }),
       fetchRecentListings(supabase, { pageSize: RECENT_LISTINGS_PAGE_SIZE }),
@@ -64,6 +66,7 @@ async function getHomeData() {
       fetchBiggestPriceDrops(supabase),
       fetchRecentlyChecked(supabase),
       fetchDealerMapCounts(supabase),
+      fetchPartners(supabase),
     ]);
 
     return {
@@ -73,6 +76,7 @@ async function getHomeData() {
       priceDrops,
       recentlyChecked,
       dealerMapCounts,
+      partners,
     };
   } catch (error) {
     console.error('Nie udalo sie pobrac danych strony glownej:', error);
@@ -83,6 +87,7 @@ async function getHomeData() {
       priceDrops: [],
       recentlyChecked: [],
       dealerMapCounts: { sellerCount: null, reviewCount: null },
+      partners: [],
     };
   }
 }
@@ -95,6 +100,7 @@ export default async function Home() {
     priceDrops,
     recentlyChecked,
     dealerMapCounts,
+    partners,
   } = await getHomeData();
   const faqJsonLd = {
     '@context': 'https://schema.org',
@@ -154,7 +160,7 @@ export default async function Home() {
           </div>
 
           <div className="mt-12">
-            <PartnersSection />
+            <PartnersSection partners={partners} />
           </div>
 
           <HowItWorks />

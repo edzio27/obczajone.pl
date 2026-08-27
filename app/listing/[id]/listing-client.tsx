@@ -28,6 +28,7 @@ import { computeListingScore } from '@/lib/listing-score';
 import { ListingScoreCard } from '@/components/listing-score-card';
 import { PriceComparisonCard } from '@/components/price-comparison-card';
 import { PartnerCta } from '@/components/partner-cta';
+import { ListingInspections } from '@/components/partner/listing-inspections';
 
 export function ListingClient({
   listingId,
@@ -545,6 +546,8 @@ export function ListingClient({
           )}
 
           <ListingScoreCard score={listingScore} />
+
+          <ListingInspections inspections={initialData?.inspections ?? []} />
 
           <PartnerCta
             source={listing.source as 'otomoto' | 'otodom'}
