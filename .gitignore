@@ -10,3 +10,4 @@ foty/
 *.tsbuildinfo
 .superpowers/
 .migration-tmp/
+supabase/.temp/
