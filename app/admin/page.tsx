@@ -13,6 +13,9 @@ import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { Check, X, Trash2, TriangleAlert as AlertTriangle } from 'lucide-react';
+import { PartnersAdmin } from '@/components/admin/partners-admin';
+import { PartnerApplicationsAdmin } from '@/components/admin/partner-applications-admin';
+import { PartnerContentAdmin } from '@/components/admin/partner-content-admin';
 
 type Review = {
   id: string;
@@ -42,6 +45,11 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [pendingReviews, setPendingReviews] = useState<Review[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
+  // Liczniki na zakładkach ustawiają same komponenty partnerskie - dzięki temu
+  // panel nie musi znać ich zapytań, a setter z useState jest stabilny, więc
+  // nie rozkręca pętli przeładowań w useEffect dziecka.
+  const [pendingPartnerContent, setPendingPartnerContent] = useState(0);
+  const [newApplications, setNewApplications] = useState(0);
 
   useEffect(() => {
     async function checkAdmin() {
@@ -90,6 +98,28 @@ export default function AdminPage() {
     if (reportsData) {
       setReports(reportsData);
     }
+
+    // Zakładki Radiksa montują zawartość dopiero po kliknięciu, więc gdyby licznik
+    // liczyły same komponenty partnerskie, pokazywałby zero do momentu wejścia w
+    // zakładkę - czyli dokładnie wtedy, kiedy jest niepotrzebny. Liczymy je tutaj,
+    // a komponenty aktualizują wartość po każdej własnej operacji.
+    const [pendingPartnerReviews, pendingInspections, freshApplications] = await Promise.all([
+      supabase
+        .from('partner_reviews')
+        .select('id', { count: 'exact', head: true })
+        .eq('is_approved', false),
+      supabase
+        .from('partner_inspections')
+        .select('id', { count: 'exact', head: true })
+        .eq('is_approved', false),
+      supabase
+        .from('partner_applications')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'new'),
+    ]);
+
+    setPendingPartnerContent((pendingPartnerReviews.count ?? 0) + (pendingInspections.count ?? 0));
+    setNewApplications(freshApplications.count ?? 0);
   }
 
   async function approveReview(reviewId: string) {
@@ -178,7 +208,9 @@ export default function AdminPage() {
         <div className="max-w-6xl mx-auto">
           <div className="mb-6">
             <h1 className="text-3xl font-bold text-gray-900">Panel Administratora</h1>
-            <p className="text-gray-600 mt-2">Zarządzaj recenzjami i zgłoszeniami</p>
+            <p className="text-gray-600 mt-2">
+              Zarządzaj recenzjami, partnerami i zgłoszeniami firm
+            </p>
           </div>
 
           <Tabs defaultValue="pending" className="space-y-6">
@@ -188,6 +220,13 @@ export default function AdminPage() {
               </TabsTrigger>
               <TabsTrigger value="reports">
                 Zgłoszenia ({reports.length})
+              </TabsTrigger>
+              <TabsTrigger value="partner-content">
+                Treści partnerów{pendingPartnerContent > 0 ? ` (${pendingPartnerContent})` : ''}
+              </TabsTrigger>
+              <TabsTrigger value="partners">Partnerzy</TabsTrigger>
+              <TabsTrigger value="applications">
+                Firmy{newApplications > 0 ? ` (${newApplications})` : ''}
               </TabsTrigger>
             </TabsList>
 
@@ -303,6 +342,17 @@ export default function AdminPage() {
                   ))}
                 </div>
               )}
+            </TabsContent>
+            <TabsContent value="partner-content">
+              <PartnerContentAdmin onCountChange={setPendingPartnerContent} />
+            </TabsContent>
+
+            <TabsContent value="partners">
+              <PartnersAdmin />
+            </TabsContent>
+
+            <TabsContent value="applications">
+              <PartnerApplicationsAdmin onCountChange={setNewApplications} />
             </TabsContent>
           </Tabs>
         </div>

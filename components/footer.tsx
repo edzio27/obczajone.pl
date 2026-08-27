@@ -8,7 +8,7 @@ export function Footer() {
     <footer className="border-t bg-white mt-14">
       <div className="container mx-auto px-4 py-12">
         <div className="max-w-4xl mx-auto">
-          <div className="grid md:grid-cols-3 gap-8 mb-8">
+          <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <LogoMark className="h-8 w-8" />
@@ -35,6 +35,27 @@ export function Footer() {
                 <li>
                   <Link href="/#faq" className="hover:text-primary transition-colors">
                     Najczęstsze pytania
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="font-semibold text-foreground mb-4">Dla firm</h4>
+              <ul className="space-y-2 text-sm text-gray-600">
+                <li>
+                  <Link href="/dla-firm" className="hover:text-primary transition-colors">
+                    Zostań partnerem
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/partnerzy" className="hover:text-primary transition-colors">
+                    Katalog partnerów
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/panel-partnera" className="hover:text-primary transition-colors">
+                    Panel partnera
                   </Link>
                 </li>
               </ul>
