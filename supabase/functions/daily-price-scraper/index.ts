@@ -39,6 +39,18 @@ function isAllowedUrl(rawUrl: string, source: 'otomoto' | 'otodom'): boolean {
 
 type ScrapeResult = { price: number | null; specs: Record<string, unknown> | null };
 
+/**
+ * Ile ogłoszeń przerabiamy w jednym przebiegu.
+ *
+ * Funkcja brzegowa jest ubijana po kilkudziesięciu sekundach, a między
+ * zapytaniami czekamy 2 sekundy, żeby nie zasypywać serwisu ogłoszeniowego.
+ * 50 pozycji mieści się w budżecie czasu z zapasem. Wcześniej limitu nie było
+ * wcale: funkcja brała całą bazę posortowaną od najnowszych, ginęła po
+ * kilkudziesięciu pozycjach i następnej nocy zaczynała od tych samych - przez
+ * co 89% ogłoszeń nie było sprawdzonych od ponad tygodnia.
+ */
+const BATCH_SIZE = 50;
+
 // Te same klucze co extractOtomotoSpecs w funkcji scrape-listing.
 function extractOtomotoParam(ad: any, keys: string[]): string | null {
   const params = ad?.parameters ?? ad?.details ?? [];
@@ -170,7 +182,10 @@ Deno.serve(async (req: Request) => {
     const { data: listings, error: listingsError } = await supabase
       .from('listings')
       .select('id, url, source, current_price, specs')
-      .order('created_at', { ascending: false });
+      // Najdawniej sprawdzane najpierw - dzięki temu kolejne przebiegi
+      // przesuwają się po całej bazie zamiast krążyć wokół najnowszych.
+      .order('last_checked_at', { ascending: true, nullsFirst: true })
+      .limit(BATCH_SIZE);
 
     if (listingsError) {
       throw new Error(`Failed to fetch listings: ${listingsError.message}`);
