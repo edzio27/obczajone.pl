@@ -499,7 +499,131 @@ type AiOpinionInput = {
   location: string;
   description: string;
   specs: Record<string, unknown>;
+  market: MarketContext | null;
 };
+
+type MarketContext = {
+  medianPrice: number;
+  sampleSize: number;
+  percentVsMedian: number;
+  criteria: string;
+};
+
+// Progi lustrzane wobec lib/price-comparison.ts po stronie aplikacji. Logika jest
+// tu powtorzona, bo edge functions dzialaja na Deno i nie wspoldziela modulow z
+// aplikacja Next - przy zmianie progow trzeba poprawic oba miejsca.
+const MARKET_MIN_SAMPLE = 5;
+const MARKET_MAX_QUARTILE_SPREAD = 2;
+
+function parseSpecNumber(value: unknown): number | null {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value !== 'string') return null;
+  const digits = value.replace(/[^\d]/g, '');
+  if (!digits) return null;
+  const parsed = Number(digits);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function quantileOf(sorted: number[], q: number): number {
+  const pos = (sorted.length - 1) * q;
+  const base = Math.floor(pos);
+  const next = sorted[base + 1];
+  return next !== undefined ? sorted[base] + (pos - base) * (next - sorted[base]) : sorted[base];
+}
+
+/**
+ * Mediana cen porownywalnych ofert, wstrzykiwana do promptu. Bez niej model
+ * ocenia cene wylacznie "na oko" i kazde ogloszenie dostaje podobna note.
+ *
+ * Cala funkcja jest osłonieta try/catch: opinia AI jest opcjonalna i jej brak
+ * nigdy nie moze wywrocic scrapowania.
+ */
+async function fetchMarketContext(
+  supabase: any,
+  listingId: string,
+  source: string,
+  specs: Record<string, unknown>,
+  price: number
+): Promise<MarketContext | null> {
+  if (source !== 'otomoto' || !(price > 0)) return null;
+
+  const brand = typeof specs.brand === 'string' ? specs.brand.trim() : '';
+  const model = typeof specs.model === 'string' ? specs.model.trim() : '';
+  if (!brand || !model) return null;
+
+  try {
+    const { data, error } = await supabase
+      .from('listings')
+      .select('current_price, specs')
+      .eq('source', 'otomoto')
+      .neq('id', listingId)
+      .gt('current_price', 0)
+      .filter('specs->>brand', 'eq', brand)
+      .filter('specs->>model', 'eq', model)
+      .limit(500);
+
+    if (error || !data || data.length === 0) return null;
+
+    const subjectYear = parseSpecNumber(specs.year);
+    const subjectMileage = parseSpecNumber(specs.mileage);
+    const subjectFuel = typeof specs.fuel_type === 'string' ? specs.fuel_type.toLowerCase() : null;
+
+    const candidates = data.map((row: any) => ({
+      price: Number(row.current_price),
+      year: parseSpecNumber(row.specs?.year),
+      mileage: parseSpecNumber(row.specs?.mileage),
+      fuel: typeof row.specs?.fuel_type === 'string' ? row.specs.fuel_type.toLowerCase() : null,
+    }));
+
+    const levels = [
+      {
+        label: `rocznik ±2 lata, ten sam rodzaj paliwa, przebieg ±40%`,
+        ok: (c: any) =>
+          subjectYear != null && c.year != null && Math.abs(c.year - subjectYear) <= 2 &&
+          subjectFuel && c.fuel === subjectFuel &&
+          subjectMileage != null && c.mileage != null && subjectMileage > 0 &&
+          Math.abs(c.mileage - subjectMileage) / subjectMileage <= 0.4,
+      },
+      {
+        label: `rocznik ±2 lata, ten sam rodzaj paliwa`,
+        ok: (c: any) =>
+          subjectYear != null && c.year != null && Math.abs(c.year - subjectYear) <= 2 &&
+          subjectFuel && c.fuel === subjectFuel,
+      },
+      {
+        label: `rocznik ±3 lata`,
+        ok: (c: any) =>
+          subjectYear != null && c.year != null && Math.abs(c.year - subjectYear) <= 3,
+      },
+    ];
+
+    for (const level of levels) {
+      const matched = candidates.filter(level.ok);
+      if (matched.length < MARKET_MIN_SAMPLE) continue;
+
+      const prices = matched.map((c: any) => c.price).sort((a: number, b: number) => a - b);
+      const mid = Math.floor(prices.length / 2);
+      const medianPrice =
+        prices.length % 2 === 0 ? (prices[mid - 1] + prices[mid]) / 2 : prices[mid];
+
+      const p25 = quantileOf(prices, 0.25);
+      const p75 = quantileOf(prices, 0.75);
+      if (p25 > 0 && p75 / p25 > MARKET_MAX_QUARTILE_SPREAD) break;
+
+      return {
+        medianPrice,
+        sampleSize: matched.length,
+        percentVsMedian: ((price - medianPrice) / medianPrice) * 100,
+        criteria: `${brand} ${model}, ${level.label}`,
+      };
+    }
+
+    return null;
+  } catch (e) {
+    console.error('fetchMarketContext failed; continuing without market data:', e);
+    return null;
+  }
+}
 
 function buildAiOpinionPrompt(source: 'otomoto' | 'otodom', data: AiOpinionInput): string {
   const specsLines = Object.entries(data.specs)
@@ -509,6 +633,20 @@ function buildAiOpinionPrompt(source: 'otomoto' | 'otodom', data: AiOpinionInput
 
   const kindLabel = source === 'otomoto' ? 'ogłoszenia samochodowego' : 'ogłoszenia nieruchomości';
   const sourceLabel = source === 'otomoto' ? 'Otomoto' : 'Otodom';
+
+  const m = data.market;
+  const marketBlock = m
+    ? `
+Porównanie z rynkiem (policzone z naszej bazy, NIE zgadywane):
+- mediana ceny podobnych ofert: ${Math.round(m.medianPrice)} PLN
+- ta oferta jest o ${Math.abs(m.percentVsMedian).toFixed(0)}% ${m.percentVsMedian < 0 ? 'tańsza' : 'droższa'} od mediany
+- podstawa: ${m.sampleSize} ofert, kryteria: ${m.criteria}
+`
+    : '';
+
+  const priceGuidance = m
+    ? `Dane o cenie powyżej są policzone z realnych ofert, więc możesz o nich pisać wprost jako o faktach — podaj różnicę w procentach i odnieś się do niej w price_note. Jeżeli oferta jest wyraźnie tańsza od mediany (ponad 15%), napisz to jasno i zasugeruj sprawdzenie stanu technicznego oraz historii pojazdu przed zakupem; nie przypisuj przy tym sprzedającemu złych intencji.`
+    : `Nie masz danych o cenach innych ofert tego modelu, więc o cenie pisz ostrożnie i nie sugeruj, że jest zawyżona ani zaniżona.`;
 
   return `Poniżej dane ${kindLabel} ze strony ${sourceLabel}:
 
@@ -520,13 +658,15 @@ ${specsLines || '(brak dodatkowych parametrów)'}
 
 Opis:
 ${data.description || '(brak opisu)'}
+${marketBlock}
+Napisz krótką, pierwszą opinię o tym ogłoszeniu po polsku, na podstawie powyższych danych (nie masz dostępu do zdjęć).
 
-Napisz krótką, pierwszą opinię o tym ogłoszeniu po polsku, na podstawie wyłącznie powyższego opisu i parametrów (nie masz dostępu do zdjęć ani do innych ofert w bazie, więc oceniaj cenę w sposób przybliżony).
+${priceGuidance}
 
 WAŻNE: nigdy nie formułuj stanowczych zarzutów wobec sprzedającego ani ogłoszenia. Punkty "na co zwrócić uwagę" pisz wyłącznie jako ostrożne pytania lub sugestie do zweryfikowania osobiście (np. "może warto dopytać o historię serwisową"), nigdy jako twierdzenia (np. nie pisz "przebieg wygląda podejrzanie").
 
 Zwróć:
-- rating: ocena 1.0-5.0 z dokładnością do jednego miejsca po przecinku (np. 3.6, 4.2) — unikaj okrągłych wartości typu 3.0 czy 4.0, chyba że ogłoszenie naprawdę na to zasługuje; oceniaj z niuansem, żeby oceny różnych ogłoszeń faktycznie się od siebie różniły
+- rating: ocena 1.0-5.0 z dokładnością do jednego miejsca po przecinku (np. 3.6, 4.2) — unikaj okrągłych wartości typu 3.0 czy 4.0; jeżeli masz dane rynkowe, niech ocena je odzwierciedla: cena zbliżona do mediany to ocena wysoka, cena wyraźnie odstająca w dół to ocena wyraźnie niższa, bo zwykle coś za nią stoi. Oceny różnych ogłoszeń mają się od siebie realnie różnić — ocena, którą dostaje każde ogłoszenie, jest bezwartościowa
 - summary: 2-3 zdania podsumowania
 - price_note: jedno zdanie o cenie
 - watch_out_for: lista 1-4 ostrożnych sugestii/pytań`;
@@ -685,12 +825,21 @@ Deno.serve(async (req: Request) => {
       specs: scrapedData.specs,
     }).eq('id', listingId);
 
+    const market = await fetchMarketContext(
+      supabase,
+      listingId,
+      listing.source,
+      scrapedData.specs as Record<string, unknown>,
+      scrapedData.price
+    );
+
     const aiOpinion = await generateAiOpinion(listing.source, {
       title: scrapedData.title,
       price: scrapedData.price,
       location: scrapedData.location,
       description: scrapedData.description,
       specs: scrapedData.specs,
+      market,
     });
 
     if (aiOpinion) {
