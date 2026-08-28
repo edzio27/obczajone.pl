@@ -78,3 +78,10 @@
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 }
+
+/* Leaflet: własny kontekst stackingu, żeby panele mapy (z-index 400-700)
+   nie zasłaniały portali Radixa (Select, Dialog, Popover — z-50) */
+.leaflet-container {
+  position: relative;
+  z-index: 0;
+}
