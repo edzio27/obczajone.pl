@@ -24,7 +24,10 @@ export const metadata: Metadata = {
 // Katalog zmienia się rzadko, a jest jedynym miejscem, z którego prowadzą linki
 // do profili partnerów - musi wyjść z serwera, żeby te linki w ogóle trafiły do
 // HTML-a, który widzi wyszukiwarka.
-export const revalidate = 600;
+// 60, nie 600: treści partnerów przechodzą moderację, a moderator po
+// zatwierdzeniu od razu sprawdza efekt. Przy dziesięciu minutach za każdym
+// razem wygląda to tak, jakby zatwierdzenie nie zadziałało.
+export const revalidate = 60;
 
 export default async function PartnersMapPage() {
   const supabase = createClient(

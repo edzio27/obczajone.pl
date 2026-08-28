@@ -18,7 +18,10 @@ type Props = {
   params: { slug: string };
 };
 
-export const revalidate = 600;
+// 60, nie 600: treści partnerów przechodzą moderację, a moderator po
+// zatwierdzeniu od razu sprawdza efekt. Przy dziesięciu minutach za każdym
+// razem wygląda to tak, jakby zatwierdzenie nie zadziałało.
+export const revalidate = 60;
 
 type PartnerPageData = {
   partner: Partner;
