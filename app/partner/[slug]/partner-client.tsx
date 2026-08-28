@@ -16,6 +16,7 @@ import { PromotedBadge, VerifiedBadge } from '@/components/partner/partner-badge
 import { PartnerLeadDialog } from '@/components/partner/partner-lead-dialog';
 import { PartnerReviewForm } from '@/components/partner/partner-review-form';
 import { PartnerReviewList } from '@/components/partner/partner-review-list';
+import { ListingThumbnail } from '@/components/listing-thumbnail';
 import {
   fetchPartnerReviews,
   VERDICT_LABELS,
@@ -216,30 +217,47 @@ export function PartnerClient({ partner, initialReviews, inspections }: PartnerC
                 {inspections.map((inspection) => (
                   <Card key={inspection.id}>
                     <CardContent className="pt-6">
-                      <div className="flex items-start justify-between gap-3 flex-wrap mb-2">
+                      <div className="flex flex-col sm:flex-row gap-4">
+                        {/* Werdykt bez zdjęcia zmusza do kliknięcia w ogłoszenie, żeby
+                            w ogóle wiedzieć, o czym mowa. Miniatura z linkiem robi z tej
+                            listy coś, co da się przejrzeć wzrokiem. */}
                         <Link
                           href={`/listing/${inspection.listing_id}`}
-                          className="font-medium hover:text-primary transition-colors"
+                          className="group w-full h-32 sm:w-28 sm:h-28 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center"
                         >
-                          {inspection.listing?.title || 'Ogłoszenie'}
+                          <ListingThumbnail
+                            src={inspection.listing?.image_url ?? null}
+                            alt={inspection.listing?.title || 'Zdjęcie ogłoszenia'}
+                          />
                         </Link>
-                        <Badge variant="outline" className={VERDICT_STYLES[inspection.verdict]}>
-                          {VERDICT_LABELS[inspection.verdict]}
-                        </Badge>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-3 flex-wrap mb-2">
+                            <Link
+                              href={`/listing/${inspection.listing_id}`}
+                              className="font-medium hover:text-primary transition-colors"
+                            >
+                              {inspection.listing?.title || 'Ogłoszenie'}
+                            </Link>
+                            <Badge variant="outline" className={VERDICT_STYLES[inspection.verdict]}>
+                              {VERDICT_LABELS[inspection.verdict]}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
+                            {inspection.summary}
+                          </p>
+                          {inspection.findings.length > 0 && (
+                            <ul className="mt-3 space-y-1">
+                              {inspection.findings.map((finding, index) => (
+                                <li key={index} className="text-sm text-gray-600 flex gap-2">
+                                  <span className="text-muted-foreground">•</span>
+                                  {finding}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
                       </div>
-                      <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
-                        {inspection.summary}
-                      </p>
-                      {inspection.findings.length > 0 && (
-                        <ul className="mt-3 space-y-1">
-                          {inspection.findings.map((finding, index) => (
-                            <li key={index} className="text-sm text-gray-600 flex gap-2">
-                              <span className="text-muted-foreground">•</span>
-                              {finding}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
                     </CardContent>
                   </Card>
                 ))}

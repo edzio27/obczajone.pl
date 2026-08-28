@@ -15,13 +15,25 @@ import {
 } from '@/components/ui/select';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { MapPin, ShieldCheck } from 'lucide-react';
+import { ClipboardCheck, MapPin, ShieldCheck } from 'lucide-react';
 import { VOIVODESHIPS } from '@/lib/geo';
 import { PartnerStars } from '@/components/partner/partner-stars';
 import { PromotedBadge, VerifiedBadge } from '@/components/partner/partner-badges';
-import type { Partner } from '@/lib/partner-data';
+import { ListingThumbnail } from '@/components/listing-thumbnail';
+import {
+  inspectionCountLabel,
+  VERDICT_LABELS,
+  type Partner,
+  type PartnerInspection,
+} from '@/lib/partner-data';
 
 const POLAND_CENTER: [number, number] = [52.0, 19.0];
+
+const VERDICT_STYLES: Record<string, string> = {
+  recommended: 'text-success',
+  reservations: 'text-yellow-700',
+  not_recommended: 'text-destructive',
+};
 
 const CATEGORY_OPTIONS = [
   { value: 'all', label: 'Wszystkie kategorie' },
@@ -29,7 +41,12 @@ const CATEGORY_OPTIONS = [
   { value: 'home', label: 'Sprawdzanie nieruchomości' },
 ];
 
-export function PartnersMapClient({ initialPartners }: { initialPartners: Partner[] }) {
+type PartnersMapClientProps = {
+  initialPartners: Partner[];
+  latestInspections: Record<string, PartnerInspection>;
+};
+
+export function PartnersMapClient({ initialPartners, latestInspections }: PartnersMapClientProps) {
   const [category, setCategory] = useState('all');
   const [voivodeship, setVoivodeship] = useState('all');
 
@@ -45,9 +62,12 @@ export function PartnersMapClient({ initialPartners }: { initialPartners: Partne
     id: p.id,
     lat: p.lat as number,
     lng: p.lng as number,
-    popupHtml: `<strong>${escapeHtml(p.name)}</strong><br/>${escapeHtml(p.city || '')}<br/><a href="/partner/${escapeHtml(
-      p.slug
-    )}">Zobacz profil i opinie</a>`,
+    popupHtml:
+      `<strong>${escapeHtml(p.name)}</strong><br/>${escapeHtml(p.city || '')}<br/>` +
+      (p.inspection_count > 0
+        ? `${escapeHtml(inspectionCountLabel(p.inspection_count))}<br/>`
+        : '') +
+      `<a href="/partner/${escapeHtml(p.slug)}">Zobacz profil i opinie</a>`,
   }));
 
   return (
@@ -139,11 +159,20 @@ export function PartnersMapClient({ initialPartners }: { initialPartners: Partne
                         </div>
                         <p className="text-sm text-gray-600 mt-0.5">{partner.description}</p>
                         <div className="flex items-center gap-3 flex-wrap mt-1.5">
+                          {/* Firma bez ocen, ale z werdyktami, nie zaczyna się
+                              od "Brak opinii" - ma co pokazać, tylko czym innym. */}
                           <PartnerStars
                             rating={partner.rating_avg}
                             count={partner.rating_count}
                             size="sm"
+                            showEmptyLabel={partner.inspection_count === 0}
                           />
+                          {partner.inspection_count > 0 && (
+                            <span className="flex items-center gap-1 text-sm text-muted-foreground">
+                              <ClipboardCheck className="h-3.5 w-3.5" />
+                              {inspectionCountLabel(partner.inspection_count)}
+                            </span>
+                          )}
                           {partner.city && (
                             <span className="flex items-center gap-1 text-sm text-muted-foreground">
                               <MapPin className="h-3.5 w-3.5" />
@@ -152,6 +181,10 @@ export function PartnersMapClient({ initialPartners }: { initialPartners: Partne
                             </span>
                           )}
                         </div>
+
+                        {latestInspections[partner.id] && (
+                          <LatestInspection inspection={latestInspections[partner.id]} />
+                        )}
                       </div>
                     </div>
                   </Card>
@@ -162,6 +195,37 @@ export function PartnersMapClient({ initialPartners }: { initialPartners: Partne
         )}
       </main>
       <Footer />
+    </div>
+  );
+}
+
+/**
+ * Ostatni werdykt firmy na karcie w katalogu. Katalog bez ocen jest pusty w
+ * najgorszym możliwym momencie - kiedy kupujący pierwszy raz sprawdza, czy w
+ * ogóle warto komuś z tej listy zapłacić. Konkretne zdanie o konkretnym aucie
+ * mówi o firmie więcej niż gwiazdki, których jeszcze nie ma.
+ */
+function LatestInspection({ inspection }: { inspection: PartnerInspection }) {
+  return (
+    <div className="mt-2.5 rounded-lg border bg-muted/40 px-3 py-2 flex gap-3">
+      {/* Bez linku: cała karta jest już linkiem do profilu, a <a> w <a> to
+          nieprawidłowy HTML - przeglądarka rozbija wtedy zagnieżdżenie. */}
+      <div className="w-14 h-14 flex-shrink-0 bg-gray-100 rounded-md overflow-hidden flex items-center justify-center">
+        <ListingThumbnail
+          src={inspection.listing?.image_url ?? null}
+          alt={inspection.listing?.title || 'Zdjęcie ogłoszenia'}
+        />
+      </div>
+
+      <div className="min-w-0">
+        <p className="text-xs text-muted-foreground">
+          <span className={`font-semibold ${VERDICT_STYLES[inspection.verdict]}`}>
+            {VERDICT_LABELS[inspection.verdict]}
+          </span>
+          {inspection.listing?.title ? ` · ${inspection.listing.title}` : ''}
+        </p>
+        <p className="text-sm text-gray-700 mt-0.5 line-clamp-2">{inspection.summary}</p>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { createClient } from '@supabase/supabase-js';
-import { fetchPartners } from '@/lib/partner-data';
+import { fetchLatestInspectionByPartner, fetchPartners } from '@/lib/partner-data';
 import { PartnersMapClient } from './partnerzy-client';
 
 export const metadata: Metadata = {
@@ -33,6 +33,12 @@ export default async function PartnersMapPage() {
   );
 
   const partners = await fetchPartners(supabase);
+  const latestInspections = await fetchLatestInspectionByPartner(
+    supabase,
+    partners.map((p) => p.id)
+  );
 
-  return <PartnersMapClient initialPartners={partners} />;
+  return (
+    <PartnersMapClient initialPartners={partners} latestInspections={latestInspections} />
+  );
 }

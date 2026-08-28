@@ -110,6 +110,22 @@ export function reviewCountLabel(count: number): string {
   return `${count} opinii`;
 }
 
+/**
+ * Odmiana licznika werdyktów. Świadomie nie mówimy tu "sprawdzonych aut", bo
+ * `inspection_count` liczy tylko wpisy opublikowane u nas - firma ma ich za
+ * sobą znacznie więcej, a liczba sugerująca całkowity dorobek byłaby
+ * przechwałką nie do udowodnienia (dyrektywa Omnibus).
+ */
+export function inspectionCountLabel(count: number): string {
+  if (count === 1) return '1 werdykt w serwisie';
+  const lastTwo = count % 100;
+  const last = count % 10;
+  if ((lastTwo < 10 || lastTwo > 20) && last >= 2 && last <= 4) {
+    return `${count} werdykty w serwisie`;
+  }
+  return `${count} werdyktów w serwisie`;
+}
+
 export async function fetchPartnerBySlug(
   supabase: SupabaseClient,
   slug: string
@@ -135,7 +151,10 @@ export function comparePartners(a: Partner, b: Partner): number {
   if (a.is_verified !== b.is_verified) return a.is_verified ? -1 : 1;
   const ratingDiff = (b.rating_avg ?? 0) - (a.rating_avg ?? 0);
   if (ratingDiff !== 0) return ratingDiff;
-  return b.rating_count - a.rating_count;
+  if (b.rating_count !== a.rating_count) return b.rating_count - a.rating_count;
+  // Katalog startuje bez ocen, więc bez tego ostatniego kryterium firma, która
+  // realnie tu pracuje, stoi w kolejności obok takiej, która tylko wisi w spisie.
+  return b.inspection_count - a.inspection_count;
 }
 
 export async function fetchPartners(
@@ -236,6 +255,52 @@ export async function fetchPartnerInspections(
     ...inspection,
     listing: listingById.get(inspection.listing_id) ?? null,
   }));
+}
+
+/**
+ * Najnowszy werdykt każdego z podanych partnerów - do kart w katalogu. Jedno
+ * zapytanie na całą listę zamiast N osobnych: katalog renderuje się na serwerze
+ * i przy kilkudziesięciu firmach seria zapytań byłaby widoczna w czasie odpowiedzi.
+ */
+export async function fetchLatestInspectionByPartner(
+  supabase: SupabaseClient,
+  partnerIds: string[]
+): Promise<Record<string, PartnerInspection>> {
+  if (partnerIds.length === 0) return {};
+
+  const { data } = await supabase
+    .from('partner_inspections')
+    .select('*')
+    .in('partner_id', partnerIds)
+    .eq('is_approved', true)
+    .order('created_at', { ascending: false })
+    .limit(500);
+
+  const rows = (data as PartnerInspection[]) || [];
+  const latest: Record<string, PartnerInspection> = {};
+  rows.forEach((row) => {
+    if (!latest[row.partner_id]) latest[row.partner_id] = row;
+  });
+
+  const ids = Object.values(latest).map((i) => i.listing_id);
+  if (ids.length === 0) return latest;
+
+  const { data: listings } = await supabase
+    .from('listings')
+    .select('id, title, image_url')
+    .in('id', ids);
+
+  const listingById = new Map<string, any>();
+  (listings || []).forEach((l: any) => listingById.set(l.id, l));
+
+  Object.keys(latest).forEach((partnerId) => {
+    latest[partnerId] = {
+      ...latest[partnerId],
+      listing: listingById.get(latest[partnerId].listing_id) ?? null,
+    };
+  });
+
+  return latest;
 }
 
 /** Opublikowane oględziny przy konkretnym ogłoszeniu - dla strony ogłoszenia. */
