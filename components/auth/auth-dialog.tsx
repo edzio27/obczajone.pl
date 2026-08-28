@@ -19,7 +19,8 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signIn, signUp, resetPassword } = useAuth();
+  const [oauthLoading, setOauthLoading] = useState<'google' | 'facebook' | null>(null);
+  const { signIn, signUp, resetPassword, signInWithGoogle, signInWithFacebook } = useAuth();
   const { toast } = useToast();
 
   const passwordValidation = {
@@ -84,6 +85,33 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
     }
   };
 
+  /**
+   * Google i Facebook są włączone po stronie Supabase, a `signInWithGoogle` /
+   * `signInWithFacebook` istniały w kontekście od początku - brakowało wyłącznie
+   * miejsca, z którego można je wywołać. Bez tego konto założone przez Google nie
+   * miało żadnej drogi wejścia: hasła nie ma, więc logowanie zwraca "Invalid login
+   * credentials", a reset hasła nie ma czego zresetować.
+   */
+  const handleOAuth = async (provider: 'google' | 'facebook') => {
+    setOauthLoading(provider);
+    try {
+      if (provider === 'google') {
+        await signInWithGoogle();
+      } else {
+        await signInWithFacebook();
+      }
+      // Przy powodzeniu przeglądarka wychodzi na stronę dostawcy, więc tutaj
+      // nie wracamy - stan ładowania zdejmujemy tylko przy błędzie.
+    } catch (error: any) {
+      setOauthLoading(null);
+      toast({
+        title: 'Nie udało się zalogować',
+        description: error?.message ?? 'Spróbuj ponownie za chwilę.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -101,6 +129,44 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
         </DialogHeader>
 
         <div className="space-y-4">
+          {mode !== 'reset' && (
+            <>
+              <div className="space-y-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => handleOAuth('google')}
+                  disabled={loading || oauthLoading !== null}
+                >
+                  <GoogleIcon />
+                  {oauthLoading === 'google' ? 'Przekierowanie...' : 'Kontynuuj z Google'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => handleOAuth('facebook')}
+                  disabled={loading || oauthLoading !== null}
+                >
+                  <FacebookIcon />
+                  {oauthLoading === 'facebook' ? 'Przekierowanie...' : 'Kontynuuj z Facebookiem'}
+                </Button>
+              </div>
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center">
+                  <span className="bg-background px-2 text-xs uppercase tracking-wide text-muted-foreground">
+                    albo e-mailem
+                  </span>
+                </div>
+              </div>
+            </>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -205,5 +271,28 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/* Znaki firmowe dostawców - oficjalne kolory, bo obie marki tego wymagają w wytycznych. */
+function GoogleIcon() {
+  return (
+    <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5a5.6 5.6 0 0 1-2.4 3.7v3h3.9c2.3-2.1 3.5-5.2 3.5-8.9z" />
+      <path fill="#34A853" d="M12 24c3.2 0 6-1.1 8-2.9l-3.9-3a7.2 7.2 0 0 1-10.7-3.8h-4v3.1A12 12 0 0 0 12 24z" />
+      <path fill="#FBBC05" d="M5.4 14.3a7.1 7.1 0 0 1 0-4.6v-3.1h-4a12 12 0 0 0 0 10.8l4-3.1z" />
+      <path fill="#EA4335" d="M12 4.8c1.8 0 3.4.6 4.6 1.8l3.5-3.5A12 12 0 0 0 1.4 6.6l4 3.1A7.2 7.2 0 0 1 12 4.8z" />
+    </svg>
+  );
+}
+
+function FacebookIcon() {
+  return (
+    <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        fill="#1877F2"
+        d="M24 12a12 12 0 1 0-13.9 11.9v-8.4H7.1V12h3V9.4c0-3 1.8-4.6 4.5-4.6 1.3 0 2.6.2 2.6.2v2.9h-1.5c-1.5 0-1.9.9-1.9 1.8V12h3.3l-.5 3.5h-2.8v8.4A12 12 0 0 0 24 12z"
+      />
+    </svg>
   );
 }
