@@ -26,6 +26,7 @@ import {
 } from '@/lib/listing-data';
 import { computeListingScore } from '@/lib/listing-score';
 import { ListingScoreCard } from '@/components/listing-score-card';
+import { AiOpinionCard } from '@/components/ai-opinion-card';
 import { PriceComparisonCard } from '@/components/price-comparison-card';
 import { PartnerCta } from '@/components/partner-cta';
 import { ListingInspections } from '@/components/partner/listing-inspections';
@@ -275,6 +276,16 @@ export function ListingClient({
     ? computePriceChangePercent(listing.current_price, earliestSnapshot.price)
     : null;
 
+  const aiOpinion =
+    listing.ai_opinion_rating != null
+      ? {
+          rating: listing.ai_opinion_rating,
+          summary: listing.ai_opinion_summary ?? '',
+          priceNote: listing.ai_opinion_price_note ?? '',
+          watchOutFor: listing.ai_opinion_watch_out ?? [],
+        }
+      : null;
+
   const listingScore = computeListingScore({
     priceChangePercent,
     priceVsMedianPercent: initialData?.priceComparison?.percentVsMedian ?? null,
@@ -309,7 +320,13 @@ export function ListingClient({
                   onClick={
                     showSummary
                       ? () => {
-                          document.getElementById('opinie-uzytkownikow')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                          // Gdy podsumowanie pokazuje ocenę AI, a opinii ludzi jeszcze
+                          // nie ma, kliknięcie musi prowadzić do samej opinii AI - sekcja
+                          // opinii użytkowników mówiłaby wtedy "Brak opinii".
+                          const target = hasAiOnly ? 'opinia-ai' : 'opinie-uzytkownikow';
+                          document
+                            .getElementById(target)
+                            ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                         }
                       : undefined
                   }
@@ -541,13 +558,11 @@ export function ListingClient({
             </div>
           </div>
 
-          {initialData?.priceComparison && (
-            <PriceComparisonCard comparison={initialData.priceComparison} />
-          )}
-
-          <ListingScoreCard score={listingScore} />
-
-          <ListingInspections inspections={initialData?.inspections ?? []} />
+          {/* Opinia AI i zaproszenie do oględzin idą tuż pod ogłoszenie: to
+              jedyne dwie rzeczy na tej stronie, które mówią coś o tym konkretnym
+              aucie, a nie o rynku. Na dole strony, wśród opinii użytkowników,
+              docierały tylko do tych, którzy doscrollowali. */}
+          {aiOpinion && <AiOpinionCard opinion={aiOpinion} />}
 
           <PartnerCta
             source={listing.source as 'otomoto' | 'otodom'}
@@ -558,6 +573,14 @@ export function ListingClient({
                 : null
             }
           />
+
+          {initialData?.priceComparison && (
+            <PriceComparisonCard comparison={initialData.priceComparison} />
+          )}
+
+          <ListingScoreCard score={listingScore} />
+
+          <ListingInspections inspections={initialData?.inspections ?? []} />
 
           {latestSnapshot?.description && (
             <Card className="mb-6">
@@ -618,16 +641,6 @@ export function ListingClient({
                 refreshTrigger={reviewRefresh}
                 initialReviews={initialData?.reviews}
                 onHasUserReview={(hasReview) => setHasUserReview(hasReview)}
-                aiOpinion={
-                  listing?.ai_opinion_rating != null
-                    ? {
-                        rating: listing.ai_opinion_rating,
-                        summary: listing.ai_opinion_summary ?? '',
-                        priceNote: listing.ai_opinion_price_note ?? '',
-                        watchOutFor: listing.ai_opinion_watch_out ?? [],
-                      }
-                    : null
-                }
               />
             </div>
           </div>
