@@ -1,6 +1,14 @@
 import { MetadataRoute } from 'next';
 import { createClient } from '@supabase/supabase-js';
 
+/*
+  Bez tego sitemapa jest generowana raz, przy budowaniu, i zamarza. Scraper
+  dokłada ogłoszenia codziennie, a Google dostawałoby listę z dnia ostatniego
+  deployu - czyli nowe strony czekałyby na przypadkowy commit, żeby w ogóle
+  zostać zgłoszone.
+*/
+export const revalidate = 3600;
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://obczajone.pl';
 
