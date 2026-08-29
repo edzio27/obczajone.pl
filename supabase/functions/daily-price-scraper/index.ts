@@ -42,14 +42,17 @@ type ScrapeResult = { price: number | null; specs: Record<string, unknown> | nul
 /**
  * Ile ogłoszeń przerabiamy w jednym przebiegu.
  *
- * Funkcja brzegowa jest ubijana po kilkudziesięciu sekundach, a między
- * zapytaniami czekamy 2 sekundy, żeby nie zasypywać serwisu ogłoszeniowego.
- * 50 pozycji mieści się w budżecie czasu z zapasem. Wcześniej limitu nie było
- * wcale: funkcja brała całą bazę posortowaną od najnowszych, ginęła po
- * kilkudziesięciu pozycjach i następnej nocy zaczynała od tych samych - przez
- * co 89% ogłoszeń nie było sprawdzonych od ponad tygodnia.
+ * Ograniczają nas dwa limity naraz. Funkcja brzegowa jest ubijana po ok. 150
+ * sekundach, a pg_net - który wywołuje ją z crona - zrywa połączenie po czasie
+ * podanym w `timeout_milliseconds`. Przy 2 sekundach przerwy między zapytaniami
+ * i ok. 1,5 s na pobranie strony, 25 ogłoszeń to jakieś 85 sekund, czyli z
+ * zapasem pod oba limity.
+ *
+ * Wcześniej było 50 przy domyślnym limicie pg_net wynoszącym 5 sekund: cron
+ * meldował sukces, bo zapytanie SQL się wykonało, ale odpowiedź nigdy nie
+ * wracała i przebieg był ucinany po dwóch ogłoszeniach.
  */
-const BATCH_SIZE = 50;
+const BATCH_SIZE = 25;
 
 // Te same klucze co extractOtomotoSpecs w funkcji scrape-listing.
 function extractOtomotoParam(ad: any, keys: string[]): string | null {
