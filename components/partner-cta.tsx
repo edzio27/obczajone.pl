@@ -1,76 +1,31 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ShieldCheck } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
-import { logPartnerClick } from '@/lib/partner-clicks';
-import { distanceKm, formatDistance } from '@/lib/geo';
-import { PartnerStars } from '@/components/partner/partner-stars';
-import { VerifiedBadge } from '@/components/partner/partner-badges';
-import { PartnerLeadDialog } from '@/components/partner/partner-lead-dialog';
-import { comparePartners, PARTNER_COLUMNS, type Partner } from '@/lib/partner-data';
-
-type PartnerWithDistance = Partner & { distance: number | null };
-
-/**
- * Zasięg, w jakim uznajemy partnera za realnie dostępny. Firmy sprawdzające auta
- * zwykle dojeżdżają do klienta, więc promień jest hojny - ale odległość zawsze
- * pokazujemy wprost, żeby użytkownik sam ocenił, czy to dla niego sensowne.
- */
-const MAX_DISTANCE_KM = 200;
+import { PartnerCard, useNearbyPartners } from '@/components/partner/partner-picker';
 
 type PartnerCtaProps = {
   source: 'otomoto' | 'otodom';
   listingId: string;
   /** Współrzędne sprzedającego - jedyny sygnał o tym, gdzie stoi przedmiot ogłoszenia. */
   listingLocation?: { lat: number; lng: number } | null;
+  /**
+   * Rzeczy, które opinia AI kazała sprawdzić na żywo. Zaproszenie do oględzin,
+   * które wynika z tego konkretnego ogłoszenia, jest czymś innym niż ogólne
+   * "zamów sprawdzenie" - mówi, czego dokładnie nie wiadomo ze zdjęć.
+   */
+  watchOutFor?: string[];
 };
 
-export function PartnerCta({ source, listingId, listingLocation }: PartnerCtaProps) {
-  const [partners, setPartners] = useState<PartnerWithDistance[]>([]);
-  const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
-    async function fetchPartners() {
-      const category = source === 'otomoto' ? 'car' : 'home';
-      const { data } = await supabase
-        .from('partners')
-        .select(PARTNER_COLUMNS)
-        .eq('category', category)
-        .eq('is_active', true);
-
-      const all = ((data as unknown as Partner[]) || []).sort(comparePartners);
-
-      // Bez współrzędnych ogłoszenia nie mamy jak ocenić odległości, więc
-      // pokazujemy wszystkich zamiast zgadywać.
-      if (!listingLocation) {
-        setPartners(all.slice(0, 8).map((p) => ({ ...p, distance: null })));
-        setLoaded(true);
-        return;
-      }
-
-      const withDistance = all
-        .map((p) => ({
-          ...p,
-          distance:
-            p.lat != null && p.lng != null
-              ? distanceKm(listingLocation, { lat: p.lat, lng: p.lng })
-              : null,
-        }))
-        .filter((p) => p.distance == null || p.distance <= MAX_DISTANCE_KM)
-        .sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity))
-        .slice(0, 8);
-
-      setPartners(withDistance);
-      setLoaded(true);
-    }
-
-    fetchPartners();
-  }, [source, listingLocation]);
+export function PartnerCta({
+  source,
+  listingId,
+  listingLocation,
+  watchOutFor = [],
+}: PartnerCtaProps) {
+  const { partners, loaded } = useNearbyPartners(source, listingLocation);
 
   if (!loaded) return null;
 
@@ -106,69 +61,52 @@ export function PartnerCta({ source, listingId, listingLocation }: PartnerCtaPro
     );
   }
 
+  const hasWatchOut = watchOutFor.length > 0;
+
   return (
     <Card className="mb-6 border-primary/20 bg-primary/5">
       <CardContent className="pt-6">
         <div className="flex items-center gap-2 mb-1">
           <ShieldCheck className="h-5 w-5 text-primary flex-shrink-0" />
-          <h3 className="font-semibold text-gray-900">Chcesz mieć pewność przed zakupem?</h3>
+          <h3 className="font-semibold text-gray-900">
+            {hasWatchOut
+              ? `${watchOutFor.length} ${
+                  watchOutFor.length < 5 ? 'rzeczy' : 'rzeczy'
+                }, których nie sprawdzisz ze zdjęć`
+              : 'Chcesz mieć pewność przed zakupem?'}
+          </h3>
         </div>
-        <p className="text-sm text-gray-600 mb-4">
-          Opinia AI to dobry pierwszy sygnał, ale nie zastąpi oględzin na żywo. Zamów profesjonalne
-          sprawdzenie u jednego z naszych zaufanych partnerów.
-        </p>
 
-        <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
-          {partners.map((partner) => (
-            <div
+        {hasWatchOut ? (
+          <>
+            <ul className="text-sm text-gray-700 space-y-1 mb-3 mt-2">
+              {watchOutFor.slice(0, 3).map((point, i) => (
+                <li key={i} className="flex gap-2">
+                  <span className="text-primary flex-shrink-0">•</span>
+                  <span className="line-clamp-1">{point}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="text-sm text-gray-600 mb-4">
+              To są rzeczy, które ktoś musi zobaczyć na żywo. Poniższe firmy pojadą na miejsce
+              i sprawdzą je przed Twoim zakupem.
+            </p>
+          </>
+        ) : (
+          <p className="text-sm text-gray-600 mb-4">
+            Opinia AI to dobry pierwszy sygnał, ale nie zastąpi oględzin na żywo. Zamów
+            profesjonalne sprawdzenie u jednego z naszych zaufanych partnerów.
+          </p>
+        )}
+
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {partners.slice(0, 3).map((partner) => (
+            <PartnerCard
               key={partner.id}
-              className="flex-shrink-0 w-60 rounded-lg border bg-white p-3 flex flex-col"
-            >
-              <Link
-                href={`/partner/${partner.slug}`}
-                onClick={() => logPartnerClick(partner.id, 'listing_cta', listingId)}
-                className="flex-1"
-              >
-                <div className="flex items-center gap-2 mb-1.5">
-                  {partner.logo_url && (
-                    <div className="relative w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
-                      <Image
-                        src={partner.logo_url}
-                        alt={partner.name}
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
-                  )}
-                  <p className="font-medium text-sm truncate">{partner.name}</p>
-                </div>
-
-                {partner.rating_count > 0 ? (
-                  <PartnerStars rating={partner.rating_avg} count={partner.rating_count} size="sm" />
-                ) : (
-                  partner.is_verified && <VerifiedBadge />
-                )}
-
-                <p className="text-xs text-gray-500 line-clamp-2 mt-1.5">{partner.description}</p>
-                <p className="text-xs text-gray-400 mt-1">
-                  {partner.city}
-                  {partner.distance != null && ` · ${formatDistance(partner.distance)}`}
-                  {partner.price_from != null &&
-                    ` · od ${Number(partner.price_from).toLocaleString('pl-PL')} zł`}
-                </p>
-              </Link>
-
-              <PartnerLeadDialog
-                partnerId={partner.id}
-                partnerName={partner.name}
-                listingId={listingId}
-                context="listing_cta"
-              >
-                <Button size="sm" className="w-full mt-3">
-                  Zamów sprawdzenie
-                </Button>
-              </PartnerLeadDialog>
-            </div>
+              partner={partner}
+              listingId={listingId}
+              context="listing_cta"
+            />
           ))}
         </div>
 

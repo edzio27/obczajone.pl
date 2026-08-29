@@ -27,6 +27,7 @@ import {
 import { computeListingScore } from '@/lib/listing-score';
 import { ListingScoreCard } from '@/components/listing-score-card';
 import { AiOpinionCard } from '@/components/ai-opinion-card';
+import { InspectionCtaButton } from '@/components/partner/inspection-cta-button';
 import { PriceComparisonCard } from '@/components/price-comparison-card';
 import { PartnerCta } from '@/components/partner-cta';
 import { ListingInspections } from '@/components/partner/listing-inspections';
@@ -433,7 +434,12 @@ export function ListingClient({
                   <h1 className="text-2xl font-semibold leading-none tracking-tight">
                     {listing.title || latestSnapshot?.title || 'Ładowanie...'}
                   </h1>
-                  <CardDescription className="text-base space-y-2 mt-3">
+                  {/* div, nie CardDescription: ten blok zawiera elementy blokowe, a
+                      CardDescription renderuje <p>. <div> w <p> przeglądarka
+                      przenosi na zewnątrz, przez co HTML z serwera nie zgadza się
+                      z tym, co React buduje po stronie klienta - i cała strona
+                      jest renderowana od nowa w przeglądarce. */}
+                  <div className="text-sm text-muted-foreground text-base space-y-2 mt-3">
                     {listing.location && (
                       <div className="flex items-center gap-1">
                         <MapPin className="h-4 w-4" />
@@ -486,7 +492,7 @@ export function ListingClient({
                         locale: pl,
                       })}
                     </div>
-                  </CardDescription>
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {listing.current_price > 0 && (
@@ -525,6 +531,16 @@ export function ListingClient({
                     Zobacz oryginalne ogłoszenie
                     <ExternalLink className="h-4 w-4" />
                   </a>
+                  <InspectionCtaButton
+                    source={listing.source as 'otomoto' | 'otodom'}
+                    listingId={listingId}
+                    listingLocation={
+                      listing.seller?.lat != null && listing.seller?.lng != null
+                        ? { lat: listing.seller.lat, lng: listing.seller.lng }
+                        : null
+                    }
+                    watchOutCount={aiOpinion?.watchOutFor.length ?? 0}
+                  />
                   <Button
                     onClick={togglePriceAlert}
                     disabled={alertLoading}
@@ -561,7 +577,14 @@ export function ListingClient({
           {/* Opinia AI i zaproszenie do oględzin idą tuż pod ogłoszenie: to
               jedyne dwie rzeczy na tej stronie, które mówią coś o tym konkretnym
               aucie, a nie o rynku. Na dole strony, wśród opinii użytkowników,
-              docierały tylko do tych, którzy doscrollowali. */}
+              docierały tylko do tych, którzy doscrollowali.
+
+              Kolejność w tym bloku jest celowa: jeżeli ktoś obejrzał to auto na
+              żywo, jego zdanie idzie przed opinią modelu. Specjalista stał przy
+              samochodzie, model przeczytał opis. Gdy oględzin nie ma, karta
+              zwraca null i opinia AI zostaje pierwsza, tak jak dotąd. */}
+          <ListingInspections inspections={initialData?.inspections ?? []} />
+
           {aiOpinion && <AiOpinionCard opinion={aiOpinion} />}
 
           <PartnerCta
@@ -572,6 +595,7 @@ export function ListingClient({
                 ? { lat: listing.seller.lat, lng: listing.seller.lng }
                 : null
             }
+            watchOutFor={aiOpinion?.watchOutFor ?? []}
           />
 
           {initialData?.priceComparison && (
@@ -579,8 +603,6 @@ export function ListingClient({
           )}
 
           <ListingScoreCard score={listingScore} />
-
-          <ListingInspections inspections={initialData?.inspections ?? []} />
 
           {latestSnapshot?.description && (
             <Card className="mb-6">

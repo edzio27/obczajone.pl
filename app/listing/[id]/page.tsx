@@ -2,7 +2,8 @@ import { cache } from 'react';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
-import { fetchListingPageData, type ListingPageData } from '@/lib/listing-data';
+import { extractBrand, fetchListingPageData, type ListingPageData } from '@/lib/listing-data';
+import { VERDICT_LABELS } from '@/lib/partner-data';
 import { safeJsonLdString } from '@/lib/json-ld';
 import { ListingClient } from './listing-client';
 
@@ -102,7 +103,7 @@ export default async function ListingPage({ params }: Props) {
 }
 
 function buildListingJsonLd(id: string, data: ListingPageData) {
-  const { listing, snapshots, reviewCount, averageRating, reviews } = data;
+  const { listing, snapshots, reviewCount, averageRating, reviews, inspections } = data;
   const pageUrl = `https://obczajone.pl/listing/${id}`;
   const imageUrl = snapshots[0]?.photo_urls?.[0] || 'https://obczajone.pl/opengraph-image';
 
@@ -133,23 +134,77 @@ function buildListingJsonLd(id: string, data: ListingPageData) {
     };
   }
 
-  if (reviews.length > 0) {
-    product.review = reviews.slice(0, 10).map((review) => ({
+  // Auta są zawsze używane, a `itemCondition` to jedno z pól, po których Google
+  // odróżnia ogłoszenie wtórne od oferty sklepu.
+  product.itemCondition = 'https://schema.org/UsedCondition';
+
+  const brand = extractBrand(listing.title);
+  if (brand) {
+    product.brand = { '@type': 'Brand', name: brand };
+  }
+
+  const reviewNodes: Record<string, any>[] = reviews.slice(0, 10).map((review) => ({
+    '@type': 'Review',
+    reviewRating: {
+      '@type': 'Rating',
+      ratingValue: review.rating,
+      bestRating: 5,
+      worstRating: 1,
+    },
+    author: {
+      '@type': 'Person',
+      name: review.profile?.display_name || 'Użytkownik obczajone.pl',
+    },
+    datePublished: review.created_at,
+    reviewBody: review.comment || undefined,
+  }));
+
+  /*
+    Werdykty partnerów jako recenzje eksperckie - autorem jest firma, nie osoba.
+    To jest jedyna treść na tej stronie, której nie ma nikt inny w internecie:
+    ktoś fizycznie pojechał obejrzeć ten konkretny egzemplarz. Bez tego znacznika
+    Google nie ma jak tego odróżnić od opisu przepisanego z ogłoszenia.
+
+    Opinii AI świadomie tu nie ma: wytyczne Google dla fragmentów z recenzjami
+    wykluczają treści generowane przez samą witrynę, a wstawienie ich pod
+    `Review` grozi ręczną karą na całą domenę.
+  */
+  inspections.forEach((inspection) => {
+    reviewNodes.push({
       '@type': 'Review',
       reviewRating: {
         '@type': 'Rating',
-        ratingValue: review.rating,
+        ratingValue: VERDICT_RATING[inspection.verdict],
         bestRating: 5,
         worstRating: 1,
+        alternateName: VERDICT_LABELS[inspection.verdict],
       },
       author: {
-        '@type': 'Person',
-        name: review.profile?.display_name || 'Użytkownik obczajone.pl',
+        '@type': 'Organization',
+        name: inspection.partner?.name || 'Partner obczajone.pl',
+        url: inspection.partner?.slug
+          ? `https://obczajone.pl/partner/${inspection.partner.slug}`
+          : undefined,
       },
-      datePublished: review.created_at,
-      reviewBody: review.comment || undefined,
-    }));
+      datePublished: inspection.inspected_at || inspection.created_at,
+      reviewBody: inspection.summary,
+    });
+  });
+
+  if (reviewNodes.length > 0) {
+    product.review = reviewNodes;
   }
 
   return product;
 }
+
+/**
+ * Werdykt to opinia zawodowa o jednym egzemplarzu, a nie ocena w skali - ale
+ * schema.org zna tylko liczby, więc trzy stopnie mapujemy na skrajne i środek.
+ * Etykieta słowna idzie w `alternateName`, żeby nie zgubić oryginału.
+ */
+const VERDICT_RATING: Record<string, number> = {
+  recommended: 5,
+  reservations: 3,
+  not_recommended: 1,
+};

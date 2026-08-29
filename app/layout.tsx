@@ -5,6 +5,10 @@ import { AuthProvider } from '@/lib/auth-context';
 import { Toaster } from '@/components/ui/toaster';
 import { CookieConsent } from '@/components/cookie-consent';
 import { ReferralTracker } from '@/components/referral-tracker';
+// Analityka Vercela: bez ciasteczek i bez identyfikatora użytkownika, więc nie
+// wymaga zgody z bannera - ale bez niej nie wiemy nawet, czy ktokolwiek wchodzi
+// na strony ogłoszeń, a to jedyna liczba, od której zależy cała reszta.
+import { Analytics } from '@vercel/analytics/next';
 
 const inter = Inter({
   subsets: ['latin', 'latin-ext'],
@@ -121,6 +125,7 @@ export default function RootLayout({
           <Toaster />
           <CookieConsent />
           <ReferralTracker />
+          <Analytics />
         </AuthProvider>
       </body>
     </html>
