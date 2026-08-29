@@ -47,7 +47,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .gt('current_price', 0)
       .neq('title', '')
       .order('last_checked_at', { ascending: false })
-      .limit(1000);
+      // Limit sitemapy to 50 000 URL-i, a nie 1000. Przy 1572 kwalifikujących
+      // się ogłoszeniach stary próg wycinał 572 strony - ponad jedną trzecią
+      // całej powierzchni, z której ma przychodzić ruch z wyszukiwarki.
+      .limit(5000);
 
     const listingPages: MetadataRoute.Sitemap = (listings || []).map((listing) => ({
       url: `${baseUrl}/listing/${listing.id}`,
