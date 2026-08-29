@@ -234,17 +234,25 @@ Deno.serve(async (req: Request) => {
           backfilledSpecs++;
         }
 
-        if (newPrice && newPrice > 0) {
-          if (newPrice !== listing.current_price) {
-            await supabase
-              .from('listings')
-              .update({
-                current_price: newPrice,
-                last_checked_at: new Date().toISOString(),
-              })
-              .eq('id', listing.id);
-          }
+        // last_checked_at przesuwamy przy KAZDEJ probie, takze nieudanej.
+        //
+        // Wczesniej znacznik szedl do przodu wylacznie wtedy, gdy zmienila sie
+        // cena - czyli prawie nigdy. A poniewaz kolejke sortujemy wlasnie po tym
+        // polu, sweep wybieral co godzine te same rekordy i nigdy nie docieral
+        // dalej: 66 snapshotow na dobe rozlozylo sie na 20 ogloszen. Najstarsze
+        // wpisy to zwykle oferty juz zdjete z serwisu, wiec kolejka zablokowala
+        // sie na ogloszeniach, ktorych nie da sie pobrac.
+        //
+        // Znacznik znaczy teraz "kiedy probowalismy", a nie "kiedy drgnela cena".
+        await supabase
+          .from('listings')
+          .update({
+            ...(newPrice && newPrice > 0 ? { current_price: newPrice } : {}),
+            last_checked_at: new Date().toISOString(),
+          })
+          .eq('id', listing.id);
 
+        if (newPrice && newPrice > 0) {
           await supabase.from('listing_snapshots').insert({
             listing_id: listing.id,
             price: newPrice,
