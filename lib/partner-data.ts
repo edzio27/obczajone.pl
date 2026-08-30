@@ -25,6 +25,7 @@ export type Partner = {
   is_promoted: boolean;
   is_active: boolean;
   partner_since: string | null;
+  referral_slug: string | null;
   rating_avg: number | null;
   rating_count: number;
   inspection_count: number;
@@ -83,7 +84,8 @@ export type PartnerInspection = {
 export const PARTNER_COLUMNS =
   'id, slug, name, category, city, voivodeship, lat, lng, logo_url, contact_url, ' +
   'description, about, services, phone, email, website, price_from, response_time, ' +
-  'is_verified, is_promoted, is_active, partner_since, rating_avg, rating_count, inspection_count';
+  'is_verified, is_promoted, is_active, partner_since, referral_slug, ' +
+  'rating_avg, rating_count, inspection_count';
 
 export const VERDICT_LABELS: Record<InspectionVerdict, string> = {
   recommended: 'Polecam',

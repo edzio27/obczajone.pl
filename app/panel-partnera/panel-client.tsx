@@ -17,6 +17,7 @@ import { LeadsTab, type Lead } from '@/components/partner/panel/leads-tab';
 import { ReviewsTab } from '@/components/partner/panel/reviews-tab';
 import { InspectionsTab } from '@/components/partner/panel/inspections-tab';
 import { ProfileTab } from '@/components/partner/panel/profile-tab';
+import { BadgeSection } from '@/components/partner/panel/badge-section';
 import {
   fetchPartnerInspections,
   fetchPartnerReviews,
@@ -238,8 +239,13 @@ export function PartnerPanelClient() {
           <InspectionsTab partnerId={partner.id} inspections={inspections} onChanged={loadPanel} />
         </TabsContent>
 
-        <TabsContent value="profile" className="mt-4">
+        <TabsContent value="profile" className="mt-4 space-y-4">
           <ProfileTab partner={partner} onSaved={loadPanel} />
+          <BadgeSection
+            slug={partner.slug}
+            name={partner.name}
+            referralSlug={partner.referral_slug}
+          />
         </TabsContent>
       </Tabs>
     </Shell>
