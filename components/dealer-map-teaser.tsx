@@ -22,7 +22,7 @@ export function DealerMapTeaser({ sellerCount, reviewCount }: DealerMapTeaserPro
         </div>
         <div className="flex-1 text-center md:text-left">
           <h3 className="text-lg md:text-xl font-bold text-foreground mb-1">
-            Zobacz miejsca, gdzie inni oglądali samochody
+            Zobacz miejsca, gdzie inni oglądali oferty
           </h3>
           <p className="text-muted-foreground">
             {hasNumbers ? (

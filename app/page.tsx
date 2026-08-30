@@ -183,9 +183,13 @@ export default async function Home() {
             <PartnersSection partners={partners} />
           </div>
 
-          <HowItWorks />
-          <WhyUs />
-
+          {/*
+            Dowody przed tłumaczeniem. "Jak to działa" i "Dlaczego warto" stały
+            wyżej niż cokolwiek, co serwis faktycznie zrobił - czyli odwiedzający
+            czytał dwie sekcje o nas, zanim zobaczył choć jedno sprawdzone
+            ogłoszenie. Objaśnienia zeszły niżej, do FAQ, gdzie szuka ich ten,
+            komu wciąż czegoś brakuje.
+          */}
           <div className="mt-8">
             <BiggestPriceDrops listings={priceDrops} />
           </div>
@@ -206,6 +210,9 @@ export default async function Home() {
               initialListings={recentListings}
             />
           </div>
+
+          <HowItWorks />
+          <WhyUs />
 
           <Faq />
 
