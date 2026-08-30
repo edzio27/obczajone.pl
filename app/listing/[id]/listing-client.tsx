@@ -28,6 +28,7 @@ import { computeListingScore } from '@/lib/listing-score';
 import { ListingScoreCard } from '@/components/listing-score-card';
 import { AiOpinionCard } from '@/components/ai-opinion-card';
 import { InspectionCtaButton } from '@/components/partner/inspection-cta-button';
+import { coordsFromLocation } from '@/lib/geo';
 import { PriceComparisonCard } from '@/components/price-comparison-card';
 import { PartnerCta } from '@/components/partner-cta';
 import { ListingInspections } from '@/components/partner/listing-inspections';
@@ -276,6 +277,17 @@ export function ListingClient({
   const priceChangePercent = earliestSnapshot
     ? computePriceChangePercent(listing.current_price, earliestSnapshot.price)
     : null;
+
+  /*
+    Położenie ogłoszenia: najpierw współrzędne sprzedawcy, a gdy ich nie ma -
+    miasto z pola `location`. Przy 87% ogłoszeń sprzedawca nie ma współrzędnych,
+    więc bez tego dobór partnera po odległości w ogóle nie działa i każdemu
+    pokazujemy każdego, niezależnie od tego, gdzie stoi auto.
+  */
+  const listingLocation =
+    listing.seller?.lat != null && listing.seller?.lng != null
+      ? { lat: listing.seller.lat, lng: listing.seller.lng }
+      : coordsFromLocation(listing.location);
 
   const aiOpinion =
     listing.ai_opinion_rating != null
@@ -534,11 +546,7 @@ export function ListingClient({
                   <InspectionCtaButton
                     source={listing.source as 'otomoto' | 'otodom'}
                     listingId={listingId}
-                    listingLocation={
-                      listing.seller?.lat != null && listing.seller?.lng != null
-                        ? { lat: listing.seller.lat, lng: listing.seller.lng }
-                        : null
-                    }
+                    listingLocation={listingLocation}
                     watchOutCount={aiOpinion?.watchOutFor.length ?? 0}
                   />
                   <Button
@@ -590,11 +598,7 @@ export function ListingClient({
           <PartnerCta
             source={listing.source as 'otomoto' | 'otodom'}
             listingId={listingId}
-            listingLocation={
-              listing.seller?.lat != null && listing.seller?.lng != null
-                ? { lat: listing.seller.lat, lng: listing.seller.lng }
-                : null
-            }
+            listingLocation={listingLocation}
             watchOutFor={aiOpinion?.watchOutFor ?? []}
           />
 
