@@ -48,19 +48,32 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // ogłoszenia ukrywa (listy filtrują po current_price > 0), więc sitemapa nie
     // może ich zgłaszać - inaczej karmimy Google stronami, które sami uznaliśmy
     // za zbyt zepsute, żeby je pokazać.
-    const { data: listings } = await supabase
-      .from('listings')
-      .select('id, last_checked_at, is_active, title')
-      .eq('is_active', true)
-      .gt('current_price', 0)
-      .neq('title', '')
-      .order('last_checked_at', { ascending: false })
-      // Limit sitemapy to 50 000 URL-i, a nie 1000. Przy 1572 kwalifikujących
-      // się ogłoszeniach stary próg wycinał 572 strony - ponad jedną trzecią
-      // całej powierzchni, z której ma przychodzić ruch z wyszukiwarki.
-      .limit(5000);
+    /*
+      Pobieranie stronami, a nie jednym `limit`. PostgREST tnie każdą odpowiedź
+      do 1000 wierszy niezależnie od tego, o ile poprosimy - podniesienie limitu
+      nic nie daje, bo ograniczenie jest po stronie serwera. Bez tej pętli
+      sitemapa zgłaszała 1000 z 1572 ogłoszeń i o pozostałych Google się nie
+      dowiadywał.
+    */
+    const PAGE = 1000;
+    const listings: { id: string; last_checked_at: string }[] = [];
 
-    const listingPages: MetadataRoute.Sitemap = (listings || []).map((listing) => ({
+    for (let from = 0; from < 50_000; from += PAGE) {
+      const { data: batch } = await supabase
+        .from('listings')
+        .select('id, last_checked_at')
+        .eq('is_active', true)
+        .gt('current_price', 0)
+        .neq('title', '')
+        .order('last_checked_at', { ascending: false })
+        .range(from, from + PAGE - 1);
+
+      if (!batch || batch.length === 0) break;
+      listings.push(...(batch as { id: string; last_checked_at: string }[]));
+      if (batch.length < PAGE) break;
+    }
+
+    const listingPages: MetadataRoute.Sitemap = listings.map((listing) => ({
       url: `${baseUrl}/listing/${listing.id}`,
       lastModified: new Date(listing.last_checked_at),
       changeFrequency: 'daily' as const,

@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { ListingUrlForm } from '@/components/listing-url-form';
@@ -135,6 +136,25 @@ export default async function Home() {
 
             <div className="flex justify-center mb-4">
               <ListingUrlForm />
+            </div>
+
+            {/*
+              Druga droga obok wklejania linku. Wyszukiwarka obsługuje tylko tego,
+              kto ma już konkretne ogłoszenie - a część odwiedzających szuka po
+              prostu kogoś, kto pojedzie obejrzeć auto. Do wczoraj nie mieli na tej
+              stronie żadnego wejścia w tę stronę.
+            */}
+            <div className="flex justify-center">
+              <Link
+                href="/partnerzy"
+                className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-primary transition-colors"
+              >
+                <ShieldCheck className="w-4 h-4" />
+                Szukasz kogoś, kto sprawdzi auto lub nieruchomość przed zakupem?
+                <span className="font-medium text-primary underline underline-offset-2">
+                  Znajdź partnera
+                </span>
+              </Link>
             </div>
 
             {listingCount !== null && listingCount >= LISTING_COUNT_BADGE_THRESHOLD && (
