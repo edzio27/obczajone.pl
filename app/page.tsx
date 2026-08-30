@@ -147,15 +147,15 @@ export default async function Home() {
             )}
 
             <div className="mt-10">
+              <h3 className="text-lg font-semibold text-foreground mb-4 text-left">Zobacz co inni znaleźli:</h3>
+              <RecentReviews listings={recentlyReviewed} showMoreButton={true} />
+            </div>
+
+            <div className="mb-8 mt-16">
               <DealerMapTeaser
                 sellerCount={dealerMapCounts.sellerCount}
                 reviewCount={dealerMapCounts.reviewCount}
               />
-            </div>
-
-            <div className="mb-8 mt-16">
-              <h3 className="text-lg font-semibold text-foreground mb-4 text-left">Zobacz co inni znaleźli:</h3>
-              <RecentReviews listings={recentlyReviewed} showMoreButton={true} />
             </div>
           </div>
 
