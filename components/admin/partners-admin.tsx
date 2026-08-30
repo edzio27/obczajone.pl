@@ -19,6 +19,7 @@ import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 import { VOIVODESHIPS } from '@/lib/geo';
 import { PARTNER_COLUMNS, slugify, type Partner } from '@/lib/partner-data';
+import { coordsFromLocation } from '@/lib/geo';
 import { ExternalLink, Loader as Loader2, Plus, UserPlus } from 'lucide-react';
 
 type PartnerAccount = { partner_id: string; user_id: string; display_name?: string };
@@ -101,6 +102,17 @@ export function PartnersAdmin() {
       slug = `${base}-${suffix}`;
     }
 
+    /*
+      Współrzędne z miasta, tą samą tablicą, którą ogłoszenia dostają swoje
+      położenie. Bez nich firma nie trafia ani na mapę partnerów, ani do doboru
+      po odległości przy ogłoszeniach - a wygląda na poprawnie dodaną, więc
+      błędu nie widać, dopóki partner nie zapyta, czemu nie ma zapytań.
+
+      Kod polecający ustawiamy od razu z tego samego powodu: bez niego odznaka
+      i link partnera nie mają czego liczyć.
+    */
+    const coords = coordsFromLocation(newPartner.city);
+
     const { error } = await supabase.from('partners').insert({
       name: newPartner.name.trim(),
       slug,
@@ -110,6 +122,9 @@ export function PartnersAdmin() {
       contact_url: newPartner.contact_url.trim(),
       description: newPartner.description.trim(),
       partner_since: new Date().toISOString().slice(0, 10),
+      lat: coords?.lat ?? null,
+      lng: coords?.lng ?? null,
+      referral_slug: slug,
     });
 
     setCreating(false);
@@ -122,6 +137,32 @@ export function PartnersAdmin() {
     toast({ title: 'Partner dodany', description: `Profil: /partner/${slug}` });
     setNewPartner({ name: '', category: 'car', city: '', voivodeship: '', contact_url: '', description: '' });
     setShowForm(false);
+    load();
+  }
+
+  /** Dolicza współrzędne partnerowi, który powstał, zanim robił to formularz. */
+  async function fixCoords(partner: Partner) {
+    const coords = coordsFromLocation(partner.city);
+    if (!coords) {
+      toast({
+        title: 'Nie znam tego miasta',
+        description: `„${partner.city}” nie ma w tablicy. Wpisz w profilu większe miasto obok albo dopisz je do CITY_COORDS.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const { error } = await supabase
+      .from('partners')
+      .update({ lat: coords.lat, lng: coords.lng })
+      .eq('id', partner.id);
+
+    if (error) {
+      toast({ title: 'Nie udało się zapisać', description: error.message, variant: 'destructive' });
+      return;
+    }
+
+    toast({ title: 'Współrzędne ustawione', description: `${partner.name} jest już na mapie.` });
     load();
   }
 
@@ -236,6 +277,18 @@ export function PartnersAdmin() {
                     value={newPartner.city}
                     onChange={(e) => setNewPartner({ ...newPartner, city: e.target.value })}
                   />
+                  {newPartner.city.trim() &&
+                    (coordsFromLocation(newPartner.city) ? (
+                      <p className="text-xs text-success">
+                        Rozpoznane — firma trafi na mapę i do ogłoszeń z okolicy
+                      </p>
+                    ) : (
+                      <p className="text-xs text-destructive">
+                        Nie znam tego miasta. Partner powstanie, ale bez pozycji na mapie i bez
+                        dopasowania do ogłoszeń — dopisz współrzędne ręcznie albo wpisz większe
+                        miasto obok.
+                      </p>
+                    ))}
                 </div>
                 <div className="space-y-2">
                   <Label>Województwo</Label>
@@ -300,6 +353,11 @@ export function PartnersAdmin() {
                       {partner.category === 'car' ? 'auta' : 'nieruchomości'}
                     </Badge>
                     {!partner.is_active && <Badge variant="outline">wyłączony</Badge>}
+                    {/* Brak współrzędnych to awaria cicha: profil działa, ale firma
+                        nie jest nigdzie proponowana. Musi być widać z listy. */}
+                    {(partner.lat == null || partner.lng == null) && (
+                      <Badge variant="destructive">bez współrzędnych</Badge>
+                    )}
                   </div>
                   <p className="text-sm text-muted-foreground">
                     {partner.city || 'brak miasta'} · ocena{' '}
@@ -307,12 +365,19 @@ export function PartnersAdmin() {
                     {partner.rating_count}) · oględziny: {partner.inspection_count}
                   </p>
                 </div>
-                <Button variant="outline" size="sm" asChild>
-                  <Link href={`/partner/${partner.slug}`} target="_blank">
-                    <ExternalLink className="h-4 w-4 mr-1.5" />
-                    Profil
-                  </Link>
-                </Button>
+                <div className="flex gap-2">
+                  {(partner.lat == null || partner.lng == null) && partner.city && (
+                    <Button variant="outline" size="sm" onClick={() => fixCoords(partner)}>
+                      Ustaw z miasta
+                    </Button>
+                  )}
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={`/partner/${partner.slug}`} target="_blank">
+                      <ExternalLink className="h-4 w-4 mr-1.5" />
+                      Profil
+                    </Link>
+                  </Button>
+                </div>
               </div>
 
               <div className="grid sm:grid-cols-3 gap-4 mb-4">
