@@ -8,7 +8,7 @@ import { PartnersSection } from '@/components/promotional-banner';
 import { HowItWorks } from '@/components/home/how-it-works';
 import { WhyUs } from '@/components/home/why-us';
 import { BiggestPriceDrops } from '@/components/biggest-price-drops';
-import { RecentlyChecked } from '@/components/recently-checked';
+import { RecentlyInspected } from '@/components/recently-inspected';
 import { DealerMapTeaser } from '@/components/dealer-map-teaser';
 import { Faq, faqs } from '@/components/home/faq';
 import { ShieldCheck, Search } from 'lucide-react';
@@ -19,7 +19,7 @@ import {
   fetchBiggestPriceDrops,
   fetchDealerMapCounts,
   fetchRecentListings,
-  fetchRecentlyChecked,
+  fetchRecentlyInspected,
   fetchRecentlyReviewedListings,
 } from '@/lib/home-data';
 
@@ -57,7 +57,7 @@ async function getHomeData() {
       recentListings,
       recentlyReviewed,
       priceDrops,
-      recentlyChecked,
+      recentlyInspected,
       dealerMapCounts,
       partners,
     ] = await Promise.all([
@@ -65,7 +65,7 @@ async function getHomeData() {
       fetchRecentListings(supabase, { pageSize: RECENT_LISTINGS_PAGE_SIZE }),
       fetchRecentlyReviewedListings(supabase, 10),
       fetchBiggestPriceDrops(supabase),
-      fetchRecentlyChecked(supabase),
+      fetchRecentlyInspected(supabase),
       fetchDealerMapCounts(supabase),
       fetchPartners(supabase),
     ]);
@@ -75,7 +75,7 @@ async function getHomeData() {
       recentListings,
       recentlyReviewed,
       priceDrops,
-      recentlyChecked,
+      recentlyInspected,
       dealerMapCounts,
       partners,
     };
@@ -86,7 +86,7 @@ async function getHomeData() {
       recentListings: [],
       recentlyReviewed: [],
       priceDrops: [],
-      recentlyChecked: [],
+      recentlyInspected: [],
       dealerMapCounts: { sellerCount: null, reviewCount: null },
       partners: [],
     };
@@ -99,7 +99,7 @@ export default async function Home() {
     recentListings,
     recentlyReviewed,
     priceDrops,
-    recentlyChecked,
+    recentlyInspected,
     dealerMapCounts,
     partners,
   } = await getHomeData();
@@ -195,7 +195,7 @@ export default async function Home() {
           </div>
 
           <div className="mt-8">
-            <RecentlyChecked listings={recentlyChecked} />
+            <RecentlyInspected listings={recentlyInspected} />
           </div>
 
           <div className="mt-8">

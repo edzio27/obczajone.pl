@@ -84,21 +84,64 @@ export async function fetchRecentListings(
   return attachPriceChanges(supabase, data);
 }
 
-export async function fetchRecentlyChecked(
+export type InspectedListing = HomeListing & {
+  verdict: string;
+  partnerName: string;
+  partnerSlug: string;
+};
+
+/**
+ * Ogłoszenia, przy których partner opublikował werdykt z oględzin.
+ *
+ * Zastępuje "Ostatnio sprawdzane", które sortowało po `last_checked_at`, czyli
+ * po tym, kiedy scraper ostatnio zajrzał po cenę. Dla odwiedzającego to była
+ * informacja o nas, nie o aucie - a słowo "sprawdzane" sugerowało oględziny,
+ * których tam nie było. Tutaj są prawdziwe: ktoś pojechał i obejrzał ten
+ * konkretny egzemplarz.
+ */
+export async function fetchRecentlyInspected(
   supabase: SupabaseClient,
   limit = 3
-): Promise<HomeListing[]> {
-  const { data, error } = await supabase
-    .from('listings')
-    .select(CARD_COLUMNS)
-    .eq('is_active', true)
-    .gt('current_price', 0)
-    .order('last_checked_at', { ascending: false })
+): Promise<InspectedListing[]> {
+  const { data: inspections } = await supabase
+    .from('partner_inspections')
+    .select('listing_id, partner_id, verdict, created_at')
+    .eq('is_approved', true)
+    .order('created_at', { ascending: false })
     .limit(limit);
 
-  if (error || !data) return [];
-  return data as unknown as HomeListing[];
+  const rows = inspections || [];
+  if (rows.length === 0) return [];
+
+  const [{ data: listings }, { data: partners }] = await Promise.all([
+    supabase
+      .from('listings')
+      .select(CARD_COLUMNS)
+      .in('id', rows.map((i: any) => i.listing_id)),
+    supabase
+      .from('partners')
+      .select('id, name, slug')
+      .in('id', rows.map((i: any) => i.partner_id)),
+  ]);
+
+  const listingById = new Map((listings || []).map((l: any) => [l.id, l]));
+  const partnerById = new Map((partners || []).map((p: any) => [p.id, p]));
+
+  return rows
+    .map((row: any) => {
+      const listing = listingById.get(row.listing_id);
+      const partner = partnerById.get(row.partner_id);
+      if (!listing || !partner) return null;
+      return {
+        ...(listing as HomeListing),
+        verdict: row.verdict,
+        partnerName: partner.name,
+        partnerSlug: partner.slug,
+      };
+    })
+    .filter(Boolean) as InspectedListing[];
 }
+
 
 export async function fetchBiggestPriceDrops(
   supabase: SupabaseClient,
