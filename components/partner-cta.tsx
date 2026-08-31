@@ -25,7 +25,7 @@ export function PartnerCta({
   listingLocation,
   watchOutFor = [],
 }: PartnerCtaProps) {
-  const { partners, loaded } = useNearbyPartners(source, listingLocation);
+  const { partners, loaded, isFallback } = useNearbyPartners(source, listingLocation);
 
   if (!loaded) return null;
 
@@ -61,7 +61,7 @@ export function PartnerCta({
     );
   }
 
-  const hasWatchOut = watchOutFor.length > 0;
+  const hasWatchOut = watchOutFor.length > 0 && !isFallback;
 
   return (
     <Card className="mb-6 border-primary/20 bg-primary/5">
@@ -69,11 +69,11 @@ export function PartnerCta({
         <div className="flex items-center gap-2 mb-1">
           <ShieldCheck className="h-5 w-5 text-primary flex-shrink-0" />
           <h3 className="font-semibold text-gray-900">
-            {hasWatchOut
-              ? `${watchOutFor.length} ${
-                  watchOutFor.length < 5 ? 'rzeczy' : 'rzeczy'
-                }, których nie sprawdzisz ze zdjęć`
-              : 'Chcesz mieć pewność przed zakupem?'}
+            {isFallback
+              ? 'Nie mamy jeszcze partnera w tym regionie'
+              : hasWatchOut
+                ? `${watchOutFor.length} rzeczy, których nie sprawdzisz ze zdjęć`
+                : 'Chcesz mieć pewność przed zakupem?'}
           </h3>
         </div>
 
@@ -92,6 +92,15 @@ export function PartnerCta({
               i sprawdzą je przed Twoim zakupem.
             </p>
           </>
+        ) : isFallback ? (
+          <p className="text-sm text-gray-600 mb-4">
+            Poniższa firma działa dalej, ale dojeżdża — odległość podajemy przy każdej, żebyś
+            mógł sam ocenić, czy to ma sens. Znasz kogoś bliżej?{' '}
+            <Link href="/dla-firm" className="underline hover:text-primary">
+              Poleć firmę
+            </Link>
+            .
+          </p>
         ) : (
           <p className="text-sm text-gray-600 mb-4">
             Opinia AI to dobry pierwszy sygnał, ale nie zastąpi oględzin na żywo. Zamów

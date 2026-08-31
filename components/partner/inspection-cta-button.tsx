@@ -38,7 +38,7 @@ export function InspectionCtaButton({
   watchOutCount = 0,
 }: InspectionCtaButtonProps) {
   const [open, setOpen] = useState(false);
-  const { partners, loaded } = useNearbyPartners(source, listingLocation);
+  const { partners, loaded, isFallback } = useNearbyPartners(source, listingLocation);
 
   const what = source === 'otomoto' ? 'auto' : 'nieruchomość';
 
@@ -57,11 +57,13 @@ export function InspectionCtaButton({
         <DialogHeader>
           <DialogTitle>Kto może obejrzeć to {what} na żywo</DialogTitle>
           <DialogDescription>
-            {watchOutCount > 0
-              ? `Opinia AI wskazała ${watchOutCount} ${
-                  watchOutCount === 1 ? 'rzecz' : watchOutCount < 5 ? 'rzeczy' : 'rzeczy'
-                }, których nie da się sprawdzić ze zdjęć. Poniższe firmy pojadą i je obejrzą.`
-              : 'Ze zdjęć i opisu nie da się ocenić stanu technicznego. Poniższe firmy pojadą na miejsce i sprawdzą to za Ciebie.'}
+            {isFallback
+              ? 'Nie mamy jeszcze firmy z tego regionu. Poniższe działają dalej — przy każdej podajemy odległość dojazdu.'
+              : watchOutCount > 0
+                ? `Opinia AI wskazała ${watchOutCount} ${
+                    watchOutCount === 1 ? 'rzecz' : 'rzeczy'
+                  }, których nie da się sprawdzić ze zdjęć. Poniższe firmy pojadą i je obejrzą.`
+                : 'Ze zdjęć i opisu nie da się ocenić stanu technicznego. Poniższe firmy pojadą na miejsce i sprawdzą to za Ciebie.'}
           </DialogDescription>
         </DialogHeader>
 

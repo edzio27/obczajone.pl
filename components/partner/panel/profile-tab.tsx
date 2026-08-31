@@ -37,6 +37,7 @@ export function ProfileTab({ partner, onSaved }: ProfileTabProps) {
     website: partner.website ?? '',
     contact_url: partner.contact_url,
     price_from: partner.price_from != null ? String(partner.price_from) : '',
+    service_radius_km: String(partner.service_radius_km ?? 200),
     response_time: partner.response_time ?? '',
     city: partner.city ?? '',
     voivodeship: partner.voivodeship ?? '',
@@ -65,6 +66,7 @@ export function ProfileTab({ partner, onSaved }: ProfileTabProps) {
         website: form.website.trim() || null,
         contact_url: form.contact_url.trim(),
         price_from: form.price_from ? Number(form.price_from) : null,
+        service_radius_km: Math.min(600, Math.max(20, Number(form.service_radius_km) || 200)),
         response_time: form.response_time.trim() || null,
         city: form.city.trim() || null,
         voivodeship: form.voivodeship || null,
@@ -194,6 +196,22 @@ export function ProfileTab({ partner, onSaved }: ProfileTabProps) {
                 value={form.price_from}
                 onChange={(e) => update('price_from', e.target.value)}
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="p-radius">Jak daleko dojeżdżacie (km)</Label>
+              <Input
+                id="p-radius"
+                type="number"
+                min="20"
+                max="600"
+                step="10"
+                value={form.service_radius_km}
+                onChange={(e) => update('service_radius_km', e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Pokazujemy Waszą firmę przy ogłoszeniach w tym promieniu od Waszego miasta.
+                Większy zasięg to więcej zapytań, ale też dalsze wyjazdy.
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="p-response">Czas reakcji</Label>

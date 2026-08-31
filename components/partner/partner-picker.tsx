@@ -15,11 +15,11 @@ import { comparePartners, inspectionCountLabel, PARTNER_COLUMNS, type Partner } 
 export type PartnerWithDistance = Partner & { distance: number | null };
 
 /**
- * Zasięg, w jakim uznajemy partnera za realnie dostępny. Firmy sprawdzające auta
- * zwykle dojeżdżają do klienta, więc promień jest hojny - ale odległość zawsze
- * pokazujemy wprost, żeby użytkownik sam ocenił, czy to dla niego sensowne.
+ * Ostatnia deska ratunku, gdy żaden partner nie ma tego regionu w swoim zasięgu.
+ * Powyżej tego progu oferta przestaje być ofertą: kupujący nie zamówi firmy
+ * z drugiego końca kraju, a firma i tak by odmówiła.
  */
-const MAX_DISTANCE_KM = 200;
+const FALLBACK_MAX_KM = 350;
 
 /**
  * Dobór partnerów pod konkretne ogłoszenie. Wydzielony z sekcji CTA, bo ta sama
@@ -32,6 +32,8 @@ export function useNearbyPartners(
 ) {
   const [partners, setPartners] = useState<PartnerWithDistance[]>([]);
   const [loaded, setLoaded] = useState(false);
+  /** Prawda, gdy pokazujemy firmę spoza jej własnego zasięgu, bo nie ma innej. */
+  const [isFallback, setIsFallback] = useState(false);
 
   useEffect(() => {
     async function fetchPartners() {
@@ -60,18 +62,39 @@ export function useNearbyPartners(
               ? distanceKm(listingLocation, { lat: p.lat, lng: p.lng })
               : null,
         }))
-        .filter((p) => p.distance == null || p.distance <= MAX_DISTANCE_KM)
-        .sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity))
-        .slice(0, 8);
+        .sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
 
-      setPartners(withDistance);
+      // Zasięg deklaruje partner, nie my - jedna firma obsługuje województwo,
+      // inna pół kraju, a wspólny próg krzywdzi obie.
+      const inRange = withDistance.filter(
+        (p) => p.distance == null || p.distance <= (p.service_radius_km ?? 200)
+      );
+
+      if (inRange.length > 0) {
+        setPartners(inRange.slice(0, 8));
+        setIsFallback(false);
+        setLoaded(true);
+        return;
+      }
+
+      /*
+        Nikt nie ma tego regionu w zasięgu. Zamiast pustego kafelka pokazujemy
+        najbliższą firmę z wyraźną odległością - wyłączności to nie narusza,
+        bo mówi ona "nikt inny w Twoim regionie", a tu regionu nie ma nikt.
+      */
+      const nearest = withDistance.filter(
+        (p) => p.distance != null && p.distance <= FALLBACK_MAX_KM
+      );
+
+      setPartners(nearest.slice(0, 3));
+      setIsFallback(nearest.length > 0);
       setLoaded(true);
     }
 
     fetchPartners();
   }, [source, listingLocation]);
 
-  return { partners, loaded };
+  return { partners, loaded, isFallback };
 }
 
 export function PartnerCard({

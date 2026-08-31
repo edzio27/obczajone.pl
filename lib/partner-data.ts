@@ -25,6 +25,8 @@ export type Partner = {
   is_promoted: boolean;
   is_active: boolean;
   partner_since: string | null;
+  /** Ile kilometrów partner realnie dojeżdża. Deklaruje sam w panelu. */
+  service_radius_km: number;
   referral_slug: string | null;
   rating_avg: number | null;
   rating_count: number;
@@ -85,6 +87,7 @@ export const PARTNER_COLUMNS =
   'id, slug, name, category, city, voivodeship, lat, lng, logo_url, contact_url, ' +
   'description, about, services, phone, email, website, price_from, response_time, ' +
   'is_verified, is_promoted, is_active, partner_since, referral_slug, ' +
+  'service_radius_km, ' +
   'rating_avg, rating_count, inspection_count';
 
 export const VERDICT_LABELS: Record<InspectionVerdict, string> = {
