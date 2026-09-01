@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { LogoMark } from '@/components/brand/logo-mark';
 import { useAuth } from '@/lib/auth-context';
 import { AuthDialog } from '@/components/auth/auth-dialog';
-import { LogOut, CircleUser as UserCircle, Menu, MapPin, ShieldCheck, ChevronDown } from 'lucide-react';
+import { LogOut, CircleUser as UserCircle, Menu, MapPin, ShieldCheck, Store, ChevronDown } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -20,9 +20,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 
-// Katalog partnerów obejmuje auta i nieruchomości, więc etykieta nie może
-// mówić wyłącznie o autach. Profil pojedynczego partnera (/partner/...) też
-// należy do tej sekcji - stąd osobna lista prefiksów podświetlenia.
+// Katalog partnerów świadomie nie ma tu własnej pozycji: prowadzi do niego
+// pomarańczowy przycisk obok, a dwa linki do /partnerzy w jednym pasku różniły
+// się tylko etykietą. Zostaje to, czego przycisk nie obsługuje - mapa
+// pośredników dla kupujących i strona współpracy dla firm.
 const NAV_ITEMS = [
   {
     href: '/posrednicy',
@@ -31,10 +32,10 @@ const NAV_ITEMS = [
     activePrefixes: ['/posrednicy', '/seller', '/listing'],
   },
   {
-    href: '/partnerzy',
-    label: 'Sprawdź przed zakupem',
-    icon: ShieldCheck,
-    activePrefixes: ['/partnerzy', '/partner'],
+    href: '/dla-firm',
+    label: 'Dla firm',
+    icon: Store,
+    activePrefixes: ['/dla-firm', '/panel-partnera'],
   },
 ];
 
@@ -135,8 +136,19 @@ export function Header() {
               najpierw znaleźć ogłoszenie. Teraz stoi w nagłówku na każdej
               podstronie, w kolorze zarezerwowanym wyłącznie dla tej akcji.
             */}
-            <Button asChild variant="signal" size="sm" className="ml-1">
-              <Link href="/partnerzy">
+            <Button
+              asChild
+              variant="signal"
+              size="sm"
+              className={cn(
+                'ml-1',
+                isActive(pathname, ['/partnerzy', '/partner']) && 'ring-2 ring-signal/40 ring-offset-2'
+              )}
+            >
+              <Link
+                href="/partnerzy"
+                aria-current={isActive(pathname, ['/partnerzy', '/partner']) ? 'page' : undefined}
+              >
                 <ShieldCheck className="h-4 w-4 mr-1.5" />
                 Zamów inspekcję
               </Link>
@@ -227,15 +239,6 @@ export function Header() {
                       </Link>
                     );
                   })}
-
-                  <Link
-                    href="/dla-firm"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors"
-                  >
-                    <UserCircle className="h-4 w-4 text-muted-foreground" />
-                    Dla firm
-                  </Link>
 
                   {user ? (
                     <>

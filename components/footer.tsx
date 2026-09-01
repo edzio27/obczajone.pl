@@ -94,7 +94,20 @@ export function Footer() {
             ))}
           </div>
 
-          <div className="mt-12 flex flex-col gap-3 border-t border-white/10 pt-6 text-sm text-white/45 sm:flex-row sm:items-center sm:justify-between">
+          {/*
+            Nazw Otomoto i Otodom używamy opisowo - do wskazania, czego dotyczy
+            usługa. Zastrzeżenie o braku powiązania stało dotąd wyłącznie
+            w regulaminie, czyli tam, gdzie nikt nie zagląda; przy używaniu
+            cudzych znaków sensowne jest, żeby widział je każdy odwiedzający.
+          */}
+          <p className="mt-12 border-t border-white/10 pt-6 text-xs leading-relaxed text-white/40">
+            obczajone.pl nie jest powiązane z serwisami Otomoto ani Otodom, nie jest ich
+            partnerem i nie działa na ich zlecenie. Nazwy i znaki towarowe należą do ich
+            właścicieli i są tu użyte wyłącznie w celu wskazania, jakich ogłoszeń dotyczą
+            prezentowane dane.
+          </p>
+
+          <div className="mt-6 flex flex-col gap-3 text-sm text-white/45 sm:flex-row sm:items-center sm:justify-between">
             <p>&copy; {year} obczajone.pl — wszystkie prawa zastrzeżone</p>
             <a
               href="mailto:kontakt@obczajone.pl"
