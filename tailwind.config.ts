@@ -15,14 +15,16 @@ const config: Config = {
           'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
       },
       borderRadius: {
+        '2xl': 'calc(var(--radius) + 8px)',
+        xl: 'calc(var(--radius) + 4px)',
         lg: 'var(--radius)',
-        md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(var(--radius) - 4px)',
+        md: 'calc(var(--radius) - 4px)',
+        sm: 'calc(var(--radius) - 7px)',
       },
       fontFamily: {
         sans: ['var(--font-inter)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        heading: ['var(--font-manrope)', 'var(--font-inter)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        logo: ['var(--font-logo)', 'var(--font-manrope)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        heading: ['var(--font-display)', 'var(--font-inter)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        logo: ['var(--font-display)', 'var(--font-inter)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
       colors: {
         background: 'hsl(var(--background))',
@@ -51,6 +53,18 @@ const config: Config = {
           DEFAULT: 'hsl(var(--accent))',
           foreground: 'hsl(var(--accent-foreground))',
         },
+        // Kolor akcji płatnej - "zamów inspekcję" i nic poza tym. Trzymany
+        // osobno od --accent, bo --accent w shadcn to token hoveru ghost/outline
+        // i pomalowanie go na sygnałowy pomarańcz zabarwiłoby pół interfejsu.
+        signal: {
+          DEFAULT: 'hsl(var(--signal))',
+          foreground: 'hsl(var(--signal-foreground))',
+        },
+        ink: {
+          DEFAULT: 'hsl(var(--ink))',
+          foreground: 'hsl(var(--ink-foreground))',
+          muted: 'hsl(var(--ink-muted))',
+        },
         navy: {
           DEFAULT: 'hsl(var(--navy))',
           foreground: 'hsl(var(--navy-foreground))',
@@ -78,27 +92,53 @@ const config: Config = {
           '5': 'hsl(var(--chart-5))',
         },
       },
+      boxShadow: {
+        soft: '0 1px 2px rgba(11, 18, 32, 0.04), 0 4px 16px -4px rgba(11, 18, 32, 0.06)',
+        lift: '0 2px 4px rgba(11, 18, 32, 0.04), 0 18px 40px -18px rgba(11, 18, 32, 0.22)',
+        glow: '0 10px 30px -10px hsl(var(--primary) / 0.45)',
+        'glow-signal': '0 10px 30px -10px hsl(var(--signal) / 0.55)',
+      },
       keyframes: {
         'accordion-down': {
-          from: {
-            height: '0',
-          },
-          to: {
-            height: 'var(--radix-accordion-content-height)',
-          },
+          from: { height: '0' },
+          to: { height: 'var(--radix-accordion-content-height)' },
         },
         'accordion-up': {
-          from: {
-            height: 'var(--radix-accordion-content-height)',
-          },
-          to: {
-            height: '0',
-          },
+          from: { height: 'var(--radix-accordion-content-height)' },
+          to: { height: '0' },
+        },
+        'rise-in': {
+          from: { opacity: '0', transform: 'translateY(14px)' },
+          to: { opacity: '1', transform: 'translateY(0)' },
+        },
+        marquee: {
+          from: { transform: 'translateX(0)' },
+          to: { transform: 'translateX(-50%)' },
+        },
+        shimmer: {
+          '100%': { transform: 'translateX(100%)' },
+        },
+        'pulse-ring': {
+          '0%': { transform: 'scale(0.9)', opacity: '0.7' },
+          '70%': { transform: 'scale(1.6)', opacity: '0' },
+          '100%': { transform: 'scale(1.6)', opacity: '0' },
+        },
+        float: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-8px)' },
         },
       },
       animation: {
-        'accordion-down': 'accordion-down 0.2s ease-out',
-        'accordion-up': 'accordion-up 0.2s ease-out',
+        'accordion-down': 'accordion-down 0.22s ease-out',
+        'accordion-up': 'accordion-up 0.22s ease-out',
+        'rise-in': 'rise-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) both',
+        marquee: 'marquee 40s linear infinite',
+        shimmer: 'shimmer 2s infinite',
+        'pulse-ring': 'pulse-ring 2.4s cubic-bezier(0.24, 0, 0.38, 1) infinite',
+        float: 'float 6s ease-in-out infinite',
+      },
+      transitionTimingFunction: {
+        spring: 'cubic-bezier(0.22, 1, 0.36, 1)',
       },
     },
   },

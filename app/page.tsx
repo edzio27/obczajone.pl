@@ -1,23 +1,28 @@
-import Link from 'next/link';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { ListingUrlForm } from '@/components/listing-url-form';
+import { MobileActionBar } from '@/components/mobile-action-bar';
 import { RecentListings } from '@/components/recent-listings';
 import { RecentReviews } from '@/components/recent-reviews';
 import { PartnersSection } from '@/components/promotional-banner';
+import { Hero } from '@/components/home/hero';
+import { SectionHeading } from '@/components/home/section-heading';
+import { InspectionCta } from '@/components/home/inspection-cta';
 import { HowItWorks } from '@/components/home/how-it-works';
 import { WhyUs } from '@/components/home/why-us';
 import { BiggestPriceDrops } from '@/components/biggest-price-drops';
 import { RecentlyInspected } from '@/components/recently-inspected';
 import { DealerMapTeaser } from '@/components/dealer-map-teaser';
 import { Faq, faqs } from '@/components/home/faq';
-import { ShieldCheck, Search } from 'lucide-react';
+import { Reveal } from '@/components/motion/reveal';
+import { Eye, Search } from 'lucide-react';
 import type { Metadata } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { fetchPartners } from '@/lib/partner-data';
 import {
   fetchBiggestPriceDrops,
   fetchDealerMapCounts,
+  fetchHomeStats,
   fetchRecentListings,
   fetchRecentlyInspected,
   fetchRecentlyReviewedListings,
@@ -32,10 +37,6 @@ export const metadata: Metadata = {
 // Odswiezamy raz na godzine - licznik nie musi byc co do sekundy aktualny,
 // a strona zostaje w cache zamiast renderowac sie przy kazdym wejsciu.
 export const revalidate = 3600;
-
-// Pokazujemy prawdziwa liczbe sprawdzonych ogloszen zamiast zahardkodowanej.
-// Ponizej progu chowamy plakietke - mala liczba dziala gorzej niz jej brak.
-const LISTING_COUNT_BADGE_THRESHOLD = 100;
 
 const RECENT_LISTINGS_PAGE_SIZE = 9;
 
@@ -53,7 +54,7 @@ async function getHomeData() {
     );
 
     const [
-      countResult,
+      stats,
       recentListings,
       recentlyReviewed,
       priceDrops,
@@ -61,7 +62,7 @@ async function getHomeData() {
       dealerMapCounts,
       partners,
     ] = await Promise.all([
-      supabase.from('listings').select('id', { count: 'exact', head: true }),
+      fetchHomeStats(supabase),
       fetchRecentListings(supabase, { pageSize: RECENT_LISTINGS_PAGE_SIZE }),
       fetchRecentlyReviewedListings(supabase, 10),
       fetchBiggestPriceDrops(supabase),
@@ -71,7 +72,7 @@ async function getHomeData() {
     ]);
 
     return {
-      listingCount: countResult.count ?? null,
+      stats,
       recentListings,
       recentlyReviewed,
       priceDrops,
@@ -82,7 +83,12 @@ async function getHomeData() {
   } catch (error) {
     console.error('Nie udalo sie pobrac danych strony glownej:', error);
     return {
-      listingCount: null,
+      stats: {
+        listingCount: null,
+        reviewCount: null,
+        inspectionCount: null,
+        partnerCount: null,
+      },
       recentListings: [],
       recentlyReviewed: [],
       priceDrops: [],
@@ -95,7 +101,7 @@ async function getHomeData() {
 
 export default async function Home() {
   const {
-    listingCount,
+    stats,
     recentListings,
     recentlyReviewed,
     priceDrops,
@@ -103,6 +109,7 @@ export default async function Home() {
     dealerMapCounts,
     partners,
   } = await getHomeData();
+
   const faqJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'FAQPage',
@@ -124,65 +131,10 @@ export default async function Home() {
       />
       <Header />
 
-      <main className="container mx-auto px-4 py-12 md:py-16">
+      <Hero stats={stats} />
+
+      <main className="container mx-auto px-4 pb-8">
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12 animate-fade-in">
-            <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4 text-balance">
-              Sprawdź, zanim kupisz.
-            </h1>
-            <p className="text-base md:text-lg text-gray-600 max-w-2xl mx-auto mb-6">
-              Sprawdź historię ceny, oceń wiarygodność ogłoszenia i zobacz, czy sprzedający już obniżał cenę.
-            </p>
-
-            <div className="flex justify-center mb-4">
-              <ListingUrlForm />
-            </div>
-
-            {/*
-              Druga droga obok wklejania linku. Wyszukiwarka obsługuje tylko tego,
-              kto ma już konkretne ogłoszenie - a część odwiedzających szuka po
-              prostu kogoś, kto pojedzie obejrzeć auto. Do wczoraj nie mieli na tej
-              stronie żadnego wejścia w tę stronę.
-            */}
-            <div className="flex justify-center">
-              <Link
-                href="/partnerzy"
-                className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-primary transition-colors"
-              >
-                <ShieldCheck className="w-4 h-4" />
-                Szukasz kogoś, kto sprawdzi auto lub nieruchomość przed zakupem?
-                <span className="font-medium text-primary underline underline-offset-2">
-                  Znajdź partnera
-                </span>
-              </Link>
-            </div>
-
-            {listingCount !== null && listingCount >= LISTING_COUNT_BADGE_THRESHOLD && (
-              <div className="flex justify-center mt-6">
-                <div className="inline-flex items-center gap-2 bg-primary/5 border border-primary/10 text-primary px-4 py-2 rounded-full text-sm font-medium">
-                  <ShieldCheck className="w-4 h-4 text-success" />
-                  {listingCount.toLocaleString('pl-PL')} sprawdzonych ogłoszeń
-                </div>
-              </div>
-            )}
-
-            <div className="mt-10">
-              <h3 className="text-lg font-semibold text-foreground mb-4 text-left">Zobacz co inni znaleźli:</h3>
-              <RecentReviews listings={recentlyReviewed} showMoreButton={true} />
-            </div>
-
-            <div className="mb-8 mt-16">
-              <DealerMapTeaser
-                sellerCount={dealerMapCounts.sellerCount}
-                reviewCount={dealerMapCounts.reviewCount}
-              />
-            </div>
-          </div>
-
-          <div className="mt-12">
-            <PartnersSection partners={partners} />
-          </div>
-
           {/*
             Dowody przed tłumaczeniem. "Jak to działa" i "Dlaczego warto" stały
             wyżej niż cokolwiek, co serwis faktycznie zrobił - czyli odwiedzający
@@ -190,48 +142,76 @@ export default async function Home() {
             ogłoszenie. Objaśnienia zeszły niżej, do FAQ, gdzie szuka ich ten,
             komu wciąż czegoś brakuje.
           */}
-          <div className="mt-8">
-            <BiggestPriceDrops listings={priceDrops} />
-          </div>
+          <section className="pt-4" aria-labelledby="ostatnio-sprawdzone">
+            <SectionHeading
+              id="ostatnio-sprawdzone"
+              eyebrow="Świeżo sprawdzone"
+              icon={Eye}
+              title="Zobacz, co znaleźli inni"
+              description="Oferty, przy których ktoś już zostawił opinię albo wyłapał zmianę ceny."
+            />
+            <RecentReviews listings={recentlyReviewed} showMoreButton={true} />
+          </section>
 
-          <div className="mt-8">
-            <RecentlyInspected listings={recentlyInspected} />
-          </div>
+          <RecentlyInspected listings={recentlyInspected} />
 
-          <div className="mt-8">
-            <div className="mb-8">
-              <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-3 text-left flex items-center gap-2">
-                <Search className="h-6 w-6 text-primary" />
-                Wszystkie sprawdzone ogłoszenia
-              </h2>
-            </div>
+          {/* Argument komercyjny stoi dopiero tutaj - po tym, jak czytelnik
+              zobaczył, że serwis coś realnie sprawdził, a nie przed. */}
+          <InspectionCta partners={partners} />
+
+          <BiggestPriceDrops listings={priceDrops} />
+
+          <Reveal className="mt-20 block">
+            <DealerMapTeaser
+              sellerCount={dealerMapCounts.sellerCount}
+              reviewCount={dealerMapCounts.reviewCount}
+            />
+          </Reveal>
+
+          <PartnersSection partners={partners} />
+
+          <section className="mt-20" aria-labelledby="wszystkie-ogloszenia">
+            <SectionHeading
+              id="wszystkie-ogloszenia"
+              eyebrow="Baza ofert"
+              icon={Search}
+              title="Wszystkie sprawdzone ogłoszenia"
+              description="Każda oferta, którą ktokolwiek tu wkleił — z historią ceny i opiniami."
+            />
             <RecentListings
               pageSize={RECENT_LISTINGS_PAGE_SIZE}
               initialListings={recentListings}
             />
-          </div>
+          </section>
 
           <HowItWorks />
           <WhyUs />
-
           <Faq />
 
-          <div className="mt-14 bg-primary rounded-3xl p-10 md:p-12 text-center text-white shadow-xl">
-            <ShieldCheck className="w-12 h-12 mx-auto mb-4 text-success" />
-            <h2 className="text-2xl md:text-3xl font-bold mb-4">
-              Gotowy na bezpieczne zakupy?
-            </h2>
-            <p className="text-lg text-white/80 mb-6 max-w-2xl mx-auto">
-              Wklej link do ogłoszenia z Otomoto lub Otodom i sprawdź, czy sprzedający już obniżał cenę.
-            </p>
-            <div className="flex justify-center">
-              <ListingUrlForm />
-            </div>
-          </div>
+          <Reveal>
+            <section className="surface-ink relative isolate mt-20 overflow-hidden rounded-[1.75rem] px-6 py-12 text-center md:px-12 md:py-16">
+              <div aria-hidden className="absolute inset-0 mesh-ink" />
+              <div aria-hidden className="absolute inset-0 grid-lines opacity-60" />
+
+              <div className="relative">
+                <h2 className="mx-auto max-w-2xl text-3xl md:text-[2.6rem] leading-[1.08] font-extrabold text-white text-balance">
+                  Masz link do oferty? Sprawdź go, zanim wpłacisz zaliczkę.
+                </h2>
+                <p className="mx-auto mt-4 max-w-xl text-[15px] md:text-base text-white/65 text-pretty">
+                  Historia ceny, opinie i analiza ogłoszenia — w kilka sekund, bez konta
+                  i bez opłat.
+                </p>
+                <div className="mt-8 flex justify-center">
+                  <ListingUrlForm tone="ink" />
+                </div>
+              </div>
+            </section>
+          </Reveal>
         </div>
       </main>
 
       <Footer />
+      <MobileActionBar />
     </div>
   );
 }

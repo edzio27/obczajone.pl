@@ -3,7 +3,9 @@ type LogoMarkProps = {
   className?: string;
 };
 
-const BRAND_BLUE = '#175CE0';
+// Znak dziedziczy kolor marki z tokenów, zamiast trzymać własny hex. Dzięki
+// temu na ciemnych sekcjach (.surface-ink) rozjaśnia się razem z resztą UI.
+const BRAND_BLUE = 'hsl(var(--primary))';
 
 export function LogoMark({ size, className }: LogoMarkProps) {
   return (

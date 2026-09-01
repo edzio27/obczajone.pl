@@ -50,7 +50,7 @@ export function InspectionCtaButton({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="w-full">
+        <Button variant="signal" size="lg" className="w-full">
           <ShieldCheck className="h-4 w-4 mr-2" />
           Zamów inspekcję
         </Button>

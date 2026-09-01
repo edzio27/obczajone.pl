@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Header } from '@/components/header';
+import { Footer } from '@/components/footer';
 import { supabase } from '@/lib/supabase';
 import { LeafletMapView, escapeHtml, type MapMarker } from '@/components/leaflet-map';
 import { Input } from '@/components/ui/input';
@@ -146,7 +147,15 @@ export function PosrednicyClient() {
     <div className="min-h-screen bg-background">
       <Header />
       <main className="container mx-auto px-4 py-8 space-y-4">
-        <h1 className="text-2xl font-semibold">Pośrednicy na mapie</h1>
+        <div className="mb-2">
+          <h1 className="text-3xl md:text-4xl font-extrabold text-foreground">
+            Pośrednicy na mapie
+          </h1>
+          <p className="mt-2 text-muted-foreground text-pretty">
+            Komisy, dealerzy i pośrednicy, u których ktoś już oglądał ofertę — z ocenami
+            wystawionymi po wizycie.
+          </p>
+        </div>
 
         <div className="flex flex-wrap gap-3">
           <Input
@@ -229,6 +238,7 @@ export function PosrednicyClient() {
           .
         </p>
       </main>
+      <Footer />
     </div>
   );
 }

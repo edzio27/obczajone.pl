@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ListingCard } from '@/components/listing-card';
 import { Button } from '@/components/ui/button';
-import { ChevronRight } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import type { HomeListing } from '@/lib/home-data';
 
 const VISIBLE_BY_DEFAULT = 3;
@@ -19,7 +19,7 @@ export function RecentReviews({ listings, showMoreButton = false }: RecentReview
 
   if (listings.length === 0) {
     return (
-      <Card className="border-dashed border-2">
+      <Card className="border-2 border-dashed bg-card/60">
         <CardHeader className="text-center py-12">
           <CardTitle className="text-2xl">Brak skomentowanych ogłoszeń</CardTitle>
           <CardDescription className="text-base mt-2">
@@ -36,7 +36,7 @@ export function RecentReviews({ listings, showMoreButton = false }: RecentReview
 
   return (
     <div>
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {visible.map((listing) => (
           <ListingCard key={listing.id} {...listing} />
         ))}
@@ -50,7 +50,7 @@ export function RecentReviews({ listings, showMoreButton = false }: RecentReview
       {rest.length > 0 && (
         <div
           className={
-            showAll ? 'grid md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6' : 'hidden'
+            showAll ? 'grid gap-4 md:grid-cols-2 lg:grid-cols-3 mt-4' : 'hidden'
           }
         >
           {rest.map((listing) => (
@@ -60,15 +60,14 @@ export function RecentReviews({ listings, showMoreButton = false }: RecentReview
       )}
 
       {rest.length > 0 && !showAll && (
-        <div className="flex justify-center mt-6">
+        <div className="mt-8 flex justify-center">
           <Button
             onClick={() => setShowAll(true)}
             variant="outline"
             size="lg"
-            className="flex items-center gap-2"
           >
-            Pokaż więcej
-            <ChevronRight className="h-4 w-4" />
+            Pokaż więcej sprawdzonych ofert
+            <ChevronDown className="ml-2 h-4 w-4" />
           </Button>
         </div>
       )}

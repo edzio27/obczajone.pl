@@ -119,7 +119,7 @@ export function PartnerClient({ partner, initialReviews, inspections }: PartnerC
                   partnerName={partner.name}
                   context="partner_page"
                 >
-                  <Button size="lg" className="shadow-md">
+                  <Button variant="signal" size="lg">
                     Zamów sprawdzenie
                   </Button>
                 </PartnerLeadDialog>

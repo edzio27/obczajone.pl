@@ -1,14 +1,17 @@
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
+import { ArrowUpRight, BadgeCheck } from 'lucide-react';
 import { ListingThumbnail } from '@/components/listing-thumbnail';
+import { SectionHeading } from '@/components/home/section-heading';
+import { Reveal } from '@/components/motion/reveal';
 import { VERDICT_LABELS, type InspectionVerdict } from '@/lib/partner-data';
 import type { InspectedListing } from '@/lib/home-data';
+import { cn } from '@/lib/utils';
 
 const VERDICT_STYLES: Record<string, string> = {
-  recommended: 'bg-success/10 text-success border-success/20',
-  reservations: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  not_recommended: 'bg-destructive/10 text-destructive border-destructive/20',
+  recommended: 'bg-success/10 text-success border-success/25',
+  reservations: 'bg-warning/15 text-warning-foreground border-warning/30',
+  not_recommended: 'bg-destructive/10 text-destructive border-destructive/25',
 };
 
 /**
@@ -22,44 +25,54 @@ export function RecentlyInspected({ listings }: { listings: InspectedListing[] }
   if (listings.length === 0) return null;
 
   return (
-    <section aria-labelledby="ostatnio-obejrzane">
-      <h2
+    <section className="mt-20" aria-labelledby="ostatnio-obejrzane">
+      <SectionHeading
         id="ostatnio-obejrzane"
-        className="text-2xl md:text-3xl font-bold text-foreground mb-1 text-left"
-      >
-        Obejrzane na żywo
-      </h2>
-      <p className="text-gray-600 mb-6">
-        Auta, przy których nasz partner był osobiście i wystawił werdykt.
-      </p>
+        eyebrow="Obejrzane na żywo"
+        icon={BadgeCheck}
+        title="Ktoś tam pojechał i wystawił werdykt"
+        description="Oferty, przy których nasz partner był osobiście — z oceną tego, co zastał na miejscu."
+        action={{ href: '/partnerzy', label: 'Zamów takie oględziny' }}
+      />
 
-      <div className="grid md:grid-cols-3 gap-6">
-        {listings.map((listing) => (
-          <Card key={listing.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-            <Link href={`/listing/${listing.id}`} className="flex gap-4 p-4">
-              <div className="w-24 h-24 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
-                <ListingThumbnail src={listing.image_url} alt={listing.title} />
-              </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        {listings.map((listing, index) => (
+          <Reveal key={listing.id} delay={index * 80}>
+            <Link href={`/listing/${listing.id}`} className="group block h-full">
+              <article className="flex h-full gap-4 rounded-2xl border border-border bg-card p-3.5 shadow-soft transition-all duration-300 ease-spring hover:-translate-y-1 hover:border-primary/35 hover:shadow-lift">
+                <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-xl bg-muted flex items-center justify-center">
+                  <ListingThumbnail src={listing.image_url} alt={listing.title} />
+                </div>
 
-              <div className="flex-1 min-w-0">
-                <Badge
-                  variant="outline"
-                  className={VERDICT_STYLES[listing.verdict] ?? ''}
-                >
-                  {VERDICT_LABELS[listing.verdict as InspectionVerdict] ?? 'Werdykt'}
-                </Badge>
+                <div className="min-w-0 flex-1">
+                  <Badge
+                    variant="outline"
+                    className={cn(VERDICT_STYLES[listing.verdict] ?? '')}
+                  >
+                    {VERDICT_LABELS[listing.verdict as InspectionVerdict] ?? 'Werdykt'}
+                  </Badge>
 
-                <h3 className="font-semibold text-sm mt-1.5 line-clamp-2">{listing.title}</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">{listing.location}</p>
-                <p className="font-bold text-primary mt-1">
-                  {listing.current_price.toLocaleString('pl-PL')} zł
-                </p>
-                <p className="text-xs text-muted-foreground mt-1 truncate">
-                  sprawdził {listing.partnerName}
-                </p>
-              </div>
+                  <h3 className="mt-1.5 line-clamp-2 text-sm font-bold leading-snug transition-colors group-hover:text-primary">
+                    {listing.title}
+                  </h3>
+                  <p className="mt-0.5 truncate text-xs text-muted-foreground">{listing.location}</p>
+
+                  <div className="mt-1.5 flex items-end justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-base font-extrabold tabular text-foreground">
+                        {listing.current_price.toLocaleString('pl-PL')}
+                        <span className="ml-1 text-xs font-bold text-muted-foreground">zł</span>
+                      </p>
+                      <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                        sprawdził {listing.partnerName}
+                      </p>
+                    </div>
+                    <ArrowUpRight className="h-4 w-4 flex-shrink-0 text-muted-foreground transition-all duration-300 ease-spring group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary" />
+                  </div>
+                </div>
+              </article>
             </Link>
-          </Card>
+          </Reveal>
         ))}
       </div>
     </section>

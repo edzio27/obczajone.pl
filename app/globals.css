@@ -4,37 +4,83 @@
 
 @layer base {
   :root {
-    --background: 209 17% 98%;
-    --foreground: 215 28% 17%;
+    /* Papier zamiast czystej bieli - ciepły odcień odróżnia tło od kart
+       bez rysowania ramki wokół każdej z nich. */
+    --background: 36 24% 98%;
+    --foreground: 222 47% 11%;
     --card: 0 0% 100%;
-    --card-foreground: 215 28% 17%;
+    --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
-    --popover-foreground: 215 28% 17%;
-    --primary: 173 80% 28%;
+    --popover-foreground: 222 47% 11%;
+
+    /* Marka idzie za znakiem graficznym, który od początku był niebieski -
+       do tej pory całe UI było turkusowe, a logo niebieskie. */
+    --primary: 224 84% 51%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 215 28% 17%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 220 9% 46%;
-    --accent: 173 70% 45%;
-    --accent-foreground: 0 0% 100%;
-    --navy: 215 85% 11%;
+
+    /* Sygnał: wyłącznie akcja płatna (zamów inspekcję). Ciemny tekst na
+       jasnym pomarańczu daje 7:1 kontrastu - biały dałby 3:1. */
+    --signal: 20 100% 58%;
+    --signal-foreground: 222 47% 9%;
+
+    --secondary: 220 24% 95%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 220 22% 95.5%;
+    --muted-foreground: 220 12% 43%;
+    --accent: 220 24% 94%;
+    --accent-foreground: 222 47% 11%;
+
+    --ink: 222 47% 9%;
+    --ink-foreground: 210 40% 98%;
+    --ink-muted: 217 20% 68%;
+    --navy: 222 47% 11%;
     --navy-foreground: 0 0% 100%;
-    --success: 142 76% 36%;
+
+    --success: 152 62% 34%;
     --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
-    --destructive: 0 84.2% 60.2%;
+    --warning: 35 95% 47%;
+    --warning-foreground: 222 47% 9%;
+    --destructive: 356 74% 52%;
     --destructive-foreground: 0 0% 100%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 173 80% 28%;
-    --radius: 0.625rem;
-    --chart-1: 173 91% 40%;
-    --chart-2: 173 91% 55%;
-    --chart-3: 173 91% 30%;
-    --chart-4: 173 91% 65%;
-    --chart-5: 173 91% 25%;
+
+    --border: 220 18% 90%;
+    --input: 220 18% 90%;
+    --ring: 224 84% 51%;
+    --radius: 0.875rem;
+
+    --chart-1: 224 84% 51%;
+    --chart-2: 20 100% 58%;
+    --chart-3: 152 62% 34%;
+    --chart-4: 224 84% 70%;
+    --chart-5: 222 47% 25%;
+  }
+
+  /*
+    Sekcje na ciemnym tle nie malują się klasami "bg-slate-900 text-white" po
+    każdym elemencie z osobna - przestawiają tokeny. Dzięki temu wszystko, co
+    stoi w środku (Button, Card, Badge, Input z shadcn), przełącza się razem
+    z tłem i nie trzeba pisać wariantu "dark" dla każdego komponentu.
+  */
+  .surface-ink {
+    --background: 222 47% 9%;
+    --foreground: 210 40% 98%;
+    --card: 222 40% 13%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 40% 13%;
+    --popover-foreground: 210 40% 98%;
+    --secondary: 222 33% 18%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 222 33% 17%;
+    --muted-foreground: 217 20% 68%;
+    --accent: 222 33% 18%;
+    --accent-foreground: 210 40% 98%;
+    --primary: 222 92% 66%;
+    --primary-foreground: 222 47% 9%;
+    --border: 220 24% 22%;
+    --input: 220 24% 22%;
+    --navy: 210 40% 98%;
+
+    color: hsl(var(--foreground));
   }
 }
 
@@ -48,7 +94,32 @@
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-bold tracking-tight font-heading;
+    @apply font-bold font-heading;
+    letter-spacing: -0.022em;
+  }
+
+  /* Nagłówek sekcji, do którego prowadzi kotwica z menu, nie może chować się
+     pod przyklejonym paskiem. */
+  [id] {
+    scroll-margin-top: 5.5rem;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.18);
+  }
+
+  /* Pasek przewijania w tonacji interfejsu zamiast domyślnego szarego. */
+  @supports (scrollbar-color: auto) {
+    html {
+      scrollbar-color: hsl(var(--border)) transparent;
+    }
+  }
+}
+
+@layer components {
+  /* Kafelek pod ikonę - powtarza się w kilkunastu miejscach. */
+  .icon-tile {
+    @apply inline-flex items-center justify-center rounded-xl flex-shrink-0;
   }
 }
 
@@ -56,27 +127,114 @@
   .text-balance {
     text-wrap: balance;
   }
-}
-
-.animate-fade-in {
-  animation: fadeIn 0.5s ease-in;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
+  .text-pretty {
+    text-wrap: pretty;
   }
-  to {
+
+  /* Liczby w kartach i tabelach mają nie skakać przy zmianie wartości. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .container-tight {
+    @apply container mx-auto px-4 sm:px-6;
+  }
+
+  /* Delikatna siatka i poświata pod ciemnymi sekcjami - zamiast płaskiego
+     granatu, który na dużych powierzchniach wygląda martwo. */
+  .mesh-ink {
+    background-color: hsl(var(--ink));
+    background-image:
+      radial-gradient(60rem 30rem at 15% -10%, hsl(224 84% 51% / 0.38), transparent 60%),
+      radial-gradient(45rem 25rem at 90% 10%, hsl(20 100% 58% / 0.16), transparent 60%),
+      radial-gradient(40rem 30rem at 60% 110%, hsl(190 90% 45% / 0.14), transparent 60%);
+  }
+
+  .grid-lines {
+    background-image:
+      linear-gradient(to right, hsl(0 0% 100% / 0.045) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(0 0% 100% / 0.045) 1px, transparent 1px);
+    background-size: 56px 56px;
+  }
+
+  .mask-fade-b {
+    -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
+    mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
+  }
+
+  .mask-fade-x {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 4%, #000 96%, transparent);
+    mask-image: linear-gradient(to right, transparent, #000 4%, #000 96%, transparent);
+  }
+
+  .glass {
+    background: hsl(0 0% 100% / 0.72);
+    backdrop-filter: blur(14px) saturate(160%);
+    -webkit-backdrop-filter: blur(14px) saturate(160%);
+  }
+
+  .glass-ink {
+    background: hsl(222 47% 9% / 0.5);
+    backdrop-filter: blur(14px) saturate(160%);
+    -webkit-backdrop-filter: blur(14px) saturate(160%);
+  }
+
+  /* Zachowane dla zgodności ze starszymi widokami. */
+  .glass-effect {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+
+  .animate-fade-in {
+    animation: rise-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  /* Ukryty pasek przewijania dla poziomych karuzel - strzałki i przeciąganie
+     zostają, znika tylko gruba szara belka pod kafelkami. */
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/*
+  Wjazdy sekcji przy przewijaniu. Element startuje przezroczysty i wraca do
+  pełnej widoczności dopiero po nadaniu data-revealed - czyli gdy wejdzie
+  w kadr. Bez JS-a (albo przy wyłączonych animacjach) zostaje widoczny.
+*/
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+  will-change: opacity, transform;
+}
+
+[data-reveal][data-revealed='true'] {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  [data-reveal] {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
   }
-}
-
-.glass-effect {
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
 }
 
 /* Leaflet: własny kontekst stackingu, żeby panele mapy (z-index 400-700)

@@ -158,7 +158,7 @@ export function PartnerCard({
         listingId={listingId}
         context={context}
       >
-        <Button size="sm" className="w-full mt-3">
+        <Button size="sm" variant="signal" className="w-full mt-3">
           Zamów sprawdzenie
         </Button>
       </PartnerLeadDialog>

@@ -1,6 +1,6 @@
 import './globals.css';
 import type { Metadata } from 'next';
-import { Baloo_2, Inter, Manrope } from 'next/font/google';
+import { Bricolage_Grotesque, Inter } from 'next/font/google';
 import { AuthProvider } from '@/lib/auth-context';
 import { Toaster } from '@/components/ui/toaster';
 import { CookieConsent } from '@/components/cookie-consent';
@@ -12,17 +12,21 @@ import { Analytics } from '@vercel/analytics/next';
 
 const inter = Inter({
   subsets: ['latin', 'latin-ext'],
+  display: 'swap',
   variable: '--font-inter',
 });
-const manrope = Manrope({
+
+// Jeden krój na nagłówki i logotyp zamiast dwóch osobnych (Manrope + Baloo).
+// Zmienna oś wagi daje 600-800 w jednym pliku, więc mimo mocniejszej
+// typografii przeglądarka pobiera o jeden font mniej niż wcześniej.
+const display = Bricolage_Grotesque({
   subsets: ['latin', 'latin-ext'],
-  weight: ['600', '700'],
-  variable: '--font-manrope',
-});
-const baloo2 = Baloo_2({
-  subsets: ['latin', 'latin-ext'],
-  weight: ['700', '800'],
-  variable: '--font-logo',
+  display: 'swap',
+  variable: '--font-display',
+  // Ta wersja Nexta nie ma metryk Bricolage w tablicy zastępników i przy każdym
+  // renderze wypisuje o tym ostrzeżenie. Wyłączamy automatyczny fallback -
+  // w font-family i tak stoi za nim Inter, który ładuje się z tej samej strony.
+  adjustFontFallback: false,
 });
 
 export const metadata: Metadata = {
@@ -119,7 +123,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
         />
       </head>
-      <body className={`${inter.variable} ${manrope.variable} ${baloo2.variable}`}>
+      <body className={`${inter.variable} ${display.variable}`}>
         <AuthProvider>
           {children}
           <Toaster />

@@ -70,26 +70,74 @@ export function PartnersMapClient({ initialPartners, latestInspections }: Partne
       `<a href="/partner/${escapeHtml(p.slug)}">Zobacz profil i opinie</a>`,
   }));
 
+  const inspectionTotal = initialPartners.reduce((sum, p) => sum + p.inspection_count, 0);
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="container mx-auto px-4 py-8 space-y-4">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-2xl font-semibold">Partnerzy sprawdzający auta i nieruchomości</h1>
-            <p className="text-muted-foreground mt-1">
-              Firmy, które polecamy do profesjonalnych oględzin przed zakupem — z ocenami od
-              kupujących.
-            </p>
-          </div>
-          <Button variant="outline" asChild>
-            <Link href="/dla-firm">
-              <ShieldCheck className="h-4 w-4 mr-2" />
-              Prowadzisz taką firmę?
-            </Link>
-          </Button>
-        </div>
 
+      {/*
+        Przycisk „Zamów inspekcję” z paska prowadzi właśnie tutaj, więc ta strona
+        jest pierwszym, co widzi ktoś zdecydowany zapłacić - a witała go sama
+        lista firm z dwoma filtrami, bez słowa o tym, co się właściwie zamawia
+        i ile to trwa. Ten pas mówi to w trzech zdaniach, zanim zacznie się
+        przewijanie.
+      */}
+      <section className="surface-ink relative isolate overflow-hidden">
+        <div aria-hidden className="absolute inset-0 mesh-ink" />
+        <div aria-hidden className="absolute inset-0 grid-lines mask-fade-b opacity-70" />
+        <div
+          aria-hidden
+          className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-b from-transparent to-background"
+        />
+
+        <div className="container mx-auto px-4 relative">
+          <div className="max-w-6xl mx-auto py-12 md:py-16">
+            <div className="flex flex-wrap items-end justify-between gap-6">
+              <div className="max-w-2xl">
+                <div className="inline-flex items-center gap-2 rounded-full border border-signal/30 bg-signal/15 px-3 py-1.5 text-xs font-bold text-signal">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  Oględziny przed zakupem
+                </div>
+                <h1 className="mt-4 text-[2.1rem] md:text-5xl leading-[1.06] font-extrabold text-white text-balance">
+                  Ktoś pojedzie i obejrzy to za Ciebie
+                </h1>
+                <p className="mt-4 text-[15px] md:text-base leading-relaxed text-white/70 text-pretty">
+                  Firmy poniżej sprawdzają auta i nieruchomości na miejscu — z jazdą próbną,
+                  diagnostyką i werdyktem na piśmie. Wybierz region, wyślij zapytanie,
+                  a resztę ustalasz bezpośrednio z firmą.
+                </p>
+
+                <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-white/60">
+                  <li className="flex items-center gap-2">
+                    <ShieldCheck className="h-4 w-4 text-white/35" />
+                    Bez prowizji od ceny oględzin
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-white/35" />
+                    Dobór po odległości od ogłoszenia
+                  </li>
+                  {inspectionTotal > 0 && (
+                    <li className="flex items-center gap-2">
+                      <ClipboardCheck className="h-4 w-4 text-white/35" />
+                      {inspectionCountLabel(inspectionTotal)}
+                    </li>
+                  )}
+                </ul>
+              </div>
+
+              <Button variant="outline" asChild className="flex-shrink-0">
+                <Link href="/dla-firm">
+                  <ShieldCheck className="h-4 w-4 mr-2" />
+                  Prowadzisz taką firmę?
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <main className="container mx-auto px-4 py-8 space-y-4">
         <div className="flex flex-wrap gap-3">
           <Select value={category} onValueChange={setCategory}>
             <SelectTrigger className="max-w-xs">

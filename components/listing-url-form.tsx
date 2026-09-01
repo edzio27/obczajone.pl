@@ -1,33 +1,57 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
 import { checkRateLimit } from '@/lib/rate-limit';
-import { Search, Loader as Loader2 } from 'lucide-react';
+import { Search, Loader as Loader2, ClipboardPaste, Check, Link2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-export function ListingUrlForm() {
+type ListingUrlFormProps = {
+  /** "ink" - wariant na ciemne sekcje (hero, dolne CTA). */
+  tone?: 'light' | 'ink';
+  className?: string;
+};
+
+function extractListingInfo(url: string) {
+  const otomotoMatch = url.match(/otomoto\.pl\/(?:[^\/]+\/)?oferta\/[^\/]+-ID([A-Za-z0-9]+)/);
+  const otodomMatch = url.match(/otodom\.pl\/[^\/]+\/oferta\/[^\/]+-ID([A-Za-z0-9]+)/);
+
+  if (otomotoMatch) {
+    return { source: 'otomoto' as const, listingId: otomotoMatch[1] };
+  }
+  if (otodomMatch) {
+    return { source: 'otodom' as const, listingId: otodomMatch[1] };
+  }
+  return null;
+}
+
+export function ListingUrlForm({ tone = 'light', className }: ListingUrlFormProps) {
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
+  const [focused, setFocused] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
 
-  const extractListingInfo = (url: string) => {
-    const otomotoMatch = url.match(/otomoto\.pl\/(?:[^\/]+\/)?oferta\/[^\/]+-ID([A-Za-z0-9]+)/);
-    const otodomMatch = url.match(/otodom\.pl\/[^\/]+\/oferta\/[^\/]+-ID([A-Za-z0-9]+)/);
+  const ink = tone === 'ink';
 
-    if (otomotoMatch) {
-      return { source: 'otomoto' as const, listingId: otomotoMatch[1] };
+  // Rozpoznanie linku w locie. Do tej pory użytkownik dowiadywał się, że wkleił
+  // coś nie tego, dopiero po kliknięciu - teraz widzi to od razu przy polu.
+  const detected = useMemo(() => (url.trim() ? extractListingInfo(url.trim()) : null), [url]);
+  const looksWrong = url.trim().length > 12 && !detected;
+
+  const handlePaste = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) setUrl(text.trim());
+    } catch {
+      // Odmowa dostępu do schowka albo brak wsparcia - użytkownikowi zostaje
+      // zwykłe Ctrl+V, więc nie ma o czym go informować.
     }
-    if (otodomMatch) {
-      return { source: 'otodom' as const, listingId: otodomMatch[1] };
-    }
-    return null;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -119,36 +143,102 @@ export function ListingUrlForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="w-full max-w-4xl">
-      <div className="flex flex-col sm:flex-row gap-3 bg-white p-2 rounded-2xl shadow-lg border-2 border-gray-100 hover:border-primary/30 transition-colors">
-        <Input
-          type="url"
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          placeholder="Wklej link do ogłoszenia..."
-          className="flex-1 border-0 focus-visible:ring-0 text-lg h-16 px-5"
-          required
-          disabled={loading}
-        />
+    <form onSubmit={handleSubmit} className={cn('w-full max-w-3xl', className)}>
+      <div
+        className={cn(
+          'group relative flex flex-col sm:flex-row items-stretch gap-2 rounded-[1.75rem] sm:rounded-full p-2 transition-all duration-300 ease-spring border',
+          ink
+            ? 'bg-white/[0.07] border-white/15 backdrop-blur-xl'
+            : 'bg-card border-border shadow-lift',
+          focused && (ink ? 'border-white/35 bg-white/[0.1]' : 'border-primary/45 shadow-glow'),
+          detected && !loading && 'border-success/60'
+        )}
+      >
+        <div className="relative flex flex-1 items-center min-w-0">
+          <span
+            className={cn(
+              'pointer-events-none absolute left-4 flex h-6 w-6 items-center justify-center transition-colors',
+              detected ? 'text-success' : ink ? 'text-white/45' : 'text-muted-foreground'
+            )}
+          >
+            {detected ? <Check className="h-5 w-5" /> : <Link2 className="h-5 w-5" />}
+          </span>
+
+          <input
+            type="url"
+            inputMode="url"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            placeholder="Wklej link z Otomoto lub Otodom…"
+            aria-label="Link do ogłoszenia z Otomoto lub Otodom"
+            aria-invalid={looksWrong || undefined}
+            className={cn(
+              'w-full bg-transparent border-0 outline-none h-12 sm:h-14 pl-12 pr-3 text-[15px] sm:text-base truncate',
+              ink
+                ? 'text-white placeholder:text-white/45'
+                : 'text-foreground placeholder:text-muted-foreground'
+            )}
+            required
+            disabled={loading}
+          />
+
+          {!url && (
+            <button
+              type="button"
+              onClick={handlePaste}
+              className={cn(
+                'hidden sm:inline-flex items-center gap-1.5 mr-2 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors',
+                ink
+                  ? 'bg-white/10 text-white/75 hover:bg-white/20 hover:text-white'
+                  : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground'
+              )}
+            >
+              <ClipboardPaste className="h-3.5 w-3.5" />
+              Wklej
+            </button>
+          )}
+        </div>
+
         <Button
           type="submit"
           disabled={loading}
-          size="lg"
-          className="bg-primary hover:bg-primary/90 shadow-md hover:shadow-lg transition-all font-semibold h-16 px-10 text-lg"
+          size="xl"
+          className="sm:h-14 h-12 px-6 sm:px-8 flex-shrink-0"
         >
           {loading ? (
             <>
               <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-              Sprawdzanie...
+              Sprawdzam…
             </>
           ) : (
             <>
               <Search className="h-5 w-5 mr-2" />
-              Sprawdź ogłoszenie
+              Sprawdź za darmo
             </>
           )}
         </Button>
       </div>
+
+      <p
+        className={cn(
+          'mt-2.5 px-2 text-center sm:text-left text-xs transition-colors min-h-[1rem]',
+          looksWrong
+            ? ink
+              ? 'text-orange-300'
+              : 'text-destructive'
+            : ink
+              ? 'text-white/55'
+              : 'text-muted-foreground'
+        )}
+      >
+        {looksWrong
+          ? 'To nie wygląda na link do oferty z Otomoto ani Otodom.'
+          : detected
+            ? `Rozpoznano ogłoszenie z ${detected.source === 'otomoto' ? 'Otomoto' : 'Otodom'} — kliknij, żeby sprawdzić.`
+            : 'Bez konta, bez opłat. Wynik dostajesz od razu.'}
+      </p>
     </form>
   );
 }

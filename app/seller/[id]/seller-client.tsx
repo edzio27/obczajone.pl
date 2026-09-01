@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Header } from '@/components/header';
+import { Footer } from '@/components/footer';
 import { supabase } from '@/lib/supabase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -192,6 +193,7 @@ export function SellerClient({ sellerId }: { sellerId: string }) {
           )}
         </div>
       </main>
+      <Footer />
     </div>
   );
 }

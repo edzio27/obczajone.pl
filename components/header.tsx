@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -48,6 +48,17 @@ export function Header() {
   const pathname = usePathname();
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  // Pasek na samej górze jest przezroczysty i wtapia się w ciemny hero;
+  // dopiero po odjechaniu strony dostaje szkło i cień, żeby oddzielić się
+  // od przewijanej treści.
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 12);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   const email = user?.email ?? '';
   const avatarUrl = (user?.user_metadata?.avatar_url as string | undefined) ?? undefined;
@@ -55,16 +66,36 @@ export function Header() {
 
   return (
     <>
-      <header className="border-b bg-white/90 backdrop-blur-md sticky top-0 z-50 shadow-sm">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-4">
-          <Link href="/" className="flex items-center gap-2 group shrink-0">
-            <LogoMark className="h-9 w-9 transition-transform group-hover:scale-105" />
+      <header
+        className={cn(
+          'sticky top-0 z-50 transition-all duration-300 ease-spring',
+          scrolled ? 'glass border-b border-border/70 shadow-soft' : 'bg-background border-b border-transparent'
+        )}
+      >
+        <div
+          className={cn(
+            'container mx-auto px-4 flex items-center justify-between gap-4 transition-all duration-300 ease-spring',
+            scrolled ? 'py-2' : 'py-3'
+          )}
+        >
+          <Link href="/" className="flex items-center gap-2.5 group shrink-0">
+            <LogoMark
+              className={cn(
+                'transition-all duration-300 ease-spring group-hover:rotate-[-4deg] group-hover:scale-105',
+                scrolled ? 'h-8 w-8' : 'h-9 w-9'
+              )}
+            />
             <div className="flex flex-col leading-tight">
-              <span className="font-logo font-extrabold text-xl uppercase tracking-tight">
-                <span className="text-navy">Obczajone</span>
+              <span className="font-logo font-extrabold text-xl tracking-[-0.03em]">
+                <span className="text-navy">obczajone</span>
                 <span className="text-primary">.pl</span>
               </span>
-              <span className="hidden sm:block text-xs text-muted-foreground">
+              <span
+                className={cn(
+                  'hidden sm:block text-[11px] text-muted-foreground transition-all duration-300',
+                  scrolled && 'h-0 overflow-hidden opacity-0'
+                )}
+              >
                 Obczaj zanim kupisz.
               </span>
             </div>
@@ -80,10 +111,10 @@ export function Header() {
                     href={href}
                     aria-current={active ? 'page' : undefined}
                     className={cn(
-                      'group flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-medium transition-colors',
+                      'group relative flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-medium transition-colors',
                       active
                         ? 'bg-primary/10 text-primary'
-                        : 'text-navy/75 hover:bg-muted hover:text-navy'
+                        : 'text-foreground/70 hover:bg-muted hover:text-foreground'
                     )}
                   >
                     <Icon
@@ -97,6 +128,19 @@ export function Header() {
                 );
               })}
             </nav>
+
+            {/*
+              Zamówienie oględzin to jedyna rzecz w serwisie, za którą ktoś płaci,
+              a do tej pory nie było do niej wejścia z paska - trzeba było
+              najpierw znaleźć ogłoszenie. Teraz stoi w nagłówku na każdej
+              podstronie, w kolorze zarezerwowanym wyłącznie dla tej akcji.
+            */}
+            <Button asChild variant="signal" size="sm" className="ml-1">
+              <Link href="/partnerzy">
+                <ShieldCheck className="h-4 w-4 mr-1.5" />
+                Zamów inspekcję
+              </Link>
+            </Button>
 
             {user ? (
               <>
@@ -138,24 +182,27 @@ export function Header() {
                 </DropdownMenu>
               </>
             ) : (
-              <Button
-                size="default"
-                onClick={() => setAuthDialogOpen(true)}
-                className="ml-1 shadow-md hover:shadow-lg transition-all font-medium"
-              >
+              <Button variant="ghost" size="sm" onClick={() => setAuthDialogOpen(true)}>
                 Zaloguj się
               </Button>
             )}
           </div>
 
-          <div className="md:hidden flex items-center gap-2">
+          <div className="md:hidden flex items-center gap-1.5">
+            <Button asChild variant="signal" size="sm" className="px-3.5">
+              <Link href="/partnerzy">
+                <ShieldCheck className="h-4 w-4 mr-1.5" />
+                Inspekcja
+              </Link>
+            </Button>
+
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" aria-label="Otwórz menu">
                   <Menu className="h-6 w-6" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-72">
+              <SheetContent side="right" className="w-80">
                 <div className="flex flex-col gap-1 mt-8">
                   {NAV_ITEMS.map(({ href, label, icon: Icon, activePrefixes }) => {
                     const active = isActive(pathname, activePrefixes);
@@ -166,8 +213,8 @@ export function Header() {
                         onClick={() => setMobileMenuOpen(false)}
                         aria-current={active ? 'page' : undefined}
                         className={cn(
-                          'flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-                          active ? 'bg-primary/10 text-primary' : 'text-navy hover:bg-muted'
+                          'flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-colors',
+                          active ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted'
                         )}
                       >
                         <Icon
@@ -180,6 +227,15 @@ export function Header() {
                       </Link>
                     );
                   })}
+
+                  <Link
+                    href="/dla-firm"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+                  >
+                    <UserCircle className="h-4 w-4 text-muted-foreground" />
+                    Dla firm
+                  </Link>
 
                   {user ? (
                     <>
@@ -198,10 +254,10 @@ export function Header() {
                         href="/profile"
                         onClick={() => setMobileMenuOpen(false)}
                         className={cn(
-                          'flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                          'flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-colors',
                           isActive(pathname, ['/profile'])
                             ? 'bg-primary/10 text-primary'
-                            : 'text-navy hover:bg-muted'
+                            : 'text-foreground hover:bg-muted'
                         )}
                       >
                         <UserCircle
@@ -216,12 +272,11 @@ export function Header() {
                       </Link>
                       <Button
                         variant="outline"
-                        size="default"
                         onClick={() => {
                           signOut();
                           setMobileMenuOpen(false);
                         }}
-                        className="mt-2 w-full justify-start font-medium"
+                        className="mt-3 w-full"
                       >
                         <LogOut className="h-4 w-4 mr-2" />
                         Wyloguj
@@ -229,12 +284,11 @@ export function Header() {
                     </>
                   ) : (
                     <Button
-                      size="default"
                       onClick={() => {
                         setAuthDialogOpen(true);
                         setMobileMenuOpen(false);
                       }}
-                      className="mt-4 w-full shadow-md hover:shadow-lg transition-all font-medium"
+                      className="mt-4 w-full"
                     >
                       Zaloguj się
                     </Button>

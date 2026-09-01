@@ -5,24 +5,32 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+  // active:scale daje fizyczną odpowiedź na dotyk - na mobile to jedyny sygnał,
+  // że przycisk w ogóle zarejestrował kliknięcie, zanim strona się przeładuje.
+  'inline-flex items-center justify-center whitespace-nowrap rounded-full text-sm font-semibold ring-offset-background transition-all duration-200 ease-spring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 active:scale-[0.97] [&_svg]:shrink-0',
   {
     variants: {
       variant: {
-        default: 'bg-primary text-primary-foreground hover:bg-primary/90',
+        default:
+          'bg-primary text-primary-foreground shadow-soft hover:bg-primary/90 hover:shadow-glow',
+        /** Akcja płatna: zamówienie inspekcji. Jedyny pomarańcz w interfejsie. */
+        signal:
+          'bg-signal text-signal-foreground shadow-soft hover:brightness-105 hover:shadow-glow-signal',
+        ink: 'bg-ink text-ink-foreground shadow-soft hover:bg-ink/90',
         destructive:
           'bg-destructive text-destructive-foreground hover:bg-destructive/90',
         outline:
-          'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
+          'border border-border bg-background hover:bg-accent hover:text-accent-foreground hover:border-foreground/20',
         secondary:
           'bg-secondary text-secondary-foreground hover:bg-secondary/80',
         ghost: 'hover:bg-accent hover:text-accent-foreground',
-        link: 'text-primary underline-offset-4 hover:underline',
+        link: 'text-primary underline-offset-4 hover:underline rounded-md',
       },
       size: {
-        default: 'h-10 px-4 py-2',
-        sm: 'h-9 rounded-md px-3',
-        lg: 'h-11 rounded-md px-8',
+        default: 'h-10 px-5 py-2',
+        sm: 'h-9 px-4 text-[13px]',
+        lg: 'h-12 px-7 text-base',
+        xl: 'h-14 px-8 text-base',
         icon: 'h-10 w-10',
       },
     },

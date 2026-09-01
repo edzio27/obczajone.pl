@@ -255,3 +255,42 @@ export async function fetchDealerMapCounts(
 
   return { sellerCount: sellerCount ?? null, reviewCount: reviewCount ?? null };
 }
+
+export type HomeStats = {
+  listingCount: number | null;
+  reviewCount: number | null;
+  inspectionCount: number | null;
+  partnerCount: number | null;
+};
+
+/**
+ * Cztery liczby pod pasek zaufania w nagłówku strony.
+ *
+ * Wszystkie są liczone z bazy - żadna nie jest wpisana na sztywno. Kiedy któraś
+ * jeszcze nic nie znaczy (zero opinii, zero oględzin), pasek chowa ją zamiast
+ * reklamować pustkę; decyzję o tym podejmuje komponent, tutaj zwracamy fakty.
+ */
+export async function fetchHomeStats(supabase: SupabaseClient): Promise<HomeStats> {
+  const [listings, reviews, inspections, partners] = await Promise.all([
+    supabase.from('listings').select('id', { count: 'exact', head: true }),
+    supabase
+      .from('reviews')
+      .select('id', { count: 'exact', head: true })
+      .eq('is_approved', true),
+    supabase
+      .from('partner_inspections')
+      .select('id', { count: 'exact', head: true })
+      .eq('is_approved', true),
+    supabase
+      .from('partners')
+      .select('id', { count: 'exact', head: true })
+      .eq('is_active', true),
+  ]);
+
+  return {
+    listingCount: listings.count ?? null,
+    reviewCount: reviews.count ?? null,
+    inspectionCount: inspections.count ?? null,
+    partnerCount: partners.count ?? null,
+  };
+}
