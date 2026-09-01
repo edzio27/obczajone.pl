@@ -12,19 +12,23 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { ShieldCheck } from 'lucide-react';
-import { PartnerCard, useNearbyPartners } from '@/components/partner/partner-picker';
+import { PartnerCard, type PartnerWithDistance } from '@/components/partner/partner-picker';
 
 type InspectionCtaButtonProps = {
   source: 'otomoto' | 'otodom';
   listingId: string;
-  listingLocation?: { lat: number; lng: number } | null;
+  /** Dobór firm robi ListingPrimaryActions - ta sama lista decyduje o tym,
+      który z dwóch przycisków przy ogłoszeniu jest tym wyróżnionym. */
+  partners: PartnerWithDistance[];
+  loaded: boolean;
+  isFallback: boolean;
   /** Ile rzeczy opinia AI kazała obejrzeć na żywo - to jest cały argument. */
   watchOutCount?: number;
 };
 
 /**
- * Główna akcja komercyjna, postawiona przy samym ogłoszeniu - obok "zobacz
- * ogłoszenie" i alertu cenowego, a nie dopiero w sekcji niżej.
+ * Główna akcja komercyjna, postawiona przy samym ogłoszeniu - nad "zobacz
+ * oryginalne ogłoszenie" i alertem cenowym, a nie dopiero w sekcji niżej.
  *
  * Świadomie przycisk otwierający okno, a nie popup wyskakujący sam: strony
  * ogłoszeń są jedynym źródłem ruchu z wyszukiwarki, a Google obniża pozycje
@@ -34,20 +38,19 @@ type InspectionCtaButtonProps = {
 export function InspectionCtaButton({
   source,
   listingId,
-  listingLocation,
+  partners,
+  loaded,
+  isFallback,
   watchOutCount = 0,
 }: InspectionCtaButtonProps) {
   const [open, setOpen] = useState(false);
-  const { partners, loaded, isFallback } = useNearbyPartners(source, listingLocation);
 
   const what = source === 'otomoto' ? 'auto' : 'nieruchomość';
-
-  if (loaded && partners.length === 0) return null;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="w-full border-primary/40 text-primary hover:bg-primary/5">
+        <Button className="w-full">
           <ShieldCheck className="h-4 w-4 mr-2" />
           Zamów inspekcję
         </Button>

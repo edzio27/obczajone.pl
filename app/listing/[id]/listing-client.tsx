@@ -12,7 +12,7 @@ import { ReviewForm } from '@/components/review-form';
 import { ReviewList } from '@/components/review-list';
 import { PriceHistory } from '@/components/price-history';
 import { ListingCard } from '@/components/listing-card';
-import { ExternalLink, MapPin, Calendar, Heart, TrendingDown, TrendingUp, Share2, Store, Star, Bell, BellRing } from 'lucide-react';
+import { MapPin, Calendar, Heart, TrendingDown, TrendingUp, Share2, Store, Star, Bell, BellRing } from 'lucide-react';
 import { formatDistanceToNow, differenceInDays } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -27,7 +27,7 @@ import {
 import { computeListingScore } from '@/lib/listing-score';
 import { ListingScoreCard } from '@/components/listing-score-card';
 import { AiOpinionCard } from '@/components/ai-opinion-card';
-import { InspectionCtaButton } from '@/components/partner/inspection-cta-button';
+import { ListingPrimaryActions } from '@/components/listing-primary-actions';
 import { coordsFromLocation } from '@/lib/geo';
 import { PriceComparisonCard } from '@/components/price-comparison-card';
 import { PartnerCta } from '@/components/partner-cta';
@@ -534,18 +534,10 @@ export function ListingClient({
                       )}
                     </div>
                   )}
-                  <a
-                    href={listing.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center gap-2 w-full text-white font-medium py-3 px-4 rounded-lg transition-colors bg-primary hover:bg-primary/90"
-                  >
-                    Zobacz oryginalne ogłoszenie
-                    <ExternalLink className="h-4 w-4" />
-                  </a>
-                  <InspectionCtaButton
+                  <ListingPrimaryActions
                     source={listing.source as 'otomoto' | 'otodom'}
                     listingId={listingId}
+                    listingUrl={listing.url}
                     listingLocation={listingLocation}
                     watchOutCount={aiOpinion?.watchOutFor.length ?? 0}
                   />
