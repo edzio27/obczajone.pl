@@ -6,11 +6,21 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useAuth } from '@/lib/auth-context';
+import { usePartnerMembership } from '@/hooks/use-partner-membership';
+import { VERDICT_LABELS, type InspectionVerdict } from '@/lib/partner-data';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
 import { checkRateLimit } from '@/lib/rate-limit';
-import { Star, X, Loader as Loader2, ImagePlus } from 'lucide-react';
+import { Star, X, Loader as Loader2, ImagePlus, ShieldCheck } from 'lucide-react';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const MAX_PHOTOS = 5;
@@ -25,7 +35,17 @@ type ReviewFormProps = {
 export function ReviewForm({ listingId, onReviewAdded, hasUserReview }: ReviewFormProps) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { membership } = usePartnerMembership();
   const [loading, setLoading] = useState(false);
+  /*
+    Partner na stronie ogłoszenia domyślnie pisze werdykt firmy, nie prywatną
+    opinię - bo po to tu jest. Przełącznik zostaje widoczny, bo firma bywa też
+    zwykłym kupującym, a podmiana intencji bez pytania byłaby podstawieniem
+    czegoś innego niż to, co człowiek zamierzał opublikować.
+  */
+  const [asInspection, setAsInspection] = useState(true);
+  const [verdict, setVerdict] = useState<InspectionVerdict>('reservations');
+  const [inspectedAt, setInspectedAt] = useState('');
   const [visitedInPerson, setVisitedInPerson] = useState<string>('no');
   const [rating, setRating] = useState(3);
   const [comment, setComment] = useState('');
@@ -105,8 +125,68 @@ export function ReviewForm({ listingId, onReviewAdded, hasUserReview }: ReviewFo
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
+  const publishAsInspection = !!membership && asInspection;
+
+  /**
+   * Werdykt firmy trafia do `partner_inspections`, czyli tam, skąd czyta go
+   * sekcja oględzin tuż pod ogłoszeniem i profil partnera. Ta sama treść
+   * wpisana jako zwykła opinia ląduje na samym dole strony i nie liczy się
+   * partnerowi do niczego - a to jest błąd, który dotąd naprawialiśmy ręcznie
+   * skryptem SQL po każdej partii wpisów.
+   */
+  const submitInspection = async () => {
+    if (!membership) return;
+
+    if (comment.trim().length < 20) {
+      toast({
+        title: 'Za krótkie podsumowanie',
+        description: 'Minimum 20 znaków — to jest tekst, który przeczyta kolejny kupujący.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    const { error } = await supabase.from('partner_inspections').insert({
+      partner_id: membership.partnerId,
+      listing_id: listingId,
+      verdict,
+      summary: comment.trim(),
+      inspected_at: inspectedAt || null,
+    });
+
+    setLoading(false);
+
+    if (error) {
+      const duplicate = error.message?.includes('partner_inspections_one_per_listing');
+      toast({
+        title: duplicate ? 'Już opisałeś to ogłoszenie' : 'Nie udało się opublikować',
+        description: duplicate
+          ? 'Na jedno ogłoszenie przypada jeden wpis od firmy. Zmień istniejący w panelu partnera.'
+          : error.message || 'Spróbuj ponownie za chwilę.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    toast({
+      title: 'Wysłane do moderacji',
+      description: 'Po zatwierdzeniu werdykt stanie przy tym ogłoszeniu i na profilu Twojej firmy.',
+    });
+
+    setComment('');
+    setInspectedAt('');
+    setVerdict('reservations');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (publishAsInspection) {
+      await submitInspection();
+      return;
+    }
 
     if (!user) {
       toast({
@@ -226,13 +306,77 @@ export function ReviewForm({ listingId, onReviewAdded, hasUserReview }: ReviewFo
   return (
     <Card data-review-form>
       <CardHeader>
-        <CardTitle>Dodaj opinię</CardTitle>
+        <CardTitle>{publishAsInspection ? 'Opublikuj oględziny' : 'Dodaj opinię'}</CardTitle>
         <CardDescription>
-          Podziel się swoją opinią o tym ogłoszeniu. Wszystkie opinie są moderowane.
+          {publishAsInspection
+            ? `Werdykt firmy ${membership?.partnerName} przy tym ogłoszeniu — z Twoją nazwą i linkiem do profilu. Publikuj wyłącznie za zgodą klienta, który zlecił badanie.`
+            : 'Podziel się swoją opinią o tym ogłoszeniu. Wszystkie opinie są moderowane.'}
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
+          {membership && (
+            <div className="rounded-lg border bg-muted/40 p-4 space-y-3">
+              <Label className="flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-primary" />
+                Publikujesz jako
+              </Label>
+              <RadioGroup
+                value={asInspection ? 'inspection' : 'review'}
+                onValueChange={(value) => setAsInspection(value === 'inspection')}
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="inspection" id="publish-inspection" />
+                  <Label htmlFor="publish-inspection" className="font-normal">
+                    Oględziny firmy {membership.partnerName} — staną pod ogłoszeniem i na profilu
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="review" id="publish-review" />
+                  <Label htmlFor="publish-review" className="font-normal">
+                    Zwykła opinia — jako użytkownik, w opiniach na dole strony
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+          )}
+
+          {publishAsInspection ? (
+            <>
+              <div className="space-y-3">
+                <Label htmlFor="verdict">Werdykt</Label>
+                <Select
+                  value={verdict}
+                  onValueChange={(value) => setVerdict(value as InspectionVerdict)}
+                >
+                  <SelectTrigger id="verdict">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(VERDICT_LABELS).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-3">
+                <Label htmlFor="inspected-at">Data oględzin (opcjonalnie)</Label>
+                <Input
+                  id="inspected-at"
+                  type="date"
+                  value={inspectedAt}
+                  onChange={(e) => setInspectedAt(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Dzień, w którym stałeś przy tym aucie — zwykle nie ten, w którym to piszesz.
+                </p>
+              </div>
+            </>
+          ) : (
+          <>
           <div className="space-y-3">
             <Label>Czy byłeś/byłaś na miejscu?</Label>
             <RadioGroup value={visitedInPerson} onValueChange={setVisitedInPerson}>
@@ -268,18 +412,27 @@ export function ReviewForm({ listingId, onReviewAdded, hasUserReview }: ReviewFo
               ))}
             </div>
           </div>
+          </>
+          )}
 
           <div className="space-y-3">
-            <Label htmlFor="comment">Twoja opinia</Label>
+            <Label htmlFor="comment">
+              {publishAsInspection ? 'Podsumowanie oględzin' : 'Twoja opinia'}
+            </Label>
             <Textarea
               id="comment"
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              placeholder="Opisz swoje doświadczenie z tym ogłoszeniem..."
-              rows={4}
+              placeholder={
+                publishAsInspection
+                  ? 'Co zastałeś na miejscu: stan techniczny, ślady napraw, co do wymiany, wniosek dla kupującego...'
+                  : 'Opisz swoje doświadczenie z tym ogłoszeniem...'
+              }
+              rows={publishAsInspection ? 8 : 4}
             />
           </div>
 
+          {!publishAsInspection && (
           <div className="space-y-3">
             <Label>Zdjęcia (opcjonalnie)</Label>
             <div className="space-y-3">
@@ -358,13 +511,16 @@ export function ReviewForm({ listingId, onReviewAdded, hasUserReview }: ReviewFo
               )}
             </div>
           </div>
+          )}
 
           <Button type="submit" disabled={loading || uploading} className="w-full">
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                {uploading ? 'Wysyłanie zdjęć...' : 'Dodawanie...'}
+                {uploading ? 'Wysyłanie zdjęć...' : publishAsInspection ? 'Publikowanie...' : 'Dodawanie...'}
               </>
+            ) : publishAsInspection ? (
+              'Opublikuj oględziny'
             ) : (
               'Dodaj opinię'
             )}
