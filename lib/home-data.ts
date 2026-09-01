@@ -294,3 +294,92 @@ export async function fetchHomeStats(supabase: SupabaseClient): Promise<HomeStat
     partnerCount: partners.count ?? null,
   };
 }
+
+export type HeroSpotlight = {
+  id: string;
+  title: string;
+  location: string;
+  image_url: string | null;
+  source: string;
+  currentPrice: number;
+  startPrice: number;
+  changePercent: number;
+  /** Ceny w kolejności chronologicznej - wprost do narysowania wykresu. */
+  series: number[];
+  firstSeenAt: string;
+};
+
+const HERO_MIN_SNAPSHOTS = 3;
+const HERO_MIN_DROP_PERCENT = -3;
+
+/**
+ * Jedno ogłoszenie do wykresu w nagłówku strony głównej.
+ *
+ * Szukamy najmocniejszej obniżki wśród ofert, które mają dość punktów pomiaru,
+ * żeby linia w ogóle miała kształt - dwa snapshoty rysują odcinek, a odcinek
+ * niczego nie pokazuje. Zwracamy null, kiedy nic nie spełnia warunków; wtedy
+ * nagłówek renderuje się bez wykresu, zamiast pokazywać wymyśloną krzywą.
+ * Cała wartość tego miejsca polega na tym, że to prawdziwa oferta z bazy.
+ */
+export async function fetchHeroSpotlight(
+  supabase: SupabaseClient
+): Promise<HeroSpotlight | null> {
+  const { data: pool, error } = await supabase
+    .from('listings')
+    .select('id, title, location, current_price, source, image_url')
+    .eq('is_active', true)
+    .gt('current_price', 0)
+    .not('title', 'is', null)
+    .order('last_checked_at', { ascending: false })
+    .limit(100);
+
+  if (error || !pool || pool.length === 0) return null;
+
+  const { data: snapshotsData } = await supabase
+    .from('listing_snapshots')
+    .select('listing_id, price, scraped_at')
+    .in(
+      'listing_id',
+      pool.map((l: any) => l.id)
+    )
+    .order('scraped_at', { ascending: true });
+
+  const byListing = new Map<string, { price: number; scraped_at: string }[]>();
+  for (const snap of snapshotsData || []) {
+    const bucket = byListing.get(snap.listing_id);
+    if (bucket) bucket.push(snap);
+    else byListing.set(snap.listing_id, [snap]);
+  }
+
+  let best: HeroSpotlight | null = null;
+
+  for (const listing of pool as any[]) {
+    const snaps = byListing.get(listing.id);
+    if (!snaps || snaps.length < HERO_MIN_SNAPSHOTS) continue;
+
+    const startPrice = snaps[0].price;
+    const changePercent = computePriceChangePercent(listing.current_price, startPrice);
+    if (changePercent == null || changePercent > HERO_MIN_DROP_PERCENT) continue;
+    if (best && changePercent >= best.changePercent) continue;
+
+    // Ostatnim punktem jest cena bieżąca, a nie ostatni snapshot - te dwie
+    // wartości rozjeżdżają się między przebiegami scrapera i wykres kończyłby
+    // się gdzie indziej, niż mówi liczba obok niego.
+    const series = [...snaps.map((s) => s.price), listing.current_price];
+
+    best = {
+      id: listing.id,
+      title: listing.title,
+      location: listing.location || '',
+      image_url: listing.image_url ?? null,
+      source: listing.source,
+      currentPrice: listing.current_price,
+      startPrice,
+      changePercent,
+      series,
+      firstSeenAt: snaps[0].scraped_at,
+    };
+  }
+
+  return best;
+}

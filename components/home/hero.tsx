@@ -1,11 +1,14 @@
 import Link from 'next/link';
 import { ArrowRight, BadgeCheck, Gauge, MapPin, ShieldCheck, Star, Zap } from 'lucide-react';
 import { ListingUrlForm } from '@/components/listing-url-form';
+import { HeroSpotlight } from '@/components/home/hero-spotlight';
 import { CountUp } from '@/components/motion/count-up';
-import type { HomeStats } from '@/lib/home-data';
+import type { HeroSpotlight as Spotlight, HomeStats } from '@/lib/home-data';
 
 type HeroProps = {
   stats: HomeStats;
+  /** Prawdziwa oferta z bazy pod wykres. Bez niej nagłówek jest jednokolumnowy. */
+  spotlight: Spotlight | null;
 };
 
 /**
@@ -18,7 +21,7 @@ type HeroProps = {
  * obie ścieżki stoją obok siebie jako równorzędne karty, a płatna ma kolor
  * zarezerwowany wyłącznie dla niej.
  */
-export function Hero({ stats }: HeroProps) {
+export function Hero({ stats, spotlight }: HeroProps) {
   // Liczba poniżej progu działa gorzej niż jej brak - "12 sprawdzonych ogłoszeń"
   // mówi odwiedzającemu, że jest tu pierwszy.
   const tiles = [
@@ -40,7 +43,8 @@ export function Hero({ stats }: HeroProps) {
 
       <div className="container mx-auto px-4 relative">
         <div className="max-w-6xl mx-auto pt-14 pb-24 md:pt-20 md:pb-28">
-          <div className="max-w-3xl">
+          <div className="grid items-center gap-10 lg:grid-cols-[1.1fr_minmax(0,0.9fr)]">
+            <div className="max-w-2xl">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.07] px-3.5 py-1.5 text-xs font-semibold text-white/80 backdrop-blur-sm animate-fade-in">
               <span className="relative flex h-2 w-2">
                 <span className="absolute inline-flex h-full w-full rounded-full bg-signal animate-pulse-ring" />
@@ -72,6 +76,19 @@ export function Hero({ stats }: HeroProps) {
               My pokazujemy historię ceny, opinie tych, którzy już tam pojechali —
               a jeśli trzeba, wysyłamy kogoś na miejsce.
             </p>
+            </div>
+
+            {/* Nie makieta - konkretna oferta, przy której cena naprawdę spadła.
+                Jedyny sposób, żeby pokazać produkt, zanim ktokolwiek przewinie
+                stronę, a przy okazji link wewnętrzny do strony ogłoszenia. */}
+            {spotlight && (
+              <div
+                className="hidden animate-fade-in lg:flex lg:justify-end"
+                style={{ animationDelay: '150ms' }}
+              >
+                <HeroSpotlight spotlight={spotlight} />
+              </div>
+            )}
           </div>
 
           <div className="mt-8 animate-fade-in" style={{ animationDelay: '180ms' }}>

@@ -22,6 +22,7 @@ import { fetchPartners } from '@/lib/partner-data';
 import {
   fetchBiggestPriceDrops,
   fetchDealerMapCounts,
+  fetchHeroSpotlight,
   fetchHomeStats,
   fetchRecentListings,
   fetchRecentlyInspected,
@@ -55,6 +56,7 @@ async function getHomeData() {
 
     const [
       stats,
+      spotlight,
       recentListings,
       recentlyReviewed,
       priceDrops,
@@ -63,6 +65,7 @@ async function getHomeData() {
       partners,
     ] = await Promise.all([
       fetchHomeStats(supabase),
+      fetchHeroSpotlight(supabase),
       fetchRecentListings(supabase, { pageSize: RECENT_LISTINGS_PAGE_SIZE }),
       fetchRecentlyReviewedListings(supabase, 10),
       fetchBiggestPriceDrops(supabase),
@@ -73,6 +76,7 @@ async function getHomeData() {
 
     return {
       stats,
+      spotlight,
       recentListings,
       recentlyReviewed,
       priceDrops,
@@ -89,6 +93,7 @@ async function getHomeData() {
         inspectionCount: null,
         partnerCount: null,
       },
+      spotlight: null,
       recentListings: [],
       recentlyReviewed: [],
       priceDrops: [],
@@ -102,6 +107,7 @@ async function getHomeData() {
 export default async function Home() {
   const {
     stats,
+    spotlight,
     recentListings,
     recentlyReviewed,
     priceDrops,
@@ -131,7 +137,7 @@ export default async function Home() {
       />
       <Header />
 
-      <Hero stats={stats} />
+      <Hero stats={stats} spotlight={spotlight} />
 
       <main className="container mx-auto px-4 pb-8">
         <div className="max-w-6xl mx-auto">
