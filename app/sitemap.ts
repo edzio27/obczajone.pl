@@ -1,5 +1,6 @@
 import { MetadataRoute } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { fetchModelTrends } from '@/lib/price-trends';
 
 /*
   Bez tego sitemapa jest generowana raz, przy budowaniu, i zamarza. Scraper
@@ -40,6 +41,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.5,
+    },
+    {
+      url: `${baseUrl}/ile-spada-cena`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
     },
   ];
 
@@ -95,7 +102,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.6,
     }));
 
-    return [...staticPages, ...listingPages, ...partnerPages];
+    // Strony ze statystykami spadków cen: jedyna treść w serwisie, której nie ma
+    // nikt inny, więc bez nich sitemapa pomija to, po co Google miałoby tu
+    // w ogóle przyjść.
+    const trends = await fetchModelTrends(supabase);
+    const trendPages: MetadataRoute.Sitemap = trends.map((trend) => ({
+      url: `${baseUrl}/ile-spada-cena/${trend.slug}`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly' as const,
+      priority: 0.6,
+    }));
+
+    return [...staticPages, ...listingPages, ...partnerPages, ...trendPages];
   } catch (error) {
     console.error('Error generating sitemap:', error);
     return staticPages;
