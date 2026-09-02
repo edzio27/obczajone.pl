@@ -54,7 +54,14 @@ type ScrapeResult = { price: number | null; specs: Record<string, unknown> | nul
  */
 const BATCH_SIZE = 25;
 
-// Te same klucze co extractOtomotoSpecs w funkcji scrape-listing.
+// Te same klucze co extractOtomotoSpecs w funkcji scrape-listing - łącznie
+// z polami odcisku palca egzemplarza (generacja, pojemność, moc, skrzynia,
+// nadwozie, kolor, liczba drzwi).
+//
+// Dochodzą tu z tego samego powodu, dla którego w ogóle czytamy parametry
+// w dziennym przebiegu: ogłoszenia dodane wcześniej nie dostaną ich w żaden
+// inny sposób. Przy 1700 ogłoszeniach w bazie to jedyna droga, żeby te dane
+// kiedykolwiek były komplete.
 function extractOtomotoParam(ad: any, keys: string[]): string | null {
   const params = ad?.parameters ?? ad?.details ?? [];
   if (!Array.isArray(params)) return null;
@@ -72,6 +79,13 @@ function extractOtomotoSpecs(ad: any): Record<string, unknown> {
     year: extractOtomotoParam(ad, ['year']),
     mileage: extractOtomotoParam(ad, ['mileage']),
     fuel_type: extractOtomotoParam(ad, ['fuel_type', 'fuel']),
+    generation: extractOtomotoParam(ad, ['generation']),
+    engine_capacity: extractOtomotoParam(ad, ['engine_capacity']),
+    engine_power: extractOtomotoParam(ad, ['engine_power']),
+    gearbox: extractOtomotoParam(ad, ['gearbox']),
+    body_type: extractOtomotoParam(ad, ['body_type']),
+    color: extractOtomotoParam(ad, ['color']),
+    door_count: extractOtomotoParam(ad, ['door_count']),
   };
 }
 
@@ -228,9 +242,16 @@ Deno.serve(async (req: Request) => {
         // Uzupelniamy parametry tylko wtedy, gdy ich brakuje. Nadpisywanie
         // istniejacych groziloby wyczyszczeniem dobrych danych przy jednym
         // nieudanym odczycie strony.
-        const specsMissing = !listing.specs?.brand || !listing.specs?.model;
+        //
+        // Brakujaca generacja liczy sie tak samo jak brakujaca marka - inaczej
+        // 829 ogloszen, ktore maja juz marke i model, nie dostaloby nowych pol
+        // nigdy, a to wlasnie one sa najstarsze. Scalamy zamiast podmieniac,
+        // wiec dopisanie nowego pola nie moze skasowac tego, co juz jest.
+        const specsMissing =
+          !listing.specs?.brand || !listing.specs?.model || !listing.specs?.generation;
         if (scraped.specs && specsMissing) {
-          await supabase.from('listings').update({ specs: scraped.specs }).eq('id', listing.id);
+          const merged = { ...(listing.specs ?? {}), ...scraped.specs };
+          await supabase.from('listings').update({ specs: merged }).eq('id', listing.id);
           backfilledSpecs++;
         }
 

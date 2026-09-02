@@ -54,10 +54,13 @@ type ScrapedSeller = {
   lng: number | null;
 };
 
-// Only dealers ("PROFESSIONAL") get a seller profile. Confirmed via a real
-// fetched Otomoto listing that this field exists with this exact value for
-// a dealer account; the private-individual value hasn't been observed yet —
-// if private listings start creating seller rows, check the real value here.
+// Only dealers ("PROFESSIONAL") get a seller profile. Both values are now
+// confirmed against live listings: a dealer ad carries seller.type
+// 'PROFESSIONAL', a private one 'PRIVATE'. Roughly three quarters of what we
+// scrape is private, so the low share of listings with a seller is the rule
+// working, not a gap - a person selling one car is not a business with a
+// public profile, and giving them a page with reviews attached would be a
+// different product with different obligations.
 function extractSeller(ad: any): ScrapedSeller | null {
   if (ad?.seller?.type !== 'PROFESSIONAL') return null;
   if (!ad.seller.id || !ad.seller.name) return null;
@@ -85,13 +88,30 @@ type OtomotoSpecs = {
   year: string | null;
   mileage: string | null;
   fuel_type: string | null;
+  /*
+    Pola poniżej nie służą do wyświetlania. Są odciskiem palca egzemplarza:
+    razem z marką, modelem i rocznikiem zawężają auto na tyle, żeby dało się
+    rozpoznać, że dwa ogłoszenia z różnych miesięcy dotyczą tego samego
+    samochodu - a przy okazji od razu poprawiają dobór ofert do porównania cen,
+    bo dziś mediana bierze pod uwagę tylko rocznik, paliwo i przebieg.
+
+    NIE MA TU VIN-U I NIE DA SIĘ GO STĄD WZIĄĆ. Otomoto szyfruje dokładnie te
+    trzy pola, które identyfikowałyby pojazd - `vin`, `registration`
+    i `date_registration` - i robi to per żądanie: dwa pobrania tej samej
+    strony w odstępie trzech sekund zwracają inne wartości. To nie jest
+    zamaskowany numer do odsłonięcia, tylko szyfrogram wymienialny na VIN przez
+    ich własne API. Reszta parametrów jest jawna. Zanim ktoś spróbuje tego
+    ponownie: to zostało sprawdzone na żywych ogłoszeniach 2 września 2026.
+  */
+  generation: string | null;
+  engine_capacity: string | null;
+  engine_power: string | null;
+  gearbox: string | null;
+  body_type: string | null;
+  color: string | null;
+  door_count: string | null;
 };
 
-// Car parameters can appear under either `ad.parameters` or `ad.details`
-// depending on the Otomoto page variant — check both. Each entry may key
-// off `key` or `name`; confirmed against a real fetched listing (Task 2,
-// Step 1) that the live shape is `ad.details` with entries keyed by `key`
-// (e.g. {key: 'make', value: 'Volvo'}, {key: 'mileage', value: '85 597 km'}).
 function extractOtomotoParam(ad: any, keys: string[]): string | null {
   const params = ad?.parameters ?? ad?.details ?? [];
   if (!Array.isArray(params)) return null;
@@ -109,6 +129,13 @@ function extractOtomotoSpecs(ad: any): OtomotoSpecs {
     year: extractOtomotoParam(ad, ['year']),
     mileage: extractOtomotoParam(ad, ['mileage']),
     fuel_type: extractOtomotoParam(ad, ['fuel_type', 'fuel']),
+    generation: extractOtomotoParam(ad, ['generation']),
+    engine_capacity: extractOtomotoParam(ad, ['engine_capacity']),
+    engine_power: extractOtomotoParam(ad, ['engine_power']),
+    gearbox: extractOtomotoParam(ad, ['gearbox']),
+    body_type: extractOtomotoParam(ad, ['body_type']),
+    color: extractOtomotoParam(ad, ['color']),
+    door_count: extractOtomotoParam(ad, ['door_count']),
   };
 }
 
@@ -127,7 +154,20 @@ async function scrapeOtomoto(url: string) {
     let photoUrl = '';
     let seller: ScrapedSeller | null = null;
     let description = '';
-    let specs: OtomotoSpecs = { brand: null, model: null, year: null, mileage: null, fuel_type: null };
+    let specs: OtomotoSpecs = {
+      brand: null,
+      model: null,
+      year: null,
+      mileage: null,
+      fuel_type: null,
+      generation: null,
+      engine_capacity: null,
+      engine_power: null,
+      gearbox: null,
+      body_type: null,
+      color: null,
+      door_count: null,
+    };
     let originalPostedAt: string | null = null;
 
     // Szukaj danych w __NEXT_DATA__
