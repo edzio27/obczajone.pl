@@ -16,6 +16,7 @@ import { Check, X, Trash2, TriangleAlert as AlertTriangle } from 'lucide-react';
 import { PartnersAdmin } from '@/components/admin/partners-admin';
 import { PartnerApplicationsAdmin } from '@/components/admin/partner-applications-admin';
 import { PartnerContentAdmin } from '@/components/admin/partner-content-admin';
+import { ContestAdmin } from '@/components/admin/contest-admin';
 
 type Review = {
   id: string;
@@ -225,6 +226,7 @@ export default function AdminPage() {
                 Treści partnerów{pendingPartnerContent > 0 ? ` (${pendingPartnerContent})` : ''}
               </TabsTrigger>
               <TabsTrigger value="partners">Partnerzy</TabsTrigger>
+              <TabsTrigger value="konkurs">Konkurs</TabsTrigger>
               <TabsTrigger value="applications">
                 Firmy{newApplications > 0 ? ` (${newApplications})` : ''}
               </TabsTrigger>
@@ -345,6 +347,10 @@ export default function AdminPage() {
             </TabsContent>
             <TabsContent value="partner-content">
               <PartnerContentAdmin onCountChange={setPendingPartnerContent} />
+            </TabsContent>
+
+            <TabsContent value="konkurs">
+              <ContestAdmin />
             </TabsContent>
 
             <TabsContent value="partners">
