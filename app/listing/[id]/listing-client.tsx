@@ -28,6 +28,7 @@ import { computeListingScore } from '@/lib/listing-score';
 import { ListingScoreCard } from '@/components/listing-score-card';
 import { AiOpinionCard } from '@/components/ai-opinion-card';
 import { ListingPrimaryActions } from '@/components/listing-primary-actions';
+import { ListingSignals } from '@/components/listing-signals';
 import { coordsFromLocation } from '@/lib/geo';
 import { PriceComparisonCard } from '@/components/price-comparison-card';
 import { PartnerCta } from '@/components/partner-cta';
@@ -446,6 +447,12 @@ export function ListingClient({
                   <h1 className="text-2xl font-semibold leading-none tracking-tight">
                     {listing.title || latestSnapshot?.title || 'Ładowanie...'}
                   </h1>
+                  {/* Sygnały idą tu, nad opisem i lokalizacją: kto zna to
+                      ogłoszenie z autopsji, ma je pod ręką bez scrollowania,
+                      a kto dopiero czyta - od razu widzi, czy ktoś już był. */}
+                  <div className="mt-4">
+                    <ListingSignals listingId={listingId} />
+                  </div>
                   {/* div, nie CardDescription: ten blok zawiera elementy blokowe, a
                       CardDescription renderuje <p>. <div> w <p> przeglądarka
                       przenosi na zewnątrz, przez co HTML z serwera nie zgadza się
