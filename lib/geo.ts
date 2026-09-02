@@ -50,6 +50,44 @@ export const VOIVODESHIPS = [
 ] as const;
 
 /**
+ * Punkt odniesienia każdego województwa - miasto wojewódzkie.
+ *
+ * Katalog partnerów pyta "czy ta firma tu dojedzie", a nie "czy tu siedzi",
+ * więc potrzebuje jednego punktu na województwo, do którego liczy odległość.
+ * Miasto wojewódzkie zamiast środka geometrycznego, bo to tam stoi większość
+ * ogłoszeń, a więc i realnych zleceń.
+ *
+ * To jest przybliżenie i takim ma zostać: firma sięgająca tylko skraju dużego
+ * województwa pokaże się jako obsługująca całe. Przy dzisiejszych promieniach
+ * (150-600 km) różnica jest żadna, ale gdy katalog urośnie i pojawią się firmy
+ * jeżdżące po 30 km, trzeba będzie liczyć to po granicach, nie po stolicach.
+ */
+export const VOIVODESHIP_CENTERS: Record<string, [number, number]> = {
+  'dolnośląskie': [51.1079, 17.0385],          // Wrocław
+  'kujawsko-pomorskie': [53.1235, 18.0084],    // Bydgoszcz
+  'lubelskie': [51.2465, 22.5684],             // Lublin
+  'lubuskie': [52.7368, 15.2288],              // Gorzów Wielkopolski
+  'łódzkie': [51.7592, 19.456],                // Łódź
+  'małopolskie': [50.0647, 19.945],            // Kraków
+  'mazowieckie': [52.2297, 21.0122],           // Warszawa
+  'opolskie': [50.6751, 17.9213],              // Opole
+  'podkarpackie': [50.0413, 21.999],           // Rzeszów
+  'podlaskie': [53.1325, 23.1688],             // Białystok
+  'pomorskie': [54.352, 18.6466],              // Gdańsk
+  'śląskie': [50.2649, 19.0238],               // Katowice
+  'świętokrzyskie': [50.8661, 20.6286],        // Kielce
+  'warmińsko-mazurskie': [53.7784, 20.4801],   // Olsztyn
+  'wielkopolskie': [52.4064, 16.9252],         // Poznań
+  'zachodniopomorskie': [53.4285, 14.5528],    // Szczecin
+};
+
+/** Punkt odniesienia województwa albo `null`, gdy nazwa nie jest z listy. */
+export function coordsForVoivodeship(name: string): { lat: number; lng: number } | null {
+  const entry = VOIVODESHIP_CENTERS[name];
+  return entry ? { lat: entry[0], lng: entry[1] } : null;
+}
+
+/**
  * Współrzędne polskich miast, do wyznaczenia położenia ogłoszenia, gdy nie mamy
  * współrzędnych sprzedawcy - a nie mamy ich przy 87% ogłoszeń.
  *

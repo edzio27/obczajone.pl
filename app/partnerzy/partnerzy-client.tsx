@@ -16,7 +16,7 @@ import {
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ClipboardCheck, MapPin, ShieldCheck } from 'lucide-react';
-import { VOIVODESHIPS } from '@/lib/geo';
+import { VOIVODESHIPS, coordsForVoivodeship, distanceKm } from '@/lib/geo';
 import { PartnerStars } from '@/components/partner/partner-stars';
 import { PromotedBadge, VerifiedBadge } from '@/components/partner/partner-badges';
 import { ListingThumbnail } from '@/components/listing-thumbnail';
@@ -50,10 +50,30 @@ export function PartnersMapClient({ initialPartners, latestInspections }: Partne
   const [category, setCategory] = useState('all');
   const [voivodeship, setVoivodeship] = useState('all');
 
+  /*
+    Filtr województwa pyta, czy firma tam dojedzie - nie, czy tam siedzi.
+    Partner z Wrocławia deklarujący 600 km obsługuje Poznań i tak ma się
+    pokazać pod "wielkopolskie"; szukający chce kogoś, kto przyjedzie obejrzeć
+    auto, a nie firmę z lokalnym adresem.
+
+    Siedziba nadal wystarcza sama z siebie, bo bez współrzędnych nie mamy jak
+    policzyć dojazdu, a firma we własnym województwie zawsze jest na miejscu.
+  */
+  const commuteKm =
+    voivodeship === 'all' ? null : coordsForVoivodeship(voivodeship);
+
+  function coverage(p: Partner): number | null {
+    if (!commuteKm || p.lat == null || p.lng == null) return null;
+    return distanceKm(commuteKm, { lat: p.lat, lng: p.lng });
+  }
+
   const filteredPartners = initialPartners.filter((p) => {
     const matchesCategory = category === 'all' ? true : p.category === category;
-    const matchesVoivodeship = voivodeship === 'all' ? true : p.voivodeship === voivodeship;
-    return matchesCategory && matchesVoivodeship;
+    if (!matchesCategory) return false;
+    if (voivodeship === 'all' || p.voivodeship === voivodeship) return true;
+
+    const distance = coverage(p);
+    return distance != null && distance <= (p.service_radius_km ?? 200);
   });
 
   const mappablePartners = filteredPartners.filter((p) => p.lat != null && p.lng != null);
@@ -226,6 +246,13 @@ export function PartnersMapClient({ initialPartners, latestInspections }: Partne
                               <MapPin className="h-3.5 w-3.5" />
                               {partner.city}
                               {partner.voivodeship ? `, ${partner.voivodeship}` : ''}
+                              {/* Bez tego karta z napisem "Wrocław, dolnośląskie"
+                                  pod filtrem "wielkopolskie" wygląda na błąd. */}
+                              {partner.voivodeship !== voivodeship && coverage(partner) != null && (
+                                <span className="text-muted-foreground/80">
+                                  {` — dojeżdża, ok. ${Math.round((coverage(partner) as number) / 10) * 10} km`}
+                                </span>
+                              )}
                             </span>
                           )}
                         </div>
