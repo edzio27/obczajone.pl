@@ -29,6 +29,7 @@ import { ListingScoreCard } from '@/components/listing-score-card';
 import { AiOpinionCard } from '@/components/ai-opinion-card';
 import { ListingPrimaryActions } from '@/components/listing-primary-actions';
 import { ListingSignals } from '@/components/listing-signals';
+import { PriceWatchForm } from '@/components/price-watch-form';
 import { coordsFromLocation } from '@/lib/geo';
 import { PriceComparisonCard } from '@/components/price-comparison-card';
 import { PartnerCta } from '@/components/partner-cta';
@@ -548,19 +549,27 @@ export function ListingClient({
                     listingLocation={listingLocation}
                     watchOutCount={aiOpinion?.watchOutFor.length ?? 0}
                   />
-                  <Button
-                    onClick={togglePriceAlert}
-                    disabled={alertLoading}
-                    variant={alertEnabled ? 'default' : 'outline'}
-                    className="w-full"
-                  >
-                    {alertEnabled ? (
-                      <BellRing className="h-4 w-4 mr-2 fill-current" />
-                    ) : (
-                      <Bell className="h-4 w-4 mr-2" />
-                    )}
-                    {alertEnabled ? 'Powiadomimy o spadku ceny' : 'Powiadom mnie o spadku ceny'}
-                  </Button>
+                  {/* Zalogowany ma alert przy swoich ulubionych, więc zostaje
+                      przy przycisku. Reszta - czyli praktycznie wszyscy, bo kont
+                      jest dziesięć - dostaje to samo za jeden adres e-mail,
+                      zamiast pięciu kroków rejestracji. */}
+                  {user ? (
+                    <Button
+                      onClick={togglePriceAlert}
+                      disabled={alertLoading}
+                      variant={alertEnabled ? 'default' : 'outline'}
+                      className="w-full"
+                    >
+                      {alertEnabled ? (
+                        <BellRing className="h-4 w-4 mr-2 fill-current" />
+                      ) : (
+                        <Bell className="h-4 w-4 mr-2" />
+                      )}
+                      {alertEnabled ? 'Powiadomimy o spadku ceny' : 'Powiadom mnie o spadku ceny'}
+                    </Button>
+                  ) : (
+                    <PriceWatchForm listingId={listingId} />
+                  )}
                   <Button onClick={handleShare} variant="outline" className="w-full">
                     <Share2 className="h-4 w-4 mr-2" />
                     Udostępnij

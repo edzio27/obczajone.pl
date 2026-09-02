@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   alternates: { canonical: '/polityka-prywatnosci' },
 };
 
-const LAST_UPDATED = '27 sierpnia 2026';
+const LAST_UPDATED = '2 września 2026';
 
 const sections: LegalSection[] = [
   {
@@ -50,6 +50,7 @@ const sections: LegalSection[] = [
           'Zgłoszenia opinii wraz z podaną przyczyną — w celu moderacji treści. Podstawa: art. 6 ust. 1 lit. c oraz lit. f RODO (obowiązek prawny i prawnie uzasadniony interes polegający na zapewnieniu zgodności treści z prawem).',
           'Dane podane w formularzu zapytania do partnera (imię, numer telefonu lub adres e-mail, treść zapytania oraz wskazanie ogłoszenia, którego dotyczy) — w celu przekazania ich wskazanemu partnerowi, aby mógł się skontaktować i przedstawić ofertę. Podstawa: art. 6 ust. 1 lit. b RODO (podjęcie działań na żądanie osoby przed zawarciem umowy). Podanie tych danych jest dobrowolne, ale bez nich zapytania nie da się zrealizować.',
           'Dane podane w formularzu zgłoszenia firmy do programu partnerskiego (dane firmy, dane osoby kontaktowej, adres e-mail, telefon) — w celu rozpatrzenia zgłoszenia i kontaktu w sprawie współpracy. Podstawa: art. 6 ust. 1 lit. b oraz lit. f RODO.',
+          'Adres e-mail podany w formularzu obserwowania ceny ogłoszenia — wyłącznie po to, aby wysłać powiadomienie, gdy sprzedający obniży cenę tego ogłoszenia. Podstawa: art. 6 ust. 1 lit. b RODO (wykonanie usługi na żądanie osoby, której dane dotyczą). Podanie adresu jest dobrowolne i nie wymaga założenia konta. Adresu nie wykorzystujemy do żadnej innej korespondencji ani nie przekazujemy go partnerom. Każda wiadomość zawiera link, który jednym kliknięciem usuwa adres z naszej bazy.',
           'Dane techniczne przetwarzane przez dostawcę infrastruktury, w tym adres IP i informacje o przeglądarce zapisywane w logach serwera — w celu zapewnienia bezpieczeństwa i przeciwdziałania nadużyciom. Podstawa: art. 6 ust. 1 lit. f RODO.',
         ],
       },
@@ -128,6 +129,7 @@ const sections: LegalSection[] = [
         type: 'ul',
         items: [
           'Dane konta — przez czas jego istnienia, a po usunięciu konta przez okres niezbędny do ustalenia lub dochodzenia roszczeń, nie dłużej niż 3 lata.',
+          'Adres e-mail z obserwowania ceny — do momentu wypisania się linkiem z wiadomości albo do usunięcia ogłoszenia z serwisu, w zależności od tego, co nastąpi wcześniej.',
           'Opinie i zdjęcia — do czasu ich usunięcia przez autora lub przez nas, przy czym po usunięciu konta mogą pozostać w serwisie bez powiązania z kontem, o ile autor nie zażąda ich usunięcia.',
           'Zgłoszenia treści i korespondencja reklamacyjna — 3 lata od zakończenia sprawy.',
           'Zapytania wysłane do partnerów — 12 miesięcy od wysłania, w celu rozliczenia współpracy z partnerem i obsługi ewentualnych reklamacji.',

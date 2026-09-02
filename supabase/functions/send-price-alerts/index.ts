@@ -24,7 +24,7 @@ function formatPln(value: number): string {
   return `${Math.round(value).toLocaleString('pl-PL')} zł`;
 }
 
-function buildEmail(drops: Drop[]): { subject: string; html: string } {
+function buildEmail(drops: Drop[], unsubscribeToken?: string): { subject: string; html: string } {
   const subject =
     drops.length === 1
       ? `Cena spadła: ${drops[0].title}`
@@ -55,8 +55,9 @@ function buildEmail(drops: Drop[]): { subject: string; html: string } {
       <ul style="padding-left:18px;margin:0 0 24px">${items}</ul>
       <p style="color:#777;font-size:12px;margin:0">
         Dostajesz tę wiadomość, bo włączyłeś powiadomienia o cenie w serwisie obczajone.pl.
-        Możesz je wyłączyć na stronie ogłoszenia albo w
-        <a href="${SITE_URL}/profile" style="color:#777">swoim profilu</a>.
+        ${unsubscribeToken
+          ? `<a href="${SITE_URL}/wypisz/${unsubscribeToken}" style="color:#777">Wypisz się jednym kliknięciem</a>.`
+          : `Możesz je wyłączyć na stronie ogłoszenia albo w <a href="${SITE_URL}/profile" style="color:#777">swoim profilu</a>.`}
       </p>
     </div>`;
 
@@ -181,6 +182,64 @@ Deno.serve(async (req: Request) => {
       sent += drops.length;
     }
 
+    /*
+      Obserwujący bez konta. Ta sama logika ceny odniesienia co przy
+      `favorites`, tylko adresat jest w wierszu zamiast w auth.users - i każdy
+      mail niesie własny link do wypisania, bo nie ma profilu, w którym można
+      by to wyłączyć.
+    */
+    const { data: emailWatchers, error: watcherError } = await supabase
+      .from('listing_price_watchers')
+      .select('id, listing_id, email, unsubscribe_token, last_notified_price, listing:listings(title, current_price)');
+
+    if (watcherError) {
+      throw new Error(`Failed to read e-mail watchers: ${watcherError.message}`);
+    }
+
+    let emailSent = 0;
+    let emailSkipped = 0;
+
+    for (const row of emailWatchers || []) {
+      const listing = (row as any).listing;
+      if (!listing || !(listing.current_price > 0)) continue;
+
+      const reference = row.last_notified_price;
+      if (reference == null) {
+        await supabase
+          .from('listing_price_watchers')
+          .update({ last_notified_price: listing.current_price })
+          .eq('id', row.id);
+        continue;
+      }
+
+      const dropPercent = ((reference - listing.current_price) / reference) * 100;
+      if (dropPercent < MIN_DROP_PERCENT) continue;
+
+      const drop: Drop = {
+        favoriteId: row.id,
+        userId: '',
+        listingId: row.listing_id,
+        title: listing.title || 'Ogłoszenie',
+        previousPrice: Number(reference),
+        currentPrice: Number(listing.current_price),
+      };
+
+      const { subject, html } = buildEmail([drop], row.unsubscribe_token);
+      const ok = await sendEmail(row.email, subject, html);
+
+      if (!ok) {
+        emailSkipped += 1;
+        continue;
+      }
+
+      await supabase
+        .from('listing_price_watchers')
+        .update({ last_notified_price: drop.currentPrice })
+        .eq('id', row.id);
+
+      emailSent += 1;
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -188,6 +247,9 @@ Deno.serve(async (req: Request) => {
         usersNotified: dropsByUser.size,
         alertsSent: sent,
         alertsSkipped: skipped,
+        emailWatchers: emailWatchers?.length || 0,
+        emailAlertsSent: emailSent,
+        emailAlertsSkipped: emailSkipped,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
