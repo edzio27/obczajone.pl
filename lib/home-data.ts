@@ -143,44 +143,88 @@ export async function fetchRecentlyInspected(
 }
 
 
+/**
+ * Pierwsza zapisana cena i liczba pomiarów dla każdego aktywnego ogłoszenia.
+ *
+ * Powstało, bo obie sekcje z obniżkami na stronie głównej brały wcześniej pulę
+ * "100 ostatnio sprawdzonych" i szukały spadków tylko w niej. Przy przebiegu
+ * scrapera rzędu 25 ogłoszeń dziennie to okno czterech dni, w którym akurat
+ * nie musi być ani jednej przeceny - i nie było: baza miała 171 obniżek, a
+ * strona główna pokazywała zero. Okno odcinało dane, nie brak danych.
+ *
+ * Stronicujemy jawnie, bo PostgREST oddaje najwyżej 1000 wierszy i robi to po
+ * cichu - obcięta odpowiedź wygląda jak komplet, a zgubione zapisy zaniżyłyby
+ * liczbę obniżek tak, że nikt by tego nie zauważył.
+ */
+async function fetchEarliestPriceIndex(
+  supabase: SupabaseClient
+): Promise<Map<string, { firstPrice: number; snapshotCount: number }>> {
+  const index = new Map<string, { firstPrice: number; snapshotCount: number }>();
+  const pageSize = 1000;
+
+  for (let offset = 0; ; offset += pageSize) {
+    const { data } = await supabase
+      .from('listing_snapshots')
+      .select('listing_id, price, scraped_at')
+      .gt('price', 0)
+      .order('scraped_at', { ascending: true })
+      .order('listing_id', { ascending: true })
+      .range(offset, offset + pageSize - 1);
+
+    const rows = (data as { listing_id: string; price: number }[]) || [];
+    for (const row of rows) {
+      const entry = index.get(row.listing_id);
+      if (entry) entry.snapshotCount++;
+      else index.set(row.listing_id, { firstPrice: Number(row.price), snapshotCount: 1 });
+    }
+    if (rows.length < pageSize) break;
+  }
+
+  return index;
+}
+
+/** Wszystkie aktywne ogłoszenia z ceną - pula, w której szukamy obniżek. */
+async function fetchActiveListings(supabase: SupabaseClient, columns: string): Promise<any[]> {
+  const all: any[] = [];
+  const pageSize = 1000;
+
+  for (let offset = 0; ; offset += pageSize) {
+    const { data } = await supabase
+      .from('listings')
+      .select(columns)
+      .eq('is_active', true)
+      .gt('current_price', 0)
+      .order('id', { ascending: true })
+      .range(offset, offset + pageSize - 1);
+
+    const rows = (data as any[]) || [];
+    all.push(...rows);
+    if (rows.length < pageSize) break;
+  }
+
+  return all;
+}
+
+
 export async function fetchBiggestPriceDrops(
   supabase: SupabaseClient,
   limit = 3
 ): Promise<HomeListing[]> {
-  const { data: pool, error } = await supabase
-    .from('listings')
-    .select(CARD_COLUMNS)
-    .eq('is_active', true)
-    .gt('current_price', 0)
-    .order('last_checked_at', { ascending: false })
-    .limit(100);
+  const [pool, priceIndex] = await Promise.all([
+    fetchActiveListings(supabase, CARD_COLUMNS),
+    fetchEarliestPriceIndex(supabase),
+  ]);
 
-  if (error || !pool || pool.length === 0) return [];
+  if (pool.length === 0) return [];
 
-  const { data: snapshotsData } = await supabase
-    .from('listing_snapshots')
-    .select('listing_id, price, scraped_at')
-    .in(
-      'listing_id',
-      pool.map((l: any) => l.id)
-    )
-    .order('scraped_at', { ascending: true });
-
-  const earliestPriceByListing = new Map<string, number>();
-  for (const snap of snapshotsData || []) {
-    if (!earliestPriceByListing.has(snap.listing_id)) {
-      earliestPriceByListing.set(snap.listing_id, snap.price);
-    }
-  }
-
-  return (pool as any[])
+  return pool
     .map((listing) => {
-      const earliestPrice = earliestPriceByListing.get(listing.id);
+      const entry = priceIndex.get(listing.id);
       return {
         ...listing,
         priceChangePercent:
-          earliestPrice != null
-            ? computePriceChangePercent(listing.current_price, earliestPrice)
+          entry != null
+            ? computePriceChangePercent(listing.current_price, entry.firstPrice)
             : null,
       } as HomeListing;
     })
@@ -188,6 +232,7 @@ export async function fetchBiggestPriceDrops(
     .sort((a, b) => a.priceChangePercent! - b.priceChangePercent!)
     .slice(0, limit);
 }
+
 
 export async function fetchRecentlyReviewedListings(
   supabase: SupabaseClient,
@@ -324,62 +369,59 @@ const HERO_MIN_DROP_PERCENT = -3;
 export async function fetchHeroSpotlight(
   supabase: SupabaseClient
 ): Promise<HeroSpotlight | null> {
-  const { data: pool, error } = await supabase
-    .from('listings')
-    .select('id, title, location, current_price, source, image_url')
-    .eq('is_active', true)
-    .gt('current_price', 0)
-    .not('title', 'is', null)
-    .order('last_checked_at', { ascending: false })
-    .limit(100);
+  const [pool, priceIndex] = await Promise.all([
+    fetchActiveListings(
+      supabase,
+      'id, title, location, current_price, source, image_url'
+    ),
+    fetchEarliestPriceIndex(supabase),
+  ]);
 
-  if (error || !pool || pool.length === 0) return null;
+  if (pool.length === 0) return null;
 
-  const { data: snapshotsData } = await supabase
-    .from('listing_snapshots')
-    .select('listing_id, price, scraped_at')
-    .in(
-      'listing_id',
-      pool.map((l: any) => l.id)
-    )
-    .order('scraped_at', { ascending: true });
+  /*
+    Najpierw wybieramy zwycięzcę na samych liczbach, a serię do wykresu
+    dociągamy dopiero dla niego. Poprzednio pobieraliśmy historię całej puli,
+    żeby użyć jednej - a pula obejmuje teraz wszystkie aktywne ogłoszenia.
+  */
+  let best: { listing: any; changePercent: number } | null = null;
 
-  const byListing = new Map<string, { price: number; scraped_at: string }[]>();
-  for (const snap of snapshotsData || []) {
-    const bucket = byListing.get(snap.listing_id);
-    if (bucket) bucket.push(snap);
-    else byListing.set(snap.listing_id, [snap]);
-  }
+  for (const listing of pool) {
+    const entry = priceIndex.get(listing.id);
+    if (!entry || entry.snapshotCount < HERO_MIN_SNAPSHOTS) continue;
 
-  let best: HeroSpotlight | null = null;
-
-  for (const listing of pool as any[]) {
-    const snaps = byListing.get(listing.id);
-    if (!snaps || snaps.length < HERO_MIN_SNAPSHOTS) continue;
-
-    const startPrice = snaps[0].price;
-    const changePercent = computePriceChangePercent(listing.current_price, startPrice);
+    const changePercent = computePriceChangePercent(listing.current_price, entry.firstPrice);
     if (changePercent == null || changePercent > HERO_MIN_DROP_PERCENT) continue;
     if (best && changePercent >= best.changePercent) continue;
 
+    best = { listing, changePercent };
+  }
+
+  if (!best) return null;
+
+  const { data: snapshotsData } = await supabase
+    .from('listing_snapshots')
+    .select('price, scraped_at')
+    .eq('listing_id', best.listing.id)
+    .gt('price', 0)
+    .order('scraped_at', { ascending: true });
+
+  const snaps = (snapshotsData as { price: number; scraped_at: string }[]) || [];
+  if (snaps.length < HERO_MIN_SNAPSHOTS) return null;
+
+  return {
+    id: best.listing.id,
+    title: best.listing.title,
+    location: best.listing.location || '',
+    image_url: best.listing.image_url ?? null,
+    source: best.listing.source,
+    currentPrice: best.listing.current_price,
+    startPrice: snaps[0].price,
+    changePercent: best.changePercent,
     // Ostatnim punktem jest cena bieżąca, a nie ostatni snapshot - te dwie
     // wartości rozjeżdżają się między przebiegami scrapera i wykres kończyłby
     // się gdzie indziej, niż mówi liczba obok niego.
-    const series = [...snaps.map((s) => s.price), listing.current_price];
-
-    best = {
-      id: listing.id,
-      title: listing.title,
-      location: listing.location || '',
-      image_url: listing.image_url ?? null,
-      source: listing.source,
-      currentPrice: listing.current_price,
-      startPrice,
-      changePercent,
-      series,
-      firstSeenAt: snaps[0].scraped_at,
-    };
-  }
-
-  return best;
+    series: [...snaps.map((s) => s.price), best.listing.current_price],
+    firstSeenAt: snaps[0].scraped_at,
+  };
 }
