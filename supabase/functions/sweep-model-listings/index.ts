@@ -17,7 +17,12 @@ const corsHeaders = {
 
   Jedna strona wynikow oddaje 32 oferty razem z cena i parametrami, wiec nie
   wchodzimy na strony pojedynczych ogloszen. To jest tez powod, dla ktorego
-  przelot w ogole ma sens kosztowo: 15 zapytan zamiast 480.
+  przelot w ogole ma sens kosztowo: 45 zapytan zamiast 1400.
+
+  Co robimy w ktorej kolejnosci, mowi tabela model_sweep_targets - 15 modeli po
+  3 strony. Kolejnosc bierze sie stamtad, a nie ze stalej listy w kodzie, bo
+  jeden przebieg miesci okolo 23 pozycji i lista zaczynana od poczatku nigdy nie
+  dowiozlaby koncowki.
 
   Czego nie robimy: robots.txt Otomoto zabrania /api/, /ajax/ i /i2/, wiec
   czytamy wylacznie publiczna strone wynikow, ktora jest tam objeta "Allow: /".
@@ -25,30 +30,10 @@ const corsHeaders = {
   z czego liczymy wlasne statystyki i co i tak odsylamy linkiem do zrodla.
 */
 
-/** Modele objęte próbą. Ścieżka jest częścią adresu: /osobowe/<path>. */
-const MODELS: string[] = [
-  'bmw/seria-3',
-  'bmw/seria-5',
-  'audi/a4',
-  'volkswagen/golf',
-  'volkswagen/passat',
-  'skoda/octavia',
-  'skoda/superb',
-  'toyota/corolla',
-  'opel/astra',
-  'ford/focus',
-  'mercedes-benz/klasa-c',
-  'renault/megane',
-  'kia/ceed',
-  'hyundai/tucson',
-  'volvo/xc-60',
-];
-
 /*
   Funkcja brzegowa jest ubijana po ok. 150 sekundach, a wywolujacy ja pg_net
-  zrywa polaczenie jeszcze wczesniej. Konczymy sami z zapasem i meldujemy, na
-  ktorym modelu stanelismy, zeby kolejny przebieg mogl ruszyc od niego zamiast
-  zaczynac od poczatku i nigdy nie dojsc dalej.
+  zrywa polaczenie jeszcze wczesniej. Konczymy sami z zapasem; pozycje, ktorych
+  nie zdazylismy tknac, zostaja na czele kolejki i bierze je nastepny przebieg.
 */
 const TIME_BUDGET_MS = 110_000;
 
@@ -61,6 +46,8 @@ const REQUEST_DELAY_MS = 2000;
   mieli po czym nas rozpoznac i jak sie odezwac.
 */
 const USER_AGENT = 'obczajone.pl model sweep (+https://obczajone.pl)';
+
+type SweepTarget = { id: string; path: string; page: number };
 
 type Advert = {
   listingId: string;
@@ -118,8 +105,14 @@ function specsFromParameters(parameters: any[]): Record<string, unknown> {
  * między wdrożeniami Otomoto - dlatego zamiast trafiać w konkretny klucz
  * przechodzimy wpisy i bierzemy ten, który zawiera `advertSearch`.
  */
-async function fetchModelPage(path: string): Promise<Advert[]> {
-  const response = await fetch(`https://www.otomoto.pl/osobowe/${path}`, {
+async function fetchModelPage(path: string, page: number): Promise<Advert[]> {
+  // Strona pierwsza bez parametru - to ten sam adres, który widzi człowiek.
+  const url =
+    page > 1
+      ? `https://www.otomoto.pl/osobowe/${path}?page=${page}`
+      : `https://www.otomoto.pl/osobowe/${path}`;
+
+  const response = await fetch(url, {
     headers: { 'User-Agent': USER_AGENT },
   });
 
@@ -183,26 +176,37 @@ Deno.serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Kolejny przebieg rusza od modelu, na którym poprzedni skończył.
-    const url = new URL(req.url);
-    const startIndex = Math.max(0, Number(url.searchParams.get('from') ?? 0) || 0);
+    /*
+      Kolejność bierze się z last_swept_at rosnąco, z nietkniętymi na przedzie.
+      Dzięki temu kolejne przebiegi przesuwają się po całej liście, zamiast
+      krążyć wokół jej początku - przy stałej liście w kodzie ostatnie modele
+      nie doczekałyby się nigdy, a każdy przebieg i tak meldowałby sukces.
+    */
+    const { data: targets, error: targetsError } = await supabase
+      .from('model_sweep_targets')
+      .select('id, path, page')
+      .order('last_swept_at', { ascending: true, nullsFirst: true })
+      .limit(40);
+
+    if (targetsError) throw new Error(`targets: ${targetsError.message}`);
 
     const results: any[] = [];
     let added = 0;
     let updated = 0;
     let snapshots = 0;
-    let stoppedAt: number | null = null;
+    let remaining = 0;
 
-    for (let i = startIndex; i < MODELS.length; i++) {
+    for (const target of (targets || []) as SweepTarget[]) {
       if (Date.now() - startedAt > TIME_BUDGET_MS) {
-        stoppedAt = i;
-        break;
+        remaining++;
+        continue;
       }
 
-      const path = MODELS[i];
+      const { path, page } = target;
+      let outcome = '';
 
       try {
-        const adverts = await fetchModelPage(path);
+        const adverts = await fetchModelPage(path, page);
 
         const { data: existingRows } = await supabase
           .from('listings')
@@ -296,10 +300,22 @@ Deno.serve(async (req: Request) => {
           snapshots += snapshotRows.length;
         }
 
-        results.push({ model: path, found: adverts.length, added: fresh.length });
+        outcome = `${adverts.length} ofert, ${fresh.length} nowych`;
+        results.push({ model: path, page, found: adverts.length, added: fresh.length });
       } catch (error) {
-        results.push({ model: path, error: (error as Error).message });
+        outcome = (error as Error).message.slice(0, 200);
+        results.push({ model: path, page, error: outcome });
       }
+
+      /*
+        Znacznik przesuwamy po KAŻDEJ próbie, także nieudanej. Gdyby przesuwał
+        się tylko po sukcesie, jedna trwale niedziałająca pozycja blokowałaby
+        czoło kolejki i reszta nie doczekałaby się nigdy.
+      */
+      await supabase
+        .from('model_sweep_targets')
+        .update({ last_swept_at: new Date().toISOString(), last_result: outcome })
+        .eq('id', target.id);
 
       await new Promise((resolve) => setTimeout(resolve, REQUEST_DELAY_MS));
     }
@@ -311,8 +327,8 @@ Deno.serve(async (req: Request) => {
         added,
         updated,
         snapshots,
-        // Gdy budżet czasu się skończył, to jest `from` do kolejnego wywołania.
-        nextFrom: stoppedAt,
+        // Pozycje, na które nie starczyło czasu - wezmie je kolejny przebieg.
+        remaining,
         elapsedMs: Date.now() - startedAt,
         results,
       }),
