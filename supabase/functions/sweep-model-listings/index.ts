@@ -57,7 +57,35 @@ type Advert = {
   location: string;
   imageUrl: string | null;
   specs: Record<string, unknown>;
+  /*
+    Obnizka wedlug samego Otomoto. Dane kontrolne: nie publikujemy ich i nie
+    licza sie do zadnej mediany - maja sluzyc porownaniu, gdy uzbieramy dosc
+    wlasnych obserwacji, zeby bylo co porownywac.
+  */
+  sourceDropPercent: number | null;
+  sourcePriceBefore: number | null;
 };
+
+/*
+  Otomoto nazywa cene odniesienia `lowestPrice`, choc jest ona WYZSZA od ceny
+  biezacej - to cena sprzed obnizki. Sprawdzone na zywej ofercie: 184 900 zl
+  przy `lowestPrice` 187 900 zl i `percentage` 1.6, co zgadza sie tylko jako
+  (187900 - 184900) / 187900. `minorAmount` jest w groszach.
+*/
+function extractSourceDrop(priceDrop: any): {
+  percent: number | null;
+  priceBefore: number | null;
+} {
+  if (!priceDrop) return { percent: null, priceBefore: null };
+
+  const percent = Number(priceDrop.percentage);
+  const minor = Number(priceDrop?.lowestPrice?.minorAmount);
+
+  return {
+    percent: Number.isFinite(percent) ? percent : null,
+    priceBefore: Number.isFinite(minor) ? minor / 100 : null,
+  };
+}
 
 /** Adres bez zapytania - identyfikuje ofertę i tylko tyle chcemy trzymać. */
 function canonicalUrl(raw: string): string {
@@ -149,6 +177,8 @@ async function fetchModelPage(path: string, page: number): Promise<Advert[]> {
     const price = Number(node?.price?.amount?.units ?? 0);
     if (!listingId || !(price > 0)) continue;
 
+    const sourceDrop = extractSourceDrop(node.priceDrop);
+
     adverts.push({
       listingId,
       url: canonicalUrl(node.url),
@@ -157,6 +187,8 @@ async function fetchModelPage(path: string, page: number): Promise<Advert[]> {
       location: node?.location?.city?.name ?? '',
       imageUrl: typeof node?.thumbnail?.x1 === 'string' ? node.thumbnail.x1 : null,
       specs: specsFromParameters(node.parameters),
+      sourceDropPercent: sourceDrop.percent,
+      sourcePriceBefore: sourceDrop.priceBefore,
     });
   }
 
@@ -288,7 +320,14 @@ Deno.serve(async (req: Request) => {
         const snapshotRows = adverts
           .map((a) => {
             const row: any = existing.get(a.listingId);
-            return row ? { listing_id: row.id, price: a.price } : null;
+            return row
+              ? {
+                  listing_id: row.id,
+                  price: a.price,
+                  source_drop_percent: a.sourceDropPercent,
+                  source_price_before: a.sourcePriceBefore,
+                }
+              : null;
           })
           .filter(Boolean);
 
