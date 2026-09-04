@@ -13,6 +13,20 @@ import { slugifyModel } from '@/lib/model-slug';
 /** Poniżej tylu ogłoszeń liczby nic nie znaczą - ten sam próg co w porównywarce cen. */
 export const MIN_SAMPLE_SIZE = 5;
 
+/**
+ * Ile ogłoszeń musi realnie stanieć, żeby wolno było nazwać coś "typową obniżką".
+ *
+ * Próg na ogłoszeniach nie wystarcza, bo staniała zwykle garstka z nich. Mediana
+ * z jednego auta to nie mediana, tylko to jedno auto: Skoda Octavia pokazywała
+ * "typową obniżkę 39.7%" na podstawie egzemplarza przecenionego z 33 000 na
+ * 19 900 zł, przy drugim, który zszedł o 1.9%. Tak policzona liczba jest gorsza
+ * niż jej brak - bo czytelnik bierze ją za regułę rynku i idzie z nią negocjować.
+ *
+ * Poniżej tego progu pokazujemy samo "ile z nich staniało", czyli fakt, którego
+ * nie musimy uśredniać.
+ */
+export const MIN_DROPS_FOR_MEDIAN = 3;
+
 export type ModelTrend = {
   brand: string;
   model: string;
@@ -22,9 +36,13 @@ export type ModelTrend = {
   medianPrice: number | null;
   /** Ile z nich kiedykolwiek staniało. */
   droppedCount: number;
-  /** Mediana obniżki wśród tych, które staniały - w procentach ceny wyjściowej. */
+  /**
+   * Mediana obniżki wśród tych, które staniały - w procentach ceny wyjściowej.
+   * `null` również wtedy, gdy staniało za mało ogłoszeń, by mediana coś znaczyła
+   * (patrz MIN_DROPS_FOR_MEDIAN); `droppedCount` zostaje wtedy do pokazania.
+   */
   medianDropPercent: number | null;
-  /** Mediana obniżki w złotych, wśród tych, które staniały. */
+  /** Mediana obniżki w złotych, wśród tych, które staniały. Ten sam próg. */
   medianDropPln: number | null;
   /** Największa zaobserwowana obniżka tego modelu. */
   biggestDrop: { listingId: string; title: string; from: number; to: number } | null;
@@ -125,6 +143,9 @@ export async function fetchModelTrends(supabase: SupabaseClient): Promise<ModelT
       null
     );
 
+    // Mediana z jednej czy dwóch obserwacji opisuje te obserwacje, nie model.
+    const enoughDrops = drops.length >= MIN_DROPS_FOR_MEDIAN;
+
     const daysListed = rows
       .map((r) => daysBetween(r.first_seen_at, r.last_checked_at))
       .filter((d): d is number => d != null);
@@ -136,8 +157,8 @@ export async function fetchModelTrends(supabase: SupabaseClient): Promise<ModelT
       sampleSize: rows.length,
       medianPrice: median(rows.map((r) => r.current_price)),
       droppedCount: drops.length,
-      medianDropPercent: median(drops.map((d) => d.percent)),
-      medianDropPln: median(drops.map((d) => d.pln)),
+      medianDropPercent: enoughDrops ? median(drops.map((d) => d.percent)) : null,
+      medianDropPln: enoughDrops ? median(drops.map((d) => d.pln)) : null,
       biggestDrop: biggest
         ? {
             listingId: biggest.listing.id,

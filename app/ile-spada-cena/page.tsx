@@ -5,7 +5,7 @@ import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { Card, CardContent } from '@/components/ui/card';
 import { TrendingDown } from 'lucide-react';
-import { fetchModelTrends, MIN_SAMPLE_SIZE } from '@/lib/price-trends';
+import { fetchModelTrends, MIN_SAMPLE_SIZE, MIN_DROPS_FOR_MEDIAN } from '@/lib/price-trends';
 
 export const metadata: Metadata = {
   title: 'Ile realnie spada cena samochodu na Otomoto — dane z ogłoszeń | obczajone.pl',
@@ -65,12 +65,20 @@ export default async function PriceTrendsIndex() {
                           ? `, mediana ${formatPln(trend.medianPrice)}`
                           : ''}
                       </p>
-                      {trend.medianDropPercent != null && (
+                      {trend.medianDropPercent != null ? (
                         <p className="text-sm mt-2 flex items-center gap-1 text-success">
                           <TrendingDown className="h-4 w-4" />
                           Typowa obniżka {trend.medianDropPercent.toFixed(1)}%
                         </p>
-                      )}
+                      ) : trend.droppedCount > 0 ? (
+                        /*
+                          Za mało przecen na medianę, ale sam fakt jest prawdziwy
+                          i wart pokazania - lepszy niż wymyślona "typowa obniżka".
+                        */
+                        <p className="text-sm mt-2 text-muted-foreground">
+                          {trend.droppedCount} z {trend.sampleSize} ogłoszeń staniało
+                        </p>
+                      ) : null}
                     </CardContent>
                   </Card>
                 </Link>
@@ -81,7 +89,9 @@ export default async function PriceTrendsIndex() {
           <p className="text-xs text-muted-foreground">
             Liczby pochodzą wyłącznie z ogłoszeń, które mamy u siebie w bazie, i opisują tę
             próbkę — nie cały rynek. Model pokazujemy dopiero od {MIN_SAMPLE_SIZE} ogłoszeń,
-            bo niżej mediana nic nie znaczy.
+            a typową obniżkę — dopiero gdy staniało co najmniej {MIN_DROPS_FOR_MEDIAN} z nich.
+            Niżej podajemy samą liczbę przecen, bo mediana z jednego auta opisuje to auto,
+            a nie model.
           </p>
         </div>
       </main>

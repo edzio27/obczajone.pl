@@ -106,7 +106,11 @@ export default async function ModelTrendPage({ params }: { params: { slug: strin
                   : '—'
               }
               hint={
-                trend.medianDropPln != null ? `czyli ok. ${formatPln(trend.medianDropPln)}` : undefined
+                trend.medianDropPln != null
+                  ? `czyli ok. ${formatPln(trend.medianDropPln)}`
+                  : trend.droppedCount > 0
+                    ? `za mało przecen (${trend.droppedCount}), by liczyć medianę`
+                    : undefined
               }
             />
           </div>
@@ -118,6 +122,18 @@ export default async function ModelTrendPage({ params }: { params: { slug: strin
                 <p className="text-muted-foreground">
                   Żadne z obserwowanych ogłoszeń tego modelu jeszcze nie staniało. Albo trafiły
                   do nas niedawno, albo sprzedający trzymają cenę.
+                </p>
+              ) : trend.medianDropPercent == null ? (
+                /*
+                  Staniało za mało ogłoszeń, żeby mówić o "typowej" obniżce. Piszemy
+                  wprost, ile ich było, zamiast podawać medianę z jednego auta jako
+                  regułę, z którą ktoś pójdzie negocjować.
+                */
+                <p className="text-muted-foreground">
+                  Z {trend.sampleSize} obserwowanych ogłoszeń {name} staniało{' '}
+                  <strong className="text-foreground">{trend.droppedCount}</strong>. To za mało,
+                  żeby podać typową obniżkę dla tego modelu — jedna czy dwie przeceny mówią
+                  o tych konkretnych autach, nie o rynku. Zbieramy dalej.
                 </p>
               ) : (
                 <p className="text-muted-foreground">
