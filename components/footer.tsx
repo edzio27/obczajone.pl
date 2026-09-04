@@ -6,6 +6,7 @@ const COLUMNS = [
   {
     heading: 'Sprawdzanie ofert',
     links: [
+      { href: '/ile-spada-cena', label: 'Ile spada cena' },
       { href: '/#jak-to-dziala', label: 'Jak to działa' },
       { href: '/#faq', label: 'Najczęstsze pytania' },
       { href: '/posrednicy', label: 'Mapa pośredników' },
