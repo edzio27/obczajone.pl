@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/auth-context';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { Search, Loader as Loader2, ClipboardPaste, Check, Link2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { canonicalListingUrl, isPreviewListingUrl } from '@/lib/listing-url';
 
 type ListingUrlFormProps = {
   /** "ink" - wariant na ciemne sekcje (hero, dolne CTA). */
@@ -68,6 +69,20 @@ export function ListingUrlForm({ tone = 'light', className }: ListingUrlFormProp
       return;
     }
 
+    /*
+      Link podglądu prowadzi do wersji, której poza sprzedającym nikt nie widzi.
+      Odrzucamy przed kanonizacją, bo to ona usuwa parametr rozpoznawczy.
+    */
+    if (isPreviewListingUrl(url)) {
+      toast({
+        title: 'To link do podglądu',
+        description:
+          'Ten adres pokazuje ogłoszenie tak, jak widzi je sprzedający. Otwórz ofertę na Otomoto i skopiuj adres z paska przeglądarki.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     if (user) {
       const canProceed = await checkRateLimit(user.id, 'add_listing', 5, 60);
 
@@ -102,7 +117,7 @@ export function ListingUrlForm({ tone = 'light', className }: ListingUrlFormProp
         .insert({
           listing_id: listingInfo.listingId,
           source: listingInfo.source,
-          url: url.trim(),
+          url: canonicalListingUrl(url),
           created_by: user?.id || null,
         })
         .select()
