@@ -71,19 +71,33 @@ type Advert = {
   biezacej - to cena sprzed obnizki. Sprawdzone na zywej ofercie: 184 900 zl
   przy `lowestPrice` 187 900 zl i `percentage` 1.6, co zgadza sie tylko jako
   (187900 - 184900) / 187900. `minorAmount` jest w groszach.
+
+  Czasem jednak cena odniesienia wychodzi NIZSZA od biezacej, co nie moze byc
+  obnizka. Przyczyna to rozne podstawy podatkowe w obu polach: przy ofercie
+  z `price.isGross = false` i `lowestPrice.isNet = true` bylo 78 500 teraz
+  wobec 64 959 przed, a rachunek domyka sie dopiero po sprowadzeniu do jednej
+  podstawy: 64 959 * 1,23 = 79 900, czyli spadek 1,75% - dokladnie tyle, ile
+  podaje Otomoto.
+
+  Nie wpisujemy tu stawki VAT na stale: to dane kontrolne, wiec maja byc pewne,
+  a nie kompletne. Cene odniesienia zapisujemy tylko wtedy, gdy jest wyzsza od
+  biezacej - wtedy wiadomo, ze obie sa w tej samej podstawie. Procent zostaje
+  zawsze, bo jest wyliczony przez Otomoto wewnetrznie spojnie i to on jest tu
+  wlasciwym sygnalem.
 */
-function extractSourceDrop(priceDrop: any): {
-  percent: number | null;
-  priceBefore: number | null;
-} {
+function extractSourceDrop(
+  priceDrop: any,
+  currentPrice: number
+): { percent: number | null; priceBefore: number | null } {
   if (!priceDrop) return { percent: null, priceBefore: null };
 
   const percent = Number(priceDrop.percentage);
   const minor = Number(priceDrop?.lowestPrice?.minorAmount);
+  const priceBefore = Number.isFinite(minor) ? minor / 100 : null;
 
   return {
     percent: Number.isFinite(percent) ? percent : null,
-    priceBefore: Number.isFinite(minor) ? minor / 100 : null,
+    priceBefore: priceBefore != null && priceBefore > currentPrice ? priceBefore : null,
   };
 }
 
@@ -177,7 +191,7 @@ async function fetchModelPage(path: string, page: number): Promise<Advert[]> {
     const price = Number(node?.price?.amount?.units ?? 0);
     if (!listingId || !(price > 0)) continue;
 
-    const sourceDrop = extractSourceDrop(node.priceDrop);
+    const sourceDrop = extractSourceDrop(node.priceDrop, price);
 
     adverts.push({
       listingId,
