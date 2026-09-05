@@ -15,6 +15,7 @@ export function BiggestPriceDrops({ listings }: { listings: HomeListing[] }) {
         icon={TrendingDown}
         title="Tu sprzedający już zszedł z ceny"
         description="Oferty, w których cena spadła najmocniej, odkąd je obserwujemy — czyli miejsca, gdzie jest o czym rozmawiać."
+        action={{ href: '/obnizki', label: 'Zobacz wszystkie obniżki' }}
       />
 
       <div className="grid gap-4 md:grid-cols-3">
