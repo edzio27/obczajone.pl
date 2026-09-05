@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { ListingCard } from '@/components/listing-card';
 import { TrendingDown } from 'lucide-react';
 import { fetchModelTrend, fetchModelTrends, MIN_SAMPLE_SIZE } from '@/lib/price-trends';
+import { VinCheckCta } from '@/components/vin-check-cta';
 
 export const revalidate = 3600;
 
@@ -169,6 +170,8 @@ export default async function ModelTrendPage({ params }: { params: { slug: strin
               )}
             </CardContent>
           </Card>
+
+          <VinCheckCta context="model_page" />
 
           {listings.length > 0 && (
             <div>

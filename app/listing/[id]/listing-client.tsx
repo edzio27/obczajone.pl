@@ -33,6 +33,7 @@ import { PriceWatchForm } from '@/components/price-watch-form';
 import { coordsFromLocation } from '@/lib/geo';
 import { PriceComparisonCard } from '@/components/price-comparison-card';
 import { PartnerCta } from '@/components/partner-cta';
+import { VinCheckCta } from '@/components/vin-check-cta';
 import { ListingInspections } from '@/components/partner/listing-inspections';
 
 export function ListingClient({
@@ -609,6 +610,8 @@ export function ListingClient({
             listingLocation={listingLocation}
             watchOutFor={aiOpinion?.watchOutFor ?? []}
           />
+
+          <VinCheckCta context="listing" listingId={listingId} />
 
           {initialData?.priceComparison && (
             <PriceComparisonCard comparison={initialData.priceComparison} />
