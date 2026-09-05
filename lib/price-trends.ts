@@ -89,6 +89,13 @@ export async function fetchModelTrends(supabase: SupabaseClient): Promise<ModelT
     const { data } = await supabase
       .from('listings')
       .select('id, title, current_price, first_seen_at, last_checked_at, specs')
+      /*
+        Tylko oferty, ktore nadal stoja na Otomoto. Ogloszenie zdjete z serwisu
+        ma cene zamrozona na ostatnim udanym odczycie, a liczylo sie do mediany
+        na rowni z zywymi - z czasem statystyka dryfowalaby w przeszlosc,
+        opisujac rynek sprzed miesiecy jako dzisiejszy.
+      */
+      .eq('is_active', true)
       .gt('current_price', 0)
       .range(from, from + pageSize - 1);
 

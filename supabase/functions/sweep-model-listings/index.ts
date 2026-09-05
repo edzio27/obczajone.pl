@@ -321,6 +321,14 @@ Deno.serve(async (req: Request) => {
             .update({
               current_price: advert.price,
               last_checked_at: new Date().toISOString(),
+              /*
+                Skoro oferta stoi na liscie wynikow, to zyje - wiec wraca do
+                aktywnych, nawet jesli wczesniej zostala wygaszona. Bez tego
+                jedna seria nieudanych odczytow wygaszalaby na stale auto,
+                ktore ma sie dobrze, a my nigdy bysmy sie o tym nie dowiedzieli,
+                bo wygaszonych juz nie odpytujemy.
+              */
+              is_active: true,
             })
             .eq('id', row.id);
           updated++;

@@ -37,7 +37,22 @@ function isAllowedUrl(rawUrl: string, source: 'otomoto' | 'otodom'): boolean {
   return ALLOWED_HOSTNAMES[source].includes(hostname);
 }
 
-type ScrapeResult = { price: number | null; specs: Record<string, unknown> | null };
+/*
+  `gone` znaczy: serwis powiedzial wprost, ze tej oferty juz nie ma. Otomoto
+  oddaje na zdjete ogloszenia HTTP 410 (sprawdzone na trzech wygaszonych
+  adresach), co jest sygnalem mocniejszym niz brak ceny - ta moze zniknac takze
+  przez chwilowa usterke albo zmiane ukladu strony.
+*/
+type ScrapeResult = {
+  price: number | null;
+  specs: Record<string, unknown> | null;
+  gone?: boolean;
+};
+
+/** 410 Gone i 404 to odpowiedzi o trwale usunietym zasobie, nie o awarii. */
+function isGoneStatus(status: number): boolean {
+  return status === 410 || status === 404;
+}
 
 /**
  * Ile ogłoszeń przerabiamy w jednym przebiegu.
@@ -53,6 +68,13 @@ type ScrapeResult = { price: number | null; specs: Record<string, unknown> | nul
  * wracała i przebieg był ucinany po dwóch ogłoszeniach.
  */
 const BATCH_SIZE = 25;
+
+/*
+  Po tylu dniach bez ani jednej udanej ceny - przy trwajacych probach - uznajemy
+  oferte za zdjeta. Tydzien, bo Otomoto miewa krotkie przerwy w oddawaniu stron,
+  a ogloszenie zyje tam zwykle 30-60 dni: siedem dni ciszy to juz nie usterka.
+*/
+const STALE_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
 
 // Te same klucze co extractOtomotoSpecs w funkcji scrape-listing - łącznie
 // z polami odcisku palca egzemplarza (generacja, pojemność, moc, skrzynia,
@@ -96,6 +118,8 @@ async function scrapeOtomoto(url: string): Promise<ScrapeResult> {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
       },
     });
+    if (isGoneStatus(response.status)) return { price: null, specs: null, gone: true };
+
     const html = await response.text();
 
     let price = 0;
@@ -145,6 +169,8 @@ async function scrapeOtodom(url: string): Promise<ScrapeResult> {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
       },
     });
+    if (isGoneStatus(response.status)) return { price: null, specs: null, gone: true };
+
     const html = await response.text();
 
     let price = 0;
@@ -199,6 +225,13 @@ Deno.serve(async (req: Request) => {
     const { data: listings, error: listingsError } = await supabase
       .from('listings')
       .select('id, url, source, current_price, specs')
+      /*
+        Wygaszonych nie odpytujemy. Do tej pory `is_active` nie znaczylo nic -
+        zadne miejsce w kodzie go nie ustawialo i zadne po nim nie filtrowalo -
+        wiec oferty zdjete z Otomoto krazyly w kolejce w nieskonczonosc, zjadajac
+        miejsca w partii ogloszeniom, ktore jeszcze zyja.
+      */
+      .eq('is_active', true)
       // Najdawniej sprawdzane najpierw - dzięki temu kolejne przebiegi
       // przesuwają się po całej bazie zamiast krążyć wokół najnowszych.
       .order('last_checked_at', { ascending: true, nullsFirst: true })
@@ -212,6 +245,7 @@ Deno.serve(async (req: Request) => {
     let successCount = 0;
     let failCount = 0;
     let backfilledSpecs = 0;
+    let deactivated = 0;
 
     for (const listing of listings || []) {
       try {
@@ -287,10 +321,53 @@ Deno.serve(async (req: Request) => {
           });
           successCount++;
         } else {
+          /*
+            Nieudany odczyt sam w sobie nic nie przesadza - Otomoto potrafi
+            chwilowo nie oddac strony. Ale jesli od ostatniej UDANEJ ceny minelo
+            ponad tyle dni, a my w tym czasie probowalismy, to nie jest usterka
+            sieci, tylko oferta zdjeta z serwisu.
+
+            Dowod mamy juz w danych i nie kosztuje ani jednego zapytania do
+            Otomoto: `last_checked_at` przesuwa sie po KAZDEJ probie, a snapshot
+            powstaje wylacznie po udanej. Rozjazd miedzy nimi to wlasnie licznik
+            nieudanych prob.
+          */
+          const { data: lastSnapshot } = await supabase
+            .from('listing_snapshots')
+            .select('scraped_at')
+            .eq('listing_id', listing.id)
+            .order('scraped_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          const lastSuccess = lastSnapshot?.scraped_at
+            ? new Date(lastSnapshot.scraped_at).getTime()
+            : null;
+          const staleFor = lastSuccess == null ? null : Date.now() - lastSuccess;
+
+          /*
+            Dwie drogi do wygaszenia, bo dwa rozne dowody.
+
+            `gone` to odpowiedz wprost od serwisu (HTTP 410) - czekanie tygodnia
+            niczego by tu nie dodalo. Domyka tez luke w regule czasowej:
+            ogloszenie, ktore NIGDY nie dalo sie odczytac, nie ma od czego
+            liczyc siedmiu dni i bez tego zostaloby aktywne na zawsze.
+
+            Reguła czasowa obsluguje reszte - awarie ciche, gdzie strona wraca,
+            ale ceny w niej nie ma.
+          */
+          if (scraped.gone || (staleFor != null && staleFor > STALE_AFTER_MS)) {
+            await supabase
+              .from('listings')
+              .update({ is_active: false })
+              .eq('id', listing.id);
+            deactivated++;
+          }
+
           results.push({
             id: listing.id,
             success: false,
-            error: 'Failed to scrape price',
+            error: scraped.gone ? 'Advert removed (HTTP 410)' : 'Failed to scrape price',
           });
           failCount++;
         }
@@ -314,6 +391,7 @@ Deno.serve(async (req: Request) => {
         successCount,
         failCount,
         backfilledSpecs,
+        deactivated,
         results,
       }),
       {
