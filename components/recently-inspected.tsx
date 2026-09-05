@@ -1,5 +1,7 @@
-import { BadgeCheck } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowRight, BadgeCheck } from 'lucide-react';
 import { SectionHeading } from '@/components/home/section-heading';
+import { Button } from '@/components/ui/button';
 import { Reveal } from '@/components/motion/reveal';
 import { InspectedCard } from '@/components/inspected-card';
 import type { InspectedListing } from '@/lib/home-data';
@@ -11,10 +13,10 @@ import type { InspectedListing } from '@/lib/home-data';
  * przy której da się powiedzieć czytelnikowi coś więcej niż to, co stoi
  * w ogłoszeniu. Dlatego stoi na stronie głównej, a nie tylko na profilach firm.
  *
- * Link w nagłówku prowadzi do pełnej listy, a nie do zamówienia oględzin:
- * zaproszenie handlowe stoi w osobnej sekcji tuż pod spodem, więc slot
- * w nagłówku był zajęty przez drugi raz to samo, a czytelnik, który chciał
- * zobaczyć pozostałe werdykty, nie miał dokąd kliknąć.
+ * Przejście do pełnej listy jest przyciskiem pod siatką, a nie linkiem w rogu
+ * nagłówka - ten slot zajmowało wcześniej "Zamów takie oględziny", czyli to samo
+ * zaproszenie, które i tak stoi w osobnej sekcji tuż pod spodem, a czytelnik
+ * chcący zobaczyć pozostałe werdykty nie miał dokąd kliknąć.
  */
 export function RecentlyInspected({ listings }: { listings: InspectedListing[] }) {
   if (listings.length === 0) return null;
@@ -27,7 +29,6 @@ export function RecentlyInspected({ listings }: { listings: InspectedListing[] }
         icon={BadgeCheck}
         title="Ktoś tam pojechał i wystawił werdykt"
         description="Oferty, przy których nasz partner był osobiście — z oceną tego, co zastał na miejscu."
-        action={{ href: '/werdykty', label: 'Zobacz wszystkie werdykty' }}
       />
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -36,6 +37,15 @@ export function RecentlyInspected({ listings }: { listings: InspectedListing[] }
             <InspectedCard listing={listing} />
           </Reveal>
         ))}
+      </div>
+
+      <div className="mt-8 flex justify-center">
+        <Button asChild variant="outline" size="lg">
+          <Link href="/werdykty">
+            Zobacz wszystkie werdykty
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Link>
+        </Button>
       </div>
     </section>
   );
