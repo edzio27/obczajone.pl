@@ -54,6 +54,8 @@ type ListingRow = {
   id: string;
   title: string;
   current_price: number;
+  /** Pierwsza zapisana cena - kolumna, nie wynik przeglądania historii. */
+  first_price: number | null;
   first_seen_at: string | null;
   last_checked_at: string | null;
   specs: { brand?: string | null; model?: string | null } | null;
@@ -88,7 +90,7 @@ export async function fetchModelTrends(supabase: SupabaseClient): Promise<ModelT
   for (let from = 0; from < 10000; from += pageSize) {
     const { data } = await supabase
       .from('listings')
-      .select('id, title, current_price, first_seen_at, last_checked_at, specs')
+      .select('id, title, current_price, first_price, first_seen_at, last_checked_at, specs')
       /*
         Tylko oferty, ktore nadal stoja na Otomoto. Ogloszenie zdjete z serwisu
         ma cene zamrozona na ostatnim udanym odczycie, a liczylo sie do mediany
@@ -116,14 +118,9 @@ export async function fetchModelTrends(supabase: SupabaseClient): Promise<ModelT
     else byModel.set(key, [listing]);
   }
 
-  // Historia cen tylko dla modeli, które i tak przejdą próg - inaczej ciągnęlibyśmy
-  // dziesięć tysięcy wierszy, żeby wyrzucić większość.
   const relevant = Array.from(byModel.entries()).filter(
     ([, rows]) => rows.length >= MIN_SAMPLE_SIZE
   );
-  const relevantIds = relevant.flatMap(([, rows]) => rows.map((r) => r.id));
-
-  const firstPriceById = await fetchFirstPrices(supabase, relevantIds);
 
   const trends: ModelTrend[] = relevant.map(([key, rows]) => {
     const [brand, model] = key.split('|||');
@@ -131,7 +128,7 @@ export async function fetchModelTrends(supabase: SupabaseClient): Promise<ModelT
     const drops: { percent: number; pln: number; listing: ListingRow; from: number }[] = [];
 
     for (const row of rows) {
-      const firstPrice = firstPriceById.get(row.id);
+      const firstPrice = row.first_price;
       if (firstPrice == null || firstPrice <= 0) continue;
 
       const diff = firstPrice - row.current_price;
@@ -179,53 +176,6 @@ export async function fetchModelTrends(supabase: SupabaseClient): Promise<ModelT
   });
 
   return trends.sort((a, b) => b.sampleSize - a.sampleSize);
-}
-
-/**
- * Pierwsza zaobserwowana cena każdego ogłoszenia. To ona, a nie dzisiejsza,
- * jest punktem odniesienia dla obniżki - bo o to właśnie pyta kupujący:
- * ile ten sprzedający już zszedł.
- */
-async function fetchFirstPrices(
-  supabase: SupabaseClient,
-  listingIds: string[]
-): Promise<Map<string, number>> {
-  const firstPrice = new Map<string, number>();
-  const chunkSize = 50;
-  /*
-    PostgREST oddaje najwyżej 1000 wierszy na zapytanie i robi to po cichu -
-    obcięta odpowiedź wygląda dokładnie jak kompletna. Przy 50 ogłoszeniach na
-    porcję i kilku zapisach ceny na ogłoszenie zwykle się mieścimy, ale
-    ogłoszenie wiszące pół roku ma ich znacznie więcej, więc każdą porcję
-    dobieramy do skutku. Bez tego zgubione zapisy zaniżałyby liczbę obniżek
-    i nikt by tego nie zauważył.
-  */
-  for (let i = 0; i < listingIds.length; i += chunkSize) {
-    const chunk = listingIds.slice(i, i + chunkSize);
-    const pageSize = 1000;
-
-    for (let offset = 0; ; offset += pageSize) {
-      const { data } = await supabase
-        .from('listing_snapshots')
-        .select('listing_id, price, scraped_at')
-        .in('listing_id', chunk)
-        .gt('price', 0)
-        .order('scraped_at', { ascending: true })
-        .range(offset, offset + pageSize - 1);
-
-      const rows = (data as { listing_id: string; price: number }[]) || [];
-
-      for (const row of rows) {
-        if (!firstPrice.has(row.listing_id)) {
-          firstPrice.set(row.listing_id, Number(row.price));
-        }
-      }
-
-      if (rows.length < pageSize) break;
-    }
-  }
-
-  return firstPrice;
 }
 
 export async function fetchModelTrend(

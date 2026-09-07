@@ -17,7 +17,7 @@ export type HomeListing = {
 };
 
 const CARD_COLUMNS =
-  'id, title, location, current_price, source, created_at, image_url, ai_opinion_rating';
+  'id, title, location, current_price, first_price, source, created_at, image_url, ai_opinion_rating';
 
 /**
  * Dokleja zmianę ceny względem najstarszego snapshotu. Wyciągnięte z komponentu,
@@ -30,19 +30,10 @@ export async function attachPriceChanges(
 ): Promise<HomeListing[]> {
   if (listings.length === 0) return [];
 
-  const ids = listings.map((l) => l.id);
-  const { data: snapshotsData } = await supabase
-    .from('listing_snapshots')
-    .select('listing_id, price, scraped_at')
-    .in('listing_id', ids)
-    .order('scraped_at', { ascending: true });
-
-  const earliestPriceByListing = new Map<string, number>();
-  for (const snap of snapshotsData || []) {
-    if (!earliestPriceByListing.has(snap.listing_id)) {
-      earliestPriceByListing.set(snap.listing_id, snap.price);
-    }
-  }
+  /*
+    Cena początkowa jest kolumną w `listings`, więc nie ma tu już zapytania -
+    wcześniej po każdą listę ogłoszeń szło osobne pobranie ich historii cen.
+  */
 
   return listings.map((listing) => {
     const reviews = listing.reviews || [];
@@ -50,7 +41,7 @@ export async function attachPriceChanges(
       reviews.length > 0
         ? reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviews.length
         : undefined;
-    const earliestPrice = earliestPriceByListing.get(listing.id);
+    const earliestPrice = listing.first_price ?? undefined;
 
     return {
       ...listing,
@@ -143,46 +134,6 @@ export async function fetchRecentlyInspected(
 }
 
 
-/**
- * Pierwsza zapisana cena i liczba pomiarów dla każdego aktywnego ogłoszenia.
- *
- * Powstało, bo obie sekcje z obniżkami na stronie głównej brały wcześniej pulę
- * "100 ostatnio sprawdzonych" i szukały spadków tylko w niej. Przy przebiegu
- * scrapera rzędu 25 ogłoszeń dziennie to okno czterech dni, w którym akurat
- * nie musi być ani jednej przeceny - i nie było: baza miała 171 obniżek, a
- * strona główna pokazywała zero. Okno odcinało dane, nie brak danych.
- *
- * Stronicujemy jawnie, bo PostgREST oddaje najwyżej 1000 wierszy i robi to po
- * cichu - obcięta odpowiedź wygląda jak komplet, a zgubione zapisy zaniżyłyby
- * liczbę obniżek tak, że nikt by tego nie zauważył.
- */
-async function fetchEarliestPriceIndex(
-  supabase: SupabaseClient
-): Promise<Map<string, { firstPrice: number; snapshotCount: number }>> {
-  const index = new Map<string, { firstPrice: number; snapshotCount: number }>();
-  const pageSize = 1000;
-
-  for (let offset = 0; ; offset += pageSize) {
-    const { data } = await supabase
-      .from('listing_snapshots')
-      .select('listing_id, price, scraped_at')
-      .gt('price', 0)
-      .order('scraped_at', { ascending: true })
-      .order('listing_id', { ascending: true })
-      .range(offset, offset + pageSize - 1);
-
-    const rows = (data as { listing_id: string; price: number }[]) || [];
-    for (const row of rows) {
-      const entry = index.get(row.listing_id);
-      if (entry) entry.snapshotCount++;
-      else index.set(row.listing_id, { firstPrice: Number(row.price), snapshotCount: 1 });
-    }
-    if (rows.length < pageSize) break;
-  }
-
-  return index;
-}
-
 /** Wszystkie aktywne ogłoszenia z ceną - pula, w której szukamy obniżek. */
 async function fetchActiveListings(supabase: SupabaseClient, columns: string): Promise<any[]> {
   const all: any[] = [];
@@ -210,28 +161,22 @@ export async function fetchBiggestPriceDrops(
   supabase: SupabaseClient,
   limit = 3
 ): Promise<HomeListing[]> {
-  const [pool, priceIndex] = await Promise.all([
-    fetchActiveListings(supabase, CARD_COLUMNS),
-    fetchEarliestPriceIndex(supabase),
-  ]);
-
+  const pool = await fetchActiveListings(supabase, CARD_COLUMNS);
   if (pool.length === 0) return [];
 
   return pool
-    .map((listing) => {
-      const entry = priceIndex.get(listing.id);
-      return {
-        ...listing,
-        priceChangePercent:
-          entry != null
-            ? computePriceChangePercent(listing.current_price, entry.firstPrice)
-            : null,
-      } as HomeListing;
-    })
+    .map((listing) => ({
+      ...listing,
+      priceChangePercent:
+        listing.first_price != null
+          ? computePriceChangePercent(listing.current_price, listing.first_price)
+          : null,
+    }))
     .filter((l) => l.priceChangePercent != null && l.priceChangePercent < 0)
     .sort((a, b) => a.priceChangePercent! - b.priceChangePercent!)
-    .slice(0, limit);
+    .slice(0, limit) as HomeListing[];
 }
+
 
 
 export async function fetchRecentlyReviewedListings(
@@ -369,28 +314,25 @@ const HERO_MIN_DROP_PERCENT = -3;
 export async function fetchHeroSpotlight(
   supabase: SupabaseClient
 ): Promise<HeroSpotlight | null> {
-  const [pool, priceIndex] = await Promise.all([
-    fetchActiveListings(
-      supabase,
-      'id, title, location, current_price, source, image_url'
-    ),
-    fetchEarliestPriceIndex(supabase),
-  ]);
+  const pool = await fetchActiveListings(
+    supabase,
+    'id, title, location, current_price, first_price, source, image_url'
+  );
 
   if (pool.length === 0) return null;
 
   /*
-    Najpierw wybieramy zwycięzcę na samych liczbach, a serię do wykresu
-    dociągamy dopiero dla niego. Poprzednio pobieraliśmy historię całej puli,
-    żeby użyć jednej - a pula obejmuje teraz wszystkie aktywne ogłoszenia.
+    Zwycięzcę wybieramy na samych liczbach z tabeli ogłoszeń, a historię cen
+    dociągamy wyłącznie dla niego - jednym zapytaniem o jedno ogłoszenie.
+    Warunek "dość punktów na wykres" sprawdzamy dopiero na tej historii, bo
+    liczba pomiarów jest jedyną rzeczą, której nie da się odczytać z kolumny.
   */
   let best: { listing: any; changePercent: number } | null = null;
 
   for (const listing of pool) {
-    const entry = priceIndex.get(listing.id);
-    if (!entry || entry.snapshotCount < HERO_MIN_SNAPSHOTS) continue;
+    if (listing.first_price == null || listing.first_price <= 0) continue;
 
-    const changePercent = computePriceChangePercent(listing.current_price, entry.firstPrice);
+    const changePercent = computePriceChangePercent(listing.current_price, listing.first_price);
     if (changePercent == null || changePercent > HERO_MIN_DROP_PERCENT) continue;
     if (best && changePercent >= best.changePercent) continue;
 
