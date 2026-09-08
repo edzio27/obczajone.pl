@@ -54,7 +54,7 @@ export function InspectionCta({ partners }: { partners: Partner[] }) {
               id="zamow-inspekcje"
               className="mt-4 text-3xl md:text-[2.6rem] leading-[1.08] font-extrabold text-white text-balance"
             >
-              Nie masz jak pojechać 300 km, żeby zobaczyć jedno auto?
+              Nie masz jak pojechać 300 km, żeby obejrzeć auto albo mieszkanie?
             </h2>
 
             <p className="mt-4 max-w-lg text-[15px] md:text-base leading-relaxed text-white/70 text-pretty">
@@ -90,7 +90,7 @@ export function InspectionCta({ partners }: { partners: Partner[] }) {
                       </span>
                     ))}
                   </div>
-                  <span className="text-xs text-white/55">Firmy, które już z nami jeżdżą</span>
+                  <span className="text-xs text-white/55">Firmy, które już z nami pracują</span>
                 </div>
               )}
             </div>
