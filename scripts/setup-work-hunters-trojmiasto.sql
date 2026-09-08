@@ -6,7 +6,7 @@
   Dane pochodzą ze strony firmy na Facebooku (opis, telefon, osoba prowadząca).
   Czego tam NIE było i czego świadomie nie wpisuję:
 
-    - email, website          — firma podaje wyłącznie telefon i Messengera
+    - email, website          — firma podaje wyłącznie telefon i stronę na FB
     - price_from              — cennika nie publikuje
     - response_time           — nie deklaruje
     - services                — opis mówi ogólnie o odbiorach pod względem
@@ -56,8 +56,7 @@ VALUES (
   'work-hunters-trojmiasto',
   'work-hunters',
   '/partners/work-hunters-trojmiasto.jpg',
-  -- UZUPEŁNIĆ: adres strony firmy na Facebooku (kolumna jest NOT NULL).
-  'FACEBOOK_URL_DO_UZUPELNIENIA',
+  'https://www.facebook.com/WorkHunters/',
   '721 097 799',
   'Odbiory deweloperskie mieszkań w Trójmieście — od strony technicznej i prawnej.',
   'Work Hunters prowadzi odbiory techniczne mieszkań od dewelopera na terenie ' ||
