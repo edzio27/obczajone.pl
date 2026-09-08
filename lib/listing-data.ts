@@ -9,6 +9,13 @@ export type Listing = {
   url: string;
   title: string;
   location: string;
+  /*
+    Dokładne współrzędne przedmiotu ogłoszenia, jeśli źródło je podaje - dziś
+    wypełnia je Otodom. Puste przy Otomoto, gdzie pozycję znamy tylko okrężnie,
+    z adresu sprzedającego.
+  */
+  lat: number | null;
+  lng: number | null;
   current_price: number;
   is_active: boolean;
   first_seen_at: string;

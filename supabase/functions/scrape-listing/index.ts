@@ -452,6 +452,24 @@ function extractOtodomSpecs(ad: any): OtodomSpecs {
   Poziom nazywa sie `city_or_village`; `city` zostawiamy jako zapase na wypadek,
   gdyby Otodom uzywal obu. Sprawdzone na zywym ogloszeniu: Poznan.
 */
+/*
+  Dokladne wspolrzedne przedmiotu ogloszenia. Otodom podaje je wprost, wiec
+  dobor firmy do ogledzin nie musi ich zgadywac ze slownika 168 miast - a to
+  na tym slowniku wykladalo sie 18 z 52 ofert, w tym Pogorze pod Gdynia, ktore
+  lezy w zasiegu partnera od odbiorow w Trojmiescie.
+*/
+function extractOtodomCoords(ad: any): { lat: number; lng: number } | null {
+  const c = ad?.location?.coordinates;
+  const lat = Number(c?.latitude);
+  const lng = Number(c?.longitude);
+
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  // 0,0 to Zatoka Gwinejska - w praktyce znacznik braku danych, nie pozycja.
+  if (lat === 0 && lng === 0) return null;
+
+  return { lat, lng };
+}
+
 function extractOtodomCity(ad: any): string {
   const locations = ad?.location?.reverseGeocoding?.locations;
   if (!Array.isArray(locations)) return '';
@@ -478,6 +496,7 @@ async function scrapeOtodom(url: string) {
     let photoUrl = '';
     let description = '';
     let specs: OtodomSpecs = { area: null, rooms: null, floor: null, build_year: null };
+    let coords: { lat: number; lng: number } | null = null;
     let originalPostedAt: string | null = null;
 
     // Szukaj danych w formacie __NEXT_DATA__
@@ -495,6 +514,7 @@ async function scrapeOtodom(url: string) {
           }
 
           location = extractOtodomCity(ad) || location;
+          coords = extractOtodomCoords(ad);
 
           if (ad.images && Array.isArray(ad.images) && ad.images.length > 0) {
             photoUrl = ad.images[0].large || ad.images[0].medium || ad.images[0].small || '';
@@ -545,6 +565,7 @@ async function scrapeOtodom(url: string) {
       seller: null,
       description,
       specs,
+      coords,
       originalPostedAt,
     };
   } catch (error) {
@@ -991,6 +1012,15 @@ Deno.serve(async (req: Request) => {
     }
     if (scrapedData.originalPostedAt) {
       listingUpdate.original_posted_at = scrapedData.originalPostedAt;
+    }
+    /*
+      Tak samo jak przy seller_id: zapisujemy tylko wtedy, gdy ten odczyt
+      cos przyniosl. Nieudane pobranie strony nie moze wyczyscic wspolrzednych,
+      ktore raz juz mielismy - bez nich ogloszenie znika z doboru partnera.
+    */
+    if ((scrapedData as any).coords) {
+      listingUpdate.lat = (scrapedData as any).coords.lat;
+      listingUpdate.lng = (scrapedData as any).coords.lng;
     }
 
     await supabase.from('listings').update(listingUpdate).eq('id', listingId);

@@ -287,10 +287,19 @@ export function ListingClient({
     więc bez tego dobór partnera po odległości w ogóle nie działa i każdemu
     pokazujemy każdego, niezależnie od tego, gdzie stoi auto.
   */
+  /*
+    Trzy źródła pozycji, od najdokładniejszego. Współrzędne z ogłoszenia podaje
+    Otodom i wskazują sam adres nieruchomości. Adres sprzedającego (Otomoto)
+    jest miejscem, gdzie auto stoi, więc wystarcza. Słownik miast jest ostatni:
+    zna 168 pozycji, więc wszystko spoza tej listy - jak Pogórze pod Gdynią -
+    wypadało wcześniej z doboru firmy, mimo że miasto było znane.
+  */
   const listingLocation =
-    listing.seller?.lat != null && listing.seller?.lng != null
-      ? { lat: listing.seller.lat, lng: listing.seller.lng }
-      : coordsFromLocation(listing.location);
+    listing.lat != null && listing.lng != null
+      ? { lat: listing.lat, lng: listing.lng }
+      : listing.seller?.lat != null && listing.seller?.lng != null
+        ? { lat: listing.seller.lat, lng: listing.seller.lng }
+        : coordsFromLocation(listing.location);
 
   const aiOpinion =
     listing.ai_opinion_rating != null
