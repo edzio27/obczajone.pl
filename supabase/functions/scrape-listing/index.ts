@@ -435,6 +435,34 @@ function extractOtodomSpecs(ad: any): OtodomSpecs {
   };
 }
 
+/*
+  Miasto ogloszenia z Otodomu.
+
+  Obie dotychczasowe sciezki przestaly istniec i robily to po cichu: `address`
+  wciaz jest w danych, ale wszystkie jego pola sa dzis `null`, a wpisy
+  `reverseGeocoding` nie maja juz `address.city` - niosa `name` i `locationLevel`.
+  Zaden z tych odczytow nie rzucal bledem, wiec ogloszenia zapisywaly sie
+  z pusta lokalizacja: 50 z 52 aktywnych ofert Otodomu nie ma miasta.
+
+  Kosztowalo to wiecej niz pusty wiersz w tabeli. Dobor partnera do ogloszenia
+  idzie przez `coordsFromLocation(listing.location)`, wiec bez miasta zadna
+  firma od nieruchomosci nie mogla zostac dopasowana do zadnej oferty - cala
+  kategoria `home` byla martwa, zanim pojawil sie w niej pierwszy partner.
+
+  Poziom nazywa sie `city_or_village`; `city` zostawiamy jako zapase na wypadek,
+  gdyby Otodom uzywal obu. Sprawdzone na zywym ogloszeniu: Poznan.
+*/
+function extractOtodomCity(ad: any): string {
+  const locations = ad?.location?.reverseGeocoding?.locations;
+  if (!Array.isArray(locations)) return '';
+
+  for (const level of ['city_or_village', 'city']) {
+    const hit = locations.find((l: any) => l?.locationLevel === level && l?.name);
+    if (hit) return String(hit.name);
+  }
+  return '';
+}
+
 async function scrapeOtodom(url: string) {
   try {
     const response = await fetch(url, {
@@ -466,11 +494,7 @@ async function scrapeOtodom(url: string) {
             price = parseInt(ad.target.Price);
           }
 
-          if (ad.location?.address?.city?.name) {
-            location = ad.location.address.city.name;
-          } else if (ad.location?.reverseGeocoding?.locations?.[0]?.address?.city) {
-            location = ad.location.reverseGeocoding.locations[0].address.city;
-          }
+          location = extractOtodomCity(ad) || location;
 
           if (ad.images && Array.isArray(ad.images) && ad.images.length > 0) {
             photoUrl = ad.images[0].large || ad.images[0].medium || ad.images[0].small || '';
