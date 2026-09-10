@@ -20,15 +20,33 @@ const corsHeaders = {
   przelot w ogole ma sens kosztowo: 45 zapytan zamiast 1400.
 
   Co robimy w ktorej kolejnosci, mowi tabela model_sweep_targets - 15 modeli po
-  3 strony. Kolejnosc bierze sie stamtad, a nie ze stalej listy w kodzie, bo
-  jeden przebieg miesci okolo 23 pozycji i lista zaczynana od poczatku nigdy nie
-  dowiozlaby koncowki.
+  3 strony. Kolejnosc bierze sie stamtad, a nie ze stalej listy w kodzie: przy
+  dwoch pozycjach na przebieg lista zaczynana od poczatku odswiezalaby w kolko
+  pierwsza para i nigdy nie dotarla dalej, meldujac przy tym sukces.
 
   Czego nie robimy: robots.txt Otomoto zabrania /api/, /ajax/ i /i2/, wiec
   czytamy wylacznie publiczna strone wynikow, ktora jest tam objeta "Allow: /".
   Nie kopiujemy opisow ani zdjec - bierzemy cene, parametry i adres, czyli to,
   z czego liczymy wlasne statystyki i co i tak odsylamy linkiem do zrodla.
 */
+
+/*
+  Ile pozycji kolejki bierzemy w jednym przebiegu.
+
+  Bylo 40 przy dwoch przebiegach dziennie, czyli okolo 740 zapisow w dwie
+  minuty, dwa razy na dobe. Instancja t4g.nano rozlicza Disk IO kredytami:
+  praca powyzej stawki bazowej zjada zapas, praca ponizej go odbudowuje - wiec
+  akurat taki skokowy wzorzec drenuje go najszybciej. Dwa razy w ciagu trzech
+  dni skonczylo sie to baza, ktora przestala odpowiadac.
+
+  Teraz dwie pozycje co godzine, czyli 48 na dobe zamiast 45. Pokrycie zostaje
+  takie samo, spada wylacznie szczyt - mniej wiecej dziesieciokrotnie. To jest
+  cala zmiana i caly jej sens.
+
+  Kolejka ma 45 pozycji, wiec pelny obieg nadal zamyka sie w dobie - dokladnie
+  tak jak przy dwoch duzych przebiegach. Zmienia sie rozlozenie, nie tempo.
+*/
+const QUEUE_BATCH = 2;
 
 /*
   Funkcja brzegowa jest ubijana po ok. 150 sekundach, a wywolujacy ja pg_net
@@ -232,7 +250,7 @@ Deno.serve(async (req: Request) => {
       .from('model_sweep_targets')
       .select('id, path, page')
       .order('last_swept_at', { ascending: true, nullsFirst: true })
-      .limit(40);
+      .limit(QUEUE_BATCH);
 
     if (targetsError) throw new Error(`targets: ${targetsError.message}`);
 

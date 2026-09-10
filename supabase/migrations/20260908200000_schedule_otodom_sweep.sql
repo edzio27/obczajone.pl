@@ -67,19 +67,30 @@ CROSS JOIN generate_series(1, 2) AS page
 ON CONFLICT (path, page) DO NOTHING;
 
 /*
-  Dwa przebiegi na dobę, o 9:40 i 21:40. Godziny omijają :07 (sweep pojedynczych
-  ogłoszeń) i 3:20/15:20 (przelot po modelach), żeby trzy zadania nie schodziły
-  się na jednym połączeniu do bazy — po ostrzeżeniu o Disk IO nie ma powodu
-  robić sobie sztucznych szczytów.
+  KROK 3 z trzech: co godzinę, po jednej pozycji.
+
+  Kolejka ma 22 pozycje, więc cały zestaw miast obchodzimy raz na dobę — tyle
+  samo, ile dałyby dwa duże przebiegi, tylko rozłożone równo.
+
+  Ten przelot nigdy nie ruszył, więc nie ma własnej historii awarii; uczy się
+  na cudzej. Przelot po modelach robił ~740 zapisów w dwie minuty dwa razy
+  dziennie i dwukrotnie w ciągu trzech dni skończyło się to bazą, która
+  przestała odpowiadać. Na t4g.nano Disk IO rozlicza się kredytami, więc
+  kosztowna jest skokowość, a nie suma.
+
+  Minuta :50 omija :07 (sweep cen) i :20 (przelot po modelach), żeby trzy
+  zadania nigdy nie zeszły się na jednym połączeniu.
 
   timeout_milliseconds jest obowiązkowy: bez niego pg_net zrywa połączenie po
-  pięciu sekundach, cron melduje sukces i przebieg ginie po dwóch pozycjach.
+  pięciu sekundach, cron melduje sukces, a przebieg ginie po jednej pozycji.
+
+  Uruchamiać jako ostatni, po dobie stabilnego kroku 2.
 */
 SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = 'otodom-sweep';
 
 SELECT cron.schedule(
   'otodom-sweep',
-  '40 9,21 * * *',
+  '50 * * * *',
   $$
   SELECT net.http_post(
     url := 'https://tumyxmvbytwizmyqnvgc.supabase.co/functions/v1/sweep-otodom-listings',
@@ -92,7 +103,7 @@ SELECT cron.schedule(
       ), '')
     ),
     body := '{}'::jsonb,
-    timeout_milliseconds := 120000
+    timeout_milliseconds := 60000
   )
   $$
 );

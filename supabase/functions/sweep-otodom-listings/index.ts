@@ -28,6 +28,21 @@ const corsHeaders = {
   kopiujemy opisow ani zdjec - bierzemy cene, miasto, metraz i adres.
 */
 
+/*
+  Ile pozycji kolejki bierzemy w jednym przebiegu.
+
+  Jedna, co godzine. Kolejka ma 22 pozycje, wiec caly zestaw miast obchodzimy
+  raz na dobe - tyle samo, ile dawalyby dwa duze przebiegi, tylko rozlozone.
+
+  Ten przelot nigdy nie ruszyl, wiec nie ma wlasnej historii awarii. Uczy sie
+  na cudzej: przelot po modelach robil okolo 740 zapisow w dwie minuty dwa razy
+  dziennie i dwukrotnie w ciagu trzech dni skonczylo sie to baza, ktora
+  przestala odpowiadac. Instancja t4g.nano rozlicza Disk IO kredytami - praca
+  powyzej stawki bazowej zjada zapas, ponizej go odbudowuje - wiec to wlasnie
+  skokowosc, a nie suma, jest tu kosztowna.
+*/
+const QUEUE_BATCH = 1;
+
 const TIME_BUDGET_MS = 110_000;
 const REQUEST_DELAY_MS = 2000;
 const USER_AGENT = 'obczajone.pl listing sweep (+https://obczajone.pl)';
@@ -136,7 +151,7 @@ Deno.serve(async (req: Request) => {
       .from('otodom_sweep_targets')
       .select('id, path, page')
       .order('last_swept_at', { ascending: true, nullsFirst: true })
-      .limit(40);
+      .limit(QUEUE_BATCH);
 
     if (targetsError) throw new Error(`targets: ${targetsError.message}`);
 
