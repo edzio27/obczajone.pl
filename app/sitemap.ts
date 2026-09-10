@@ -55,6 +55,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
     },
     {
+      // Liczby przeliczają się z każdym przebiegiem scrapera.
+      url: `${baseUrl}/barometr`,
+      lastModified: new Date(),
+      changeFrequency: 'daily',
+      priority: 0.9,
+    },
+    {
       // Zmienia się z każdym przebiegiem scrapera, stąd 'daily'.
       url: `${baseUrl}/obnizki`,
       lastModified: new Date(),

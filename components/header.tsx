@@ -35,7 +35,7 @@ const NAV_ITEMS = [
     href: '/ile-spada-cena',
     label: 'Ile spada cena',
     icon: TrendingDown,
-    activePrefixes: ['/ile-spada-cena'],
+    activePrefixes: ['/ile-spada-cena', '/barometr', '/obnizki'],
   },
   {
     href: '/posrednicy',
