@@ -302,6 +302,9 @@ export type HeroSpotlight = {
 const HERO_MIN_SNAPSHOTS = 3;
 const HERO_MIN_DROP_PERCENT = -3;
 
+/** Ilu kandydatów sprawdzamy, zanim uznamy, że nie ma czego narysować. */
+const HERO_CANDIDATES = 8;
+
 /**
  * Jedno ogłoszenie do wykresu w nagłówku strony głównej.
  *
@@ -322,48 +325,63 @@ export async function fetchHeroSpotlight(
   if (pool.length === 0) return null;
 
   /*
-    Zwycięzcę wybieramy na samych liczbach z tabeli ogłoszeń, a historię cen
-    dociągamy wyłącznie dla niego - jednym zapytaniem o jedno ogłoszenie.
-    Warunek "dość punktów na wykres" sprawdzamy dopiero na tej historii, bo
-    liczba pomiarów jest jedyną rzeczą, której nie da się odczytać z kolumny.
+    Kandydatów układamy od najmocniejszej obniżki i schodzimy w dół, aż trafimy
+    takiego, który ma dość pomiarów na wykres.
+
+    Wcześniej brany był wyłącznie pierwszy z listy, a gdy odpadał na liczbie
+    pomiarów, funkcja zwracała null i nagłówek zostawał pusty - mimo że tuż za
+    nim stali kandydaci w zupełnie dobrym stanie. Tak wlasnie zniknął wykres:
+    Porsche Macan ze spadkiem 35,3% ma dwa pomiary przy wymaganych trzech,
+    a stojące za nim Volvo S60 z 34,5% ma ich osiem.
+
+    Liczby pomiarów nie da się odczytać z kolumny, więc trzeba po nią sięgnąć
+    do historii - ale robimy to najwyżej dla kilku pierwszych, a nie dla całej
+    puli, więc koszt zostaje ograniczony do stałej.
   */
-  let best: { listing: any; changePercent: number } | null = null;
+  const candidates = pool
+    .filter((l) => l.first_price != null && l.first_price > 0)
+    .map((l) => ({
+      listing: l,
+      changePercent: computePriceChangePercent(l.current_price, l.first_price),
+    }))
+    .filter(
+      (c): c is { listing: any; changePercent: number } =>
+        c.changePercent != null && c.changePercent <= HERO_MIN_DROP_PERCENT
+    )
+    .sort((a, b) => a.changePercent - b.changePercent)
+    .slice(0, HERO_CANDIDATES);
 
-  for (const listing of pool) {
-    if (listing.first_price == null || listing.first_price <= 0) continue;
+  for (const candidate of candidates) {
+    const { data: snapshotsData } = await supabase
+      .from('listing_snapshots')
+      .select('price, scraped_at')
+      .eq('listing_id', candidate.listing.id)
+      .gt('price', 0)
+      .order('scraped_at', { ascending: true });
 
-    const changePercent = computePriceChangePercent(listing.current_price, listing.first_price);
-    if (changePercent == null || changePercent > HERO_MIN_DROP_PERCENT) continue;
-    if (best && changePercent >= best.changePercent) continue;
+    const snaps = (snapshotsData as { price: number; scraped_at: string }[]) || [];
+    if (snaps.length < HERO_MIN_SNAPSHOTS) continue;
 
-    best = { listing, changePercent };
+    const best = candidate;
+
+    return {
+      id: best.listing.id,
+      title: best.listing.title,
+      location: best.listing.location || '',
+      image_url: best.listing.image_url ?? null,
+      source: best.listing.source,
+      currentPrice: best.listing.current_price,
+      startPrice: snaps[0].price,
+      changePercent: best.changePercent,
+      // Ostatnim punktem jest cena bieżąca, a nie ostatni snapshot - te dwie
+      // wartości rozjeżdżają się między przebiegami scrapera i wykres kończyłby
+      // się gdzie indziej, niż mówi liczba obok niego.
+      series: [...snaps.map((s) => s.price), best.listing.current_price],
+      firstSeenAt: snaps[0].scraped_at,
+    };
   }
 
-  if (!best) return null;
-
-  const { data: snapshotsData } = await supabase
-    .from('listing_snapshots')
-    .select('price, scraped_at')
-    .eq('listing_id', best.listing.id)
-    .gt('price', 0)
-    .order('scraped_at', { ascending: true });
-
-  const snaps = (snapshotsData as { price: number; scraped_at: string }[]) || [];
-  if (snaps.length < HERO_MIN_SNAPSHOTS) return null;
-
-  return {
-    id: best.listing.id,
-    title: best.listing.title,
-    location: best.listing.location || '',
-    image_url: best.listing.image_url ?? null,
-    source: best.listing.source,
-    currentPrice: best.listing.current_price,
-    startPrice: snaps[0].price,
-    changePercent: best.changePercent,
-    // Ostatnim punktem jest cena bieżąca, a nie ostatni snapshot - te dwie
-    // wartości rozjeżdżają się między przebiegami scrapera i wykres kończyłby
-    // się gdzie indziej, niż mówi liczba obok niego.
-    series: [...snaps.map((s) => s.price), best.listing.current_price],
-    firstSeenAt: snaps[0].scraped_at,
-  };
+  // Żaden z kandydatów nie ma historii na wykres - lepiej nagłówek bez wykresu
+  // niż linia z dwóch punktów, która niczego nie pokazuje.
+  return null;
 }
