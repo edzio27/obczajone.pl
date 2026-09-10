@@ -103,7 +103,15 @@ async function fetchCityPage(path: string, page: number): Promise<Offer[]> {
   const items = JSON.parse(match[1])?.props?.pageProps?.data?.searchAds?.items;
   if (!Array.isArray(items)) throw new Error('Nie znaleziono searchAds.items');
 
-  const offers: Offer[] = [];
+  /*
+    Klucz to identyfikator oferty, bo ta sama oferta potrafi stac na stronie
+    dwa razy: raz jako pozycja promowana, raz w wynikach organicznych. Bez tego
+    obie trafialy do jednego INSERT-a i caly przebieg konczyl sie bledem
+    duplicate key - sprawdzone na Warszawie, gdzie z 35 mieszkan unikalnych
+    bylo 34. Odsiewanie wzgledem bazy tego nie lapie, bo zadnej z nich jeszcze
+    w bazie nie ma.
+  */
+  const byId = new Map<string, Offer>();
   for (const item of items) {
     if (item?.estate !== 'FLAT') continue;
 
@@ -114,7 +122,7 @@ async function fetchCityPage(path: string, page: number): Promise<Offer[]> {
 
     const area = item?.areaInSquareMeters;
 
-    offers.push({
+    byId.set(listingId, {
       listingId,
       url: `https://www.otodom.pl/pl/oferta/${slug}`,
       title: typeof item.title === 'string' ? item.title : '',
@@ -131,7 +139,7 @@ async function fetchCityPage(path: string, page: number): Promise<Offer[]> {
     });
   }
 
-  return offers;
+  return [...byId.values()];
 }
 
 Deno.serve(async (req: Request) => {

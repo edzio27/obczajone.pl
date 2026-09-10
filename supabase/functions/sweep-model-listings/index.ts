@@ -200,7 +200,13 @@ async function fetchModelPage(path: string, page: number): Promise<Advert[]> {
 
   if (!edges) throw new Error('Nie znaleziono advertSearch w cache urql');
 
-  const adverts: Advert[] = [];
+  /*
+    Klucz to identyfikator oferty - patrz przelot po Otodomie, gdzie ta sama
+    oferta stala na stronie raz jako promowana i raz organicznie, przez co caly
+    przebieg konczyl sie bledem duplicate key. Tutaj to jeszcze nie trafilo,
+    ale nic tego nie wyklucza: promowane ogloszenia sa i tu.
+  */
+  const byId = new Map<string, Advert>();
   for (const edge of edges) {
     const node = edge?.node;
     if (!node?.url) continue;
@@ -211,7 +217,7 @@ async function fetchModelPage(path: string, page: number): Promise<Advert[]> {
 
     const sourceDrop = extractSourceDrop(node.priceDrop, price);
 
-    adverts.push({
+    byId.set(listingId, {
       listingId,
       url: canonicalUrl(node.url),
       title: typeof node.title === 'string' ? node.title : '',
@@ -224,7 +230,7 @@ async function fetchModelPage(path: string, page: number): Promise<Advert[]> {
     });
   }
 
-  return adverts;
+  return [...byId.values()];
 }
 
 Deno.serve(async (req: Request) => {
