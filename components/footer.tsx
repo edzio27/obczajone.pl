@@ -8,6 +8,7 @@ const COLUMNS = [
     links: [
       { href: '/ile-spada-cena', label: 'Ile spada cena' },
       { href: '/barometr', label: 'Barometr obniżek' },
+      { href: '/ceny-mieszkan', label: 'Ceny mieszkań' },
       { href: '/#jak-to-dziala', label: 'Jak to działa' },
       { href: '/#faq', label: 'Najczęstsze pytania' },
       { href: '/posrednicy', label: 'Mapa pośredników' },

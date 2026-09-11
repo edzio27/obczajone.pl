@@ -10,8 +10,20 @@ import { slugifyModel } from '@/lib/model-slug';
  * bo sprzedającym nie zależy, żeby kupujący wiedział, ile da się utargować.
  */
 
-/** Poniżej tylu ogłoszeń liczby nic nie znaczą - ten sam próg co w porównywarce cen. */
-export const MIN_SAMPLE_SIZE = 5;
+/**
+ * Ile ogłoszeń musi mieć model, żeby w ogóle dostał stronę.
+ *
+ * Było 5, bo tyle wtedy dawało jakiekolwiek strony - przy 971 autach w bazie
+ * wyższy próg zostawiłby ich trzy. Przelot po modelach zmienił arytmetykę:
+ * przy 30 ogłoszeniach zostaje 25 stron zamiast 58, a każda mediana stoi na
+ * próbce, którą da się obronić.
+ *
+ * To jest zamiana liczby stron na ich wiarygodność i robimy ją świadomie.
+ * Strona modelu licząca medianę z siedmiu ogłoszeń wygląda tak samo jak ta
+ * z trzydziestu, a mówi znacznie mniej - czytelnik nie ma jak ich odróżnić,
+ * więc odróżnienie musi być po naszej stronie.
+ */
+export const MIN_SAMPLE_SIZE = 30;
 
 /**
  * Ile ogłoszeń musi realnie stanieć, żeby wolno było nazwać coś "typową obniżką".

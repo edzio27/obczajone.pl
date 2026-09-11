@@ -55,6 +55,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
     },
     {
+      url: `${baseUrl}/ceny-mieszkan`,
+      lastModified: new Date(),
+      changeFrequency: 'daily',
+      priority: 0.9,
+    },
+    {
       // Liczby przeliczają się z każdym przebiegiem scrapera.
       url: `${baseUrl}/barometr`,
       lastModified: new Date(),
