@@ -299,7 +299,16 @@ export type HeroSpotlight = {
   firstSeenAt: string;
 };
 
-const HERO_MIN_SNAPSHOTS = 3;
+/*
+  Ile punktów musi mieć historia, żeby dało się z niej narysować linię.
+
+  Było 3, kiedy zapisywaliśmy cenę przy każdym sprawdzeniu - wtedy dwa punkty
+  mogły być dwoma odczytami tej samej ceny, czyli odcinkiem poziomym, który
+  niczego nie pokazuje. Od czasu, gdy pomijamy powtórzenia, KAŻDY zapisany
+  punkt jest zmianą, więc dwa punkty to cena przed i cena po - czyli dokładnie
+  ta historia, dla której ten wykres istnieje.
+*/
+const HERO_MIN_SNAPSHOTS = 2;
 const HERO_MIN_DROP_PERCENT = -3;
 
 /** Ilu kandydatów sprawdzamy, zanim uznamy, że nie ma czego narysować. */
