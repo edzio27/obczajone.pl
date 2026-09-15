@@ -2,6 +2,7 @@ import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { ListingUrlForm } from '@/components/listing-url-form';
 import { MobileActionBar } from '@/components/mobile-action-bar';
+import { ArchiveTeaser } from '@/components/archive-teaser';
 import { RecentListings } from '@/components/recent-listings';
 import { RecentReviews } from '@/components/recent-reviews';
 import { PartnersSection } from '@/components/promotional-banner';
@@ -92,6 +93,7 @@ async function getHomeData() {
         reviewCount: null,
         inspectionCount: null,
         partnerCount: null,
+        archivedCount: null,
       },
       spotlight: null,
       recentListings: [],
@@ -166,6 +168,15 @@ export default async function Home() {
           <InspectionCta partners={partners} />
 
           <BiggestPriceDrops listings={priceDrops} />
+
+          {/*
+            Archiwum tuż za obniżkami: jedno i drugie opowiada o cenie w czasie,
+            a czytelnik, który właśnie zobaczył, że sprzedający schodzą, jest
+            najbliżej pytania "a za ile w końcu poszło to, co zniknęło".
+          */}
+          <Reveal className="mt-20 block">
+            <ArchiveTeaser archivedCount={stats.archivedCount} />
+          </Reveal>
 
           <Reveal className="mt-20 block">
             <DealerMapTeaser

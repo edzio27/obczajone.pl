@@ -31,9 +31,13 @@ const display = Bricolage_Grotesque({
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://obczajone.pl'),
-  title: 'obczajone.pl - Historia Cen i Opinie o Ogłoszeniach Otomoto i Otodom',
-  description: 'Sprawdź historię zmian cen, czytaj opinie użytkowników i weryfikuj ogłoszenia z Otomoto i Otodom. Chroń się przed oszustwami i nieuczciwymi sprzedawcami. Darmowa baza opinii o ogłoszeniach.',
-  keywords: ['otomoto opinie', 'otodom opinie', 'historia cen otomoto', 'historia cen otodom', 'weryfikacja ogłoszeń', 'opinie o sprzedawcach', 'sprawdź ogłoszenie', 'oszustwa otomoto', 'oszustwa otodom', 'bezpieczne zakupy', 'opinie kupujących'],
+  // "Historia cen" zostaje na początku i zostaje dosłownie: to na niej strona
+  // stoi na pozycji 1.1 przy CTR 47-60% i nie ma powodu tego ruszać. Zmienia się
+  // druga połowa - "opinie" nie przyniosły w kwartale ani jednego zapytania
+  // (133 frazy, zero o opiniach), a "archiwum" przyniosło 628 wyświetleń.
+  title: 'obczajone.pl - Historia Cen i Archiwum Ogłoszeń Otomoto i Otodom',
+  description: 'Sprawdź historię zmian cen ogłoszeń z Otomoto i Otodom, także tych już zdjętych. Archiwum ofert z zapisaną ceną, datą zniknięcia i historią obniżek.',
+  keywords: ['historia cen otomoto', 'otomoto historia cen', 'archiwum otomoto', 'otomoto archiwum ogłoszeń', 'ogłoszenia archiwalne otomoto', 'historia ogłoszeń otomoto', 'jak sprawdzić historię ogłoszenia na otomoto', 'historia cen otodom', 'archiwalne ceny samochodów'],
   authors: [{ name: 'obczajone.pl' }],
   creator: 'obczajone.pl',
   publisher: 'obczajone.pl',
@@ -45,16 +49,16 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'pl_PL',
     url: 'https://obczajone.pl',
-    title: 'obczajone.pl - Sprawdź Historię i Opinie Przed Zakupem',
-    description: 'Weryfikuj ogłoszenia z Otomoto i Otodom. Czytaj opinie użytkowników, sprawdzaj historię cen i chroń się przed oszustwami.',
+    title: 'obczajone.pl - Historia cen i archiwum ogłoszeń',
+    description: 'Historia cen ogłoszeń z Otomoto i Otodom, łącznie z ofertami już zdjętymi. Sprawdź, ile kosztowało auto, zanim zniknęło.',
     siteName: 'obczajone.pl',
   },
 
   // Twitter
   twitter: {
     card: 'summary_large_image',
-    title: 'obczajone.pl - Historia Cen i Opinie o Ogłoszeniach',
-    description: 'Sprawdź historię cen i opinie o ogłoszeniach z Otomoto i Otodom. Chroń się przed oszustwami.',
+    title: 'obczajone.pl - Historia cen i archiwum ogłoszeń',
+    description: 'Historia cen ogłoszeń z Otomoto i Otodom, łącznie z tymi już zdjętymi.',
   },
 
   // Additional metadata

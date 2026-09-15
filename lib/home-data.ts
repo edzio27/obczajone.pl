@@ -251,6 +251,14 @@ export type HomeStats = {
   reviewCount: number | null;
   inspectionCount: number | null;
   partnerCount: number | null;
+  /**
+   * Ile zdjętych ogłoszeń Otomoto trzymamy w archiwum.
+   *
+   * Tylko Otomoto, bo kafelek na stronie głównej prowadzi do /archiwum-otomoto
+   * i musi pokazywać tę samą liczbę co strona docelowa - inaczej czytelnik widzi
+   * 1722, klika i dostaje 1661, i ma prawo przestać ufać obu.
+   */
+  archivedCount: number | null;
 };
 
 /**
@@ -261,7 +269,7 @@ export type HomeStats = {
  * reklamować pustkę; decyzję o tym podejmuje komponent, tutaj zwracamy fakty.
  */
 export async function fetchHomeStats(supabase: SupabaseClient): Promise<HomeStats> {
-  const [listings, reviews, inspections, partners] = await Promise.all([
+  const [listings, reviews, inspections, partners, archived] = await Promise.all([
     supabase.from('listings').select('id', { count: 'exact', head: true }),
     supabase
       .from('reviews')
@@ -275,6 +283,15 @@ export async function fetchHomeStats(supabase: SupabaseClient): Promise<HomeStat
       .from('partners')
       .select('id', { count: 'exact', head: true })
       .eq('is_active', true),
+    // Sam licznik, bez wierszy - strona główna nie potrzebuje treści archiwum,
+    // a ta instancja bazy nie potrzebuje kolejnego zapytania po tysiąc ogłoszeń.
+    supabase
+      .from('listings')
+      .select('id', { count: 'exact', head: true })
+      .eq('is_active', false)
+      .eq('source', 'otomoto')
+      .gt('current_price', 0)
+      .neq('title', ''),
   ]);
 
   return {
@@ -282,6 +299,7 @@ export async function fetchHomeStats(supabase: SupabaseClient): Promise<HomeStat
     reviewCount: reviews.count ?? null,
     inspectionCount: inspections.count ?? null,
     partnerCount: partners.count ?? null,
+    archivedCount: archived.count ?? null,
   };
 }
 
