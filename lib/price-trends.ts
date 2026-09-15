@@ -88,6 +88,32 @@ function daysBetween(from: string | null, to: string | null): number | null {
 }
 
 /**
+ * Same adresy stron modelowych, bez liczenia statystyk.
+ *
+ * Sitemapa potrzebuje wyłącznie listy slugów, a `fetchModelTrends` płaci za nie
+ * ściągnięciem wszystkich żywych ogłoszeń do pamięci - 29 sekund przy dzisiejszej
+ * bazie, czyli więcej, niż Vercel daje funkcji na odpowiedź. Grupowanie robi
+ * baza (`model_slug_stats`) i oddaje kilkadziesiąt wierszy.
+ *
+ * Próg zostaje tutaj, po stronie aplikacji: to decyzja o tym, od ilu ogłoszeń
+ * wolno nam cokolwiek twierdzić, a nie szczegół schematu.
+ */
+export async function fetchModelSlugs(supabase: SupabaseClient): Promise<string[]> {
+  const { data, error } = await supabase.rpc('model_slug_stats', {
+    min_sample: MIN_SAMPLE_SIZE,
+  });
+
+  if (error) {
+    console.error('Nie udało się pobrać listy modeli:', error.message);
+    return [];
+  }
+
+  return (data ?? [])
+    .filter((r: any) => r.brand && r.model)
+    .map((r: any) => slugifyModel(r.brand, r.model));
+}
+
+/**
  * Wszystkie modele, o których mamy co powiedzieć.
  *
  * Jedno zapytanie po ogłoszeniach i jedno po historii cen, potem liczenie
