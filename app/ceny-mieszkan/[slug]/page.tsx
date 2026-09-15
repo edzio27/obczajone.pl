@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { redirect } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
@@ -62,7 +62,9 @@ function Stat({ label, value, hint }: { label: string; value: string; hint?: str
 export default async function CityPage({ params }: Props) {
   const supabase = client();
   const city = await fetchCityPrice(supabase, params.slug);
-  if (!city) notFound();
+  // Miasto poniżej progu wraca na listę, nie na 404 - z tego samego powodu
+  // co modele aut: próg liczy się od bieżących ogłoszeń i bywa przekraczany w obie strony.
+  if (!city) redirect('/ceny-mieszkan');
 
   const { data: rows } = await supabase
     .from('listings')

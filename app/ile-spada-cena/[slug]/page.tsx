@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { redirect } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
@@ -53,7 +53,19 @@ export default async function ModelTrendPage({ params }: { params: { slug: strin
   const supabase = client();
   const trend = await fetchModelTrend(supabase, params.slug);
 
-  if (!trend) notFound();
+  /*
+    Model poniżej progu odsyłamy na listę, zamiast oddawać 404.
+
+    Progi (MIN_SAMPLE_SIZE) liczą się od żywych ogłoszeń, więc model schodzi
+    poniżej i wraca ponad w miarę tego, co akurat wisi na Otomoto. Audi A7
+    Sportback miało zaindeksowaną stronę i kliknięcia z wyszukiwarki, po czym
+    zaczęło oddawać 404 - dla Google to sygnał, że strony nie ma i można ją
+    usunąć z indeksu, choć za tydzień może znów być czym ją wypełnić.
+
+    Przekierowanie jest tymczasowe (307) świadomie: stan naprawdę jest
+    tymczasowy, a 301 kazałby wyszukiwarce zapomnieć adres na dobre.
+  */
+  if (!trend) redirect('/ile-spada-cena');
 
   const { data } = await supabase
     .from('listings')
