@@ -7,6 +7,7 @@ const COLUMNS = [
     heading: 'Sprawdzanie ofert',
     links: [
       { href: '/ile-spada-cena', label: 'Ile spada cena' },
+      { href: '/archiwum-otomoto', label: 'Archiwum ogłoszeń Otomoto' },
       { href: '/barometr', label: 'Barometr obniżek' },
       { href: '/ceny-mieszkan', label: 'Ceny mieszkań' },
       { href: '/#jak-to-dziala', label: 'Jak to działa' },

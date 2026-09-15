@@ -18,6 +18,12 @@ type ListingCardProps = {
   review_count?: number;
   ai_opinion_rating?: number | null;
   priceChangePercent?: number | null;
+  /**
+   * Oferty już nie ma w źródle. Kafelek musi to mówić wprost: na liście
+   * archiwum wygląda tak samo jak żywe ogłoszenie, a prowadzi do auta,
+   * którego nie da się kupić.
+   */
+  isArchived?: boolean;
   userReview?: {
     rating: number;
     comment: string;
@@ -61,6 +67,7 @@ export function ListingCard({
   review_count = 0,
   ai_opinion_rating,
   priceChangePercent,
+  isArchived = false,
   userReview,
 }: ListingCardProps) {
   const hasHumanReviews = !!average_rating && review_count > 0;
@@ -85,6 +92,16 @@ export function ListingCard({
               <Badge variant="secondary" className="uppercase text-[10px] tracking-wide">
                 {source}
               </Badge>
+
+              {isArchived && (
+                <Badge
+                  variant="outline"
+                  className="text-[10px] tracking-wide text-muted-foreground"
+                  title="Ogłoszenia nie ma już w serwisie źródłowym"
+                >
+                  Zdjęte
+                </Badge>
+              )}
 
               {(hasHumanReviews || hasAiOnly) && (
                 <span

@@ -41,10 +41,26 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const { listing, snapshots, reviewCount, averageRating } = data;
 
-  const title = `${listing.title} - ${listing.location} | obczajone.pl`;
-  const description = averageRating
-    ? `Sprawdź historię cen i ${reviewCount} opinii dla: ${listing.title}. Aktualna cena: ${listing.current_price.toLocaleString('pl-PL')} zł. Ocena: ${averageRating.toFixed(1)}/5.`
-    : `Sprawdź historię cen dla: ${listing.title}. Aktualna cena: ${listing.current_price.toLocaleString('pl-PL')} zł. Bądź pierwszy który doda opinię!`;
+  /*
+    Zdjęte ogłoszenie dostaje inny tytuł niż żywe, bo odpowiada na inne pytanie.
+
+    Przy żywym człowiek zastanawia się, czy kupić. Przy zdjętym - co się z nim
+    stało i za ile ostatecznie poszło; w Search Console widać to jako "archiwum
+    otomoto" i "historia ogłoszeń otomoto", zapytania, którymi ludzie już tu
+    trafiają. Skoro strona na to odpowiada, niech to widać w wyniku wyszukiwania.
+  */
+  const sourceName = listing.source === 'otodom' ? 'Otodom' : 'Otomoto';
+  const price = listing.current_price.toLocaleString('pl-PL');
+
+  const title = listing.is_active
+    ? `${listing.title} - ${listing.location} | obczajone.pl`
+    : `${listing.title} — archiwum ogłoszenia ${sourceName}, historia ceny | obczajone.pl`;
+
+  const description = !listing.is_active
+    ? `Ogłoszenie zdjęte z ${sourceName}. Ostatnia cena: ${price} zł, ${listing.location}. Zobacz, jak zmieniała się cena, zanim oferta zniknęła — ${sourceName} po zdjęciu ogłoszenia kasuje stronę.`
+    : averageRating
+    ? `Sprawdź historię cen i ${reviewCount} opinii dla: ${listing.title}. Aktualna cena: ${price} zł. Ocena: ${averageRating.toFixed(1)}/5.`
+    : `Sprawdź historię cen dla: ${listing.title}. Aktualna cena: ${price} zł. Bądź pierwszy który doda opinię!`;
 
   const imageUrl = snapshots[0]?.photo_urls?.[0] || 'https://obczajone.pl/opengraph-image';
   const pageUrl = `https://obczajone.pl/listing/${params.id}`;
