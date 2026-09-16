@@ -57,7 +57,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     : `${listing.title} — archiwum ogłoszenia ${sourceName}, historia ceny | obczajone.pl`;
 
   const description = !listing.is_active
-    ? `Ogłoszenie zdjęte z ${sourceName}. Ostatnia cena: ${price} zł, ${listing.location}. Zobacz, jak zmieniała się cena, zanim oferta zniknęła — ${sourceName} po zdjęciu ogłoszenia kasuje stronę.`
+    ? `Ogłoszenie zdjęte z ${sourceName}. Ostatnia cena: ${price} zł, ${listing.location}. Zobacz, jak zmieniała się cena, zanim oferta zniknęła z ${sourceName}.`
     : averageRating
     ? `Sprawdź historię cen i ${reviewCount} opinii dla: ${listing.title}. Aktualna cena: ${price} zł. Ocena: ${averageRating.toFixed(1)}/5.`
     : `Sprawdź historię cen dla: ${listing.title}. Aktualna cena: ${price} zł. Bądź pierwszy który doda opinię!`;

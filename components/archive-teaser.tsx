@@ -32,11 +32,11 @@ export function ArchiveTeaser({ archivedCount }: ArchiveTeaserProps) {
                 <span className="font-semibold text-foreground tabular">
                   {archivedCount.toLocaleString('pl-PL')}
                 </span>{' '}
-                archiwalnych ogłoszeń z zapisaną ceną i historią obniżek. Otomoto po zdjęciu
-                oferty kasuje stronę — u nas zostaje.
+                archiwalnych ogłoszeń z zapisaną ceną i historią obniżek. Zdjęta oferta znika
+                z Otomoto — u nas zostaje.
               </>
             ) : (
-              'Archiwalne ogłoszenia z zapisaną ceną i historią obniżek. Otomoto po zdjęciu oferty kasuje stronę — u nas zostaje.'
+              'Archiwalne ogłoszenia z zapisaną ceną i historią obniżek. Zdjęta oferta znika z Otomoto — u nas zostaje.'
             )}
           </p>
         </div>

@@ -10,7 +10,7 @@ import { fetchArchivedListings, fetchArchiveStats } from '@/lib/archive-data';
 export const metadata: Metadata = {
   title: 'Archiwum ogłoszeń Otomoto — zdjęte oferty i historia cen | obczajone.pl',
   description:
-    'Ogłoszenia z Otomoto, których już tam nie ma: ostatnia cena, historia obniżek i data zniknięcia. Otomoto po zdjęciu oferty kasuje stronę — my mamy zapisaną.',
+    'Ogłoszenia z Otomoto, których już tam nie ma: ostatnia cena, historia obniżek i data zniknięcia. Po zdjęciu oferty jej strona znika z serwisu — u nas zostaje.',
   alternates: { canonical: '/archiwum-otomoto' },
 };
 
@@ -57,11 +57,44 @@ export default async function OtomotoArchivePage() {
           <div>
             <h1 className="text-3xl md:text-4xl font-bold mb-3">Archiwum ogłoszeń Otomoto</h1>
             <p className="text-muted-foreground max-w-2xl">
-              Oferty, których na Otomoto już nie ma. Po zdjęciu ogłoszenia serwis kasuje
-              stronę i zostaje po niej pusty adres — a my zapisaliśmy cenę, opis i to,
-              jak ta cena zmieniała się, zanim auto zniknęło.
+              Oferty, których na Otomoto już nie ma. Kiedy sprzedający zdejmie ogłoszenie,
+              jego strona przestaje być dostępna i zostaje po niej pusty adres — a my
+              zapisaliśmy cenę, opis i to, jak ta cena zmieniała się, zanim auto zniknęło.
             </p>
           </div>
+
+          {/*
+            Rozróżnienie dwóch intencji, i to na samej górze.
+
+            Wyniki wyszukiwania na "archiwum otomoto" prowadzą dziś do pomocy
+            Otomoto i do poradników "jak otworzyć archiwalne ogłoszenie" - bo
+            większość pytających to sprzedający, który szuka WŁASNEJ oferty na
+            swoim koncie. Nasza strona odpowiada na inne pytanie, i to widać
+            w danych: 628 wyświetleń przy CTR 4.6%, czyli ludzie nas widzą
+            i nie klikają.
+
+            Człowiek, który trafił tu po swoje ogłoszenie, ma dostać odpowiedź
+            od razu, nawet jeśli to odpowiedź "to jest u nich, nie u nas".
+            Odesłanie go jednym zdaniem jest uczciwsze niż przetrzymywanie go
+            na stronie, która mu nie pomoże.
+          */}
+          <Card>
+            <CardContent className="pt-6 space-y-2 text-sm">
+              <p className="font-medium text-foreground">
+                Szukasz własnego ogłoszenia, które wystawiałeś na Otomoto?
+              </p>
+              <p className="text-muted-foreground">
+                Tego tutaj nie znajdziesz. Otomoto trzyma zakończone ogłoszenia przez pół roku
+                w archiwum Twojego konta — wejdź na swoje konto, do sekcji z ogłoszeniami,
+                i przełącz widok na zakończone. Po tym czasie oferta znika także stamtąd.
+              </p>
+              <p className="text-muted-foreground">
+                Ta strona jest o czymś innym: zbieramy <strong className="text-foreground font-medium">cudze</strong>{' '}
+                ogłoszenia, zanim znikną, żeby dało się sprawdzić, za ile ostatecznie
+                wystawiano auto, którego już nie ma w serwisie.
+              </p>
+            </CardContent>
+          </Card>
 
           <div className="grid gap-4 sm:grid-cols-3">
             <Stat

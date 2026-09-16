@@ -11,8 +11,13 @@ import { attachPriceChanges, type HomeListing } from './home-data';
   Szukają ogłoszenia, które zniknęło - bo chcą wiedzieć, za ile ostatecznie
   poszło albo czy to ta sama sztuka, którą teraz widzą drożej.
 
-  Otomoto po zdjęciu oferty kasuje stronę. My mamy zapisaną cenę i jej historię,
-  więc jesteśmy jedynym miejscem, które na to pytanie odpowiada.
+  Zdjęta oferta znika z Otomoto - sprzedający ma ją jeszcze pół roku w archiwum
+  swojego konta, ale dla kupującego zostaje pusty adres. My mamy zapisaną cenę
+  i jej historię, więc odpowiadamy na pytanie, na które nie odpowiada nikt inny.
+
+  Uwaga na tę różnicę przy pisaniu tekstów: "Otomoto kasuje ogłoszenie" jest
+  nieprawdą i łatwo ją sprawdzić - pierwszy wynik wyszukiwania na "archiwum
+  otomoto" to ich własna pomoc, która mówi o tych sześciu miesiącach.
 */
 
 const CARD_COLUMNS =
