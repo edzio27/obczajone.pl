@@ -20,6 +20,7 @@ const COLUMNS = [
     links: [
       { href: '/partnerzy', label: 'Katalog firm' },
       { href: '/dla-firm', label: 'Zostań partnerem' },
+      { href: '/dla-mediow', label: 'Dane dla mediów' },
       { href: '/dla-firm#weryfikacja', label: 'Zasady weryfikacji' },
       { href: '/panel-partnera', label: 'Panel partnera' },
     ],

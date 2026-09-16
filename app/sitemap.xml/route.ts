@@ -56,6 +56,7 @@ const staticPages: Entry[] = [
   { loc: `${BASE}/barometr`, changefreq: 'daily', priority: 0.9 },
   { loc: `${BASE}/ceny-mieszkan`, changefreq: 'daily', priority: 0.9 },
   { loc: `${BASE}/ile-spada-cena`, changefreq: 'weekly', priority: 0.8 },
+  { loc: `${BASE}/dla-mediow`, changefreq: 'weekly', priority: 0.7 },
   { loc: `${BASE}/obnizki`, changefreq: 'daily', priority: 0.8 },
   { loc: `${BASE}/posrednicy`, changefreq: 'weekly', priority: 0.8 },
   { loc: `${BASE}/werdykty`, changefreq: 'weekly', priority: 0.7 },
