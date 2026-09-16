@@ -32,6 +32,8 @@ export type Report = {
   snapshots: number;
   /** Ile dni temu zobaczyliśmy pierwsze ogłoszenie. */
   observedDays: number;
+  /** Kiedy cron ostatnio przeliczył te liczby. Cytujący powinien to widzieć. */
+  computedAt: string;
 };
 
 export type ModelReport = {
@@ -41,28 +43,6 @@ export type ModelReport = {
   medianDropPct: number | null;
   medianDropPln: number | null;
 };
-
-/*
-  Jedna ponowna próba przy błędzie połączenia.
-
-  Build prerenderuje tę stronę, a przy budowaniu potrafi urwać się połączenie do
-  Supabase ("TypeError: terminated" w logach) - wtedy funkcja oddawała null,
-  strona chowała sekcję z liczbami i szła na produkcję jako materiał prasowy bez
-  ani jednej liczby. To najgorszy możliwy tryb awarii dla tej akurat strony:
-  wygląda poprawnie i nie mówi nic.
-*/
-async function withRetry<T>(fn: () => Promise<T>, label: string): Promise<T | null> {
-  for (let attempt = 1; attempt <= 2; attempt++) {
-    try {
-      return await fn();
-    } catch (error) {
-      console.error(`${label}: próba ${attempt} nie powiodła się`, error);
-      if (attempt === 2) return null;
-      await new Promise((resolve) => setTimeout(resolve, 500));
-    }
-  }
-  return null;
-}
 
 function row(r: any): SourceReport {
   return {
@@ -76,38 +56,56 @@ function row(r: any): SourceReport {
   };
 }
 
+/**
+ * Raport czytany z gotowego wiersza, nie liczony na miejscu.
+ *
+ * Percentyle liczy cron o :35 i zapisuje do `report_snapshot`; tutaj zostaje
+ * jeden SELECT. Trzy wcześniejsze podejścia - prerender, force-dynamic
+ * i podniesiony limit czasu - przewróciły się na tym, że liczyły je w chwili,
+ * gdy ktoś patrzył: raz build bez liczb, raz strona odpowiadająca 21 sekund,
+ * raz zatkana pula połączeń i timeout na stronie głównej.
+ */
+async function readSnapshot(
+  supabase: SupabaseClient
+): Promise<{ sources: any[]; models: any[]; computedAt: string } | null> {
+  const { data, error } = await supabase
+    .from('report_snapshot')
+    .select('sources, models, computed_at')
+    .eq('id', 1)
+    .maybeSingle();
+
+  if (error || !data) {
+    console.error('Nie udało się odczytać raportu:', error?.message);
+    return null;
+  }
+
+  return {
+    sources: (data.sources as any[]) ?? [],
+    models: (data.models as any[]) ?? [],
+    computedAt: data.computed_at as string,
+  };
+}
+
 export async function fetchReport(supabase: SupabaseClient): Promise<Report | null> {
-  const data = await withRetry(async () => {
-    const { data, error } = await supabase.rpc('price_drop_report', {
-      min_days: REPORT_MIN_DAYS,
-    });
-    if (error) throw new Error(error.message);
-    return data as any[] | null;
-  }, 'Raport obniżek');
+  const snapshot = await readSnapshot(supabase);
+  if (!snapshot || snapshot.sources.length === 0) return null;
 
-  if (!data || data.length === 0) return null;
-
-  const rows = data.map(row);
+  const rows = snapshot.sources.map(row);
 
   return {
     otomoto: rows.find((r) => r.source === 'otomoto') ?? null,
     otodom: rows.find((r) => r.source === 'otodom') ?? null,
-    snapshots: Number((data as any[])[0].snapshots),
-    observedDays: Number((data as any[])[0].observed_days),
+    snapshots: Number(snapshot.sources[0].snapshots),
+    observedDays: Number(snapshot.sources[0].observed_days),
+    computedAt: snapshot.computedAt,
   };
 }
 
 export async function fetchModelReport(supabase: SupabaseClient): Promise<ModelReport[]> {
-  const data = await withRetry(async () => {
-    const { data, error } = await supabase.rpc('model_drop_report', {
-      min_days: REPORT_MIN_DAYS,
-      min_sample: REPORT_MIN_SAMPLE,
-    });
-    if (error) throw new Error(error.message);
-    return data as any[] | null;
-  }, 'Rozbicie na modele');
+  const snapshot = await readSnapshot(supabase);
+  if (!snapshot) return [];
 
-  return (data ?? []).map((r: any) => ({
+  return snapshot.models.map((r: any) => ({
     name: `${r.brand} ${r.model}`,
     watched: Number(r.watched),
     droppedPct: Number(r.dropped_pct),

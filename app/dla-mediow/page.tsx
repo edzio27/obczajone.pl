@@ -19,14 +19,10 @@ export const metadata: Metadata = {
 };
 
 /*
-  Liczona przy żądaniu, nie przy budowaniu.
-
-  Prerender tej strony przegrywał wyścig z własnym buildem: przy 66 stronach
-  generowanych równolegle zapytanie raportu przekraczało limit PostgREST
-  i strona szła na produkcję bez liczb. Cache trzyma CDN (nagłówek w
-  next.config.js), więc baza i tak liczy to raz na godzinę.
+  Liczby przelicza cron o :35 i zapisuje do report_snapshot; ta strona czyta
+  jeden wiersz. Godzina odświeżania zgrywa się z tamtym harmonogramem.
 */
-export const dynamic = 'force-dynamic';
+export const revalidate = 3600;
 
 function pln(value: number): string {
   return `${Math.round(value).toLocaleString('pl-PL')} zł`;
@@ -66,11 +62,19 @@ export default async function PressPage() {
   const cars = report?.otomoto ?? null;
   const flats = report?.otodom ?? null;
 
-  const today = new Date().toLocaleDateString('pl-PL', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
+  /*
+    Data przeliczenia, a nie dzisiejsza. Strona, która pod każdą datą pokazuje
+    te same liczby, myli cytującego - a tu liczby zmieniają się o :35.
+  */
+  const computedAt = report?.computedAt
+    ? new Date(report.computedAt).toLocaleString('pl-PL', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : null;
 
   /*
     Najgłębsza i najpłytsza obniżka wśród modeli - to jest zdanie, dla którego
@@ -95,7 +99,7 @@ export default async function PressPage() {
         <div className="max-w-4xl mx-auto space-y-10">
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-              Dane dla mediów · stan na {today}
+              Dane dla mediów{computedAt ? ` · stan na ${computedAt}` : ''}
             </p>
             <h1 className="text-3xl md:text-4xl font-bold mt-3 mb-4">
               Ile realnie schodzą sprzedający aut używanych
