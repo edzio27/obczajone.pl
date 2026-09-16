@@ -19,10 +19,19 @@ export const metadata: Metadata = {
 };
 
 /*
+  Dziesięć minut, a nie godzina.
+
   Liczby przelicza cron o :35 i zapisuje do report_snapshot; ta strona czyta
-  jeden wiersz. Godzina odświeżania zgrywa się z tamtym harmonogramem.
+  jeden gotowy wiersz, co kosztuje 6 ms - więc godzinny cache nie oszczędzał
+  bazie niczego, a potrafił pokazywać stan sprzed pełnej godziny. Przy dziesięciu
+  minutach strona nadaje za cronem najpóźniej kwadrans po przeliczeniu, a baza
+  dostaje sześć lekkich odczytów na godzinę zamiast jednego.
+
+  To nie jest zaproszenie do skrócenia tego dalej: wartość jest bezpieczna
+  dopóty, dopóki strona tylko czyta snapshot. Gdyby kiedyś znów zaczęła liczyć
+  cokolwiek sama, ten okres trzeba podnieść razem z tamtą zmianą.
 */
-export const revalidate = 3600;
+export const revalidate = 600;
 
 function pln(value: number): string {
   return `${Math.round(value).toLocaleString('pl-PL')} zł`;
