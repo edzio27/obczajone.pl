@@ -32,13 +32,6 @@ export type ArchiveStats = {
   medianDropPercent: number | null;
 };
 
-function median(values: number[]): number | null {
-  if (values.length === 0) return null;
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
-}
-
 /**
  * Ostatnio zdjęte ogłoszenia, od najświeższych.
  *
@@ -67,42 +60,29 @@ export async function fetchArchivedListings(
 /**
  * Liczby opisujące archiwum.
  *
- * Mediana liczona jest z `first_price` i `current_price`, czyli z kolumn, a nie
- * z przeglądania historii - ta instancja bazy raz już wyczerpała budżet Disk IO
- * na skanowaniu `listing_snapshots` i nie ma powodu tego powtarzać.
+ * Liczy baza i oddaje jeden wiersz. Wcześniej ta funkcja ściągała wszystkie
+ * wygaszone ogłoszenia do Node'a po to, żeby policzyć z nich medianę - przy
+ * budowaniu, gdy strony generują się równolegle, wystarczyło to, by strona
+ * archiwum przekroczyła limit i cały build się wywalił.
  */
 export async function fetchArchiveStats(
   supabase: SupabaseClient,
   { source }: { source?: string } = {}
 ): Promise<ArchiveStats> {
-  let countQuery = supabase
-    .from('listings')
-    .select('id', { count: 'exact', head: true })
-    .eq('is_active', false)
-    .gt('current_price', 0)
-    .neq('title', '');
+  const { data, error } = await supabase.rpc('archive_stats', {
+    p_source: source ?? null,
+  });
 
-  if (source) countQuery = countQuery.eq('source', source);
+  if (error || !data || data.length === 0) {
+    console.error('Nie udało się policzyć statystyk archiwum:', error?.message);
+    return { total: 0, dropped: 0, medianDropPercent: null };
+  }
 
-  let droppedQuery = supabase
-    .from('listings')
-    .select('first_price, current_price')
-    .eq('is_active', false)
-    .gt('current_price', 0)
-    .gt('first_price', 0)
-    .neq('title', '');
-
-  if (source) droppedQuery = droppedQuery.eq('source', source);
-
-  const [{ count }, { data: rows }] = await Promise.all([countQuery, droppedQuery]);
-
-  const drops = (rows ?? [])
-    .filter((r: any) => Number(r.current_price) < Number(r.first_price))
-    .map((r: any) => (100 * (Number(r.first_price) - Number(r.current_price))) / Number(r.first_price));
+  const row = (data as any[])[0];
 
   return {
-    total: count ?? 0,
-    dropped: drops.length,
-    medianDropPercent: median(drops),
+    total: Number(row.total),
+    dropped: Number(row.dropped),
+    medianDropPercent: row.median_drop_pct == null ? null : Number(row.median_drop_pct),
   };
 }
