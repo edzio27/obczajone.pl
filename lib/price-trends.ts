@@ -99,121 +99,58 @@ function daysBetween(from: string | null, to: string | null): number | null {
  * wolno nam cokolwiek twierdzić, a nie szczegół schematu.
  */
 export async function fetchModelSlugs(supabase: SupabaseClient): Promise<string[]> {
-  const { data, error } = await supabase.rpc('model_slug_stats', {
-    min_sample: MIN_SAMPLE_SIZE,
-  });
-
-  if (error) {
-    console.error('Nie udało się pobrać listy modeli:', error.message);
-    return [];
-  }
-
-  return (data ?? [])
-    .filter((r: any) => r.brand && r.model)
-    .map((r: any) => slugifyModel(r.brand, r.model));
+  // Ten sam snapshot co trendy - jedno źródło prawdy, więc sitemapa nie może
+  // zgłosić modelu, dla którego strona nie ma danych, ani odwrotnie.
+  const trends = await fetchModelTrends(supabase);
+  return trends.map((t) => t.slug);
 }
 
 /**
  * Wszystkie modele, o których mamy co powiedzieć.
  *
- * Jedno zapytanie po ogłoszeniach i jedno po historii cen, potem liczenie
- * w pamięci. PostgREST nie grupuje, a przy dzisiejszej skali (rzędu dwóch
- * tysięcy ogłoszeń) widok materializowany byłby aparaturą do problemu,
- * którego jeszcze nie ma.
+ * Czytane z `model_trends_snapshot`, który cron przelicza o :45. Liczenie
+ * w Node'ie wywaliło build 18 września: `fetchModelTrend` wołało tę funkcję
+ * osobno dla każdej z 36 stron modelowych, a każde wywołanie ściągało wszystkie
+ * żywe ogłoszenia - ponad 330 tysięcy wierszy w jednym budowaniu. Przy ~600
+ * nowych ogłoszeniach dziennie próg został przekroczony sam z siebie.
+ *
+ * Mediany i progi liczy teraz `model_trends_full` w bazie, wiernie wobec tego,
+ * co robił tutejszy kod. MIN_SAMPLE_SIZE i MIN_DROPS_FOR_MEDIAN zostają tu jako
+ * dokumentacja decyzji - baza dostaje je jako argumenty przy przeliczaniu.
  */
 export async function fetchModelTrends(supabase: SupabaseClient): Promise<ModelTrend[]> {
-  const listings: ListingRow[] = [];
-  const pageSize = 1000;
+  const { data, error } = await supabase
+    .from('model_trends_snapshot')
+    .select('trends')
+    .eq('id', 1)
+    .maybeSingle();
 
-  for (let from = 0; from < 10000; from += pageSize) {
-    const { data } = await supabase
-      .from('listings')
-      .select('id, title, current_price, first_price, first_seen_at, last_checked_at, specs')
-      /*
-        Tylko oferty, ktore nadal stoja na Otomoto. Ogloszenie zdjete z serwisu
-        ma cene zamrozona na ostatnim udanym odczycie, a liczylo sie do mediany
-        na rowni z zywymi - z czasem statystyka dryfowalaby w przeszlosc,
-        opisujac rynek sprzed miesiecy jako dzisiejszy.
-      */
-      .eq('is_active', true)
-      .gt('current_price', 0)
-      .range(from, from + pageSize - 1);
-
-    const batch = (data as ListingRow[]) || [];
-    listings.push(...batch);
-    if (batch.length < pageSize) break;
+  if (error || !data) {
+    console.error('Nie udało się odczytać trendów modeli:', error?.message);
+    return [];
   }
 
-  const byModel = new Map<string, ListingRow[]>();
-  for (const listing of listings) {
-    const brand = listing.specs?.brand?.trim();
-    const model = listing.specs?.model?.trim();
-    if (!brand || !model) continue;
+  const rows = (data.trends as any[]) ?? [];
 
-    const key = `${brand}|||${model}`;
-    const bucket = byModel.get(key);
-    if (bucket) bucket.push(listing);
-    else byModel.set(key, [listing]);
-  }
-
-  const relevant = Array.from(byModel.entries()).filter(
-    ([, rows]) => rows.length >= MIN_SAMPLE_SIZE
-  );
-
-  const trends: ModelTrend[] = relevant.map(([key, rows]) => {
-    const [brand, model] = key.split('|||');
-
-    const drops: { percent: number; pln: number; listing: ListingRow; from: number }[] = [];
-
-    for (const row of rows) {
-      const firstPrice = row.first_price;
-      if (firstPrice == null || firstPrice <= 0) continue;
-
-      const diff = firstPrice - row.current_price;
-      if (diff <= 0) continue;
-
-      drops.push({
-        percent: (diff / firstPrice) * 100,
-        pln: diff,
-        listing: row,
-        from: firstPrice,
-      });
-    }
-
-    const biggest = drops.reduce<(typeof drops)[number] | null>(
-      (best, current) => (best == null || current.pln > best.pln ? current : best),
-      null
-    );
-
-    // Mediana z jednej czy dwóch obserwacji opisuje te obserwacje, nie model.
-    const enoughDrops = drops.length >= MIN_DROPS_FOR_MEDIAN;
-
-    const daysListed = rows
-      .map((r) => daysBetween(r.first_seen_at, r.last_checked_at))
-      .filter((d): d is number => d != null);
-
-    return {
-      brand,
-      model,
-      slug: slugifyModel(brand, model),
-      sampleSize: rows.length,
-      medianPrice: median(rows.map((r) => r.current_price)),
-      droppedCount: drops.length,
-      medianDropPercent: enoughDrops ? median(drops.map((d) => d.percent)) : null,
-      medianDropPln: enoughDrops ? median(drops.map((d) => d.pln)) : null,
-      biggestDrop: biggest
-        ? {
-            listingId: biggest.listing.id,
-            title: biggest.listing.title || `${brand} ${model}`,
-            from: biggest.from,
-            to: biggest.listing.current_price,
-          }
-        : null,
-      medianDaysListed: median(daysListed),
-    };
-  });
-
-  return trends.sort((a, b) => b.sampleSize - a.sampleSize);
+  return rows.map((r) => ({
+    brand: r.brand,
+    model: r.model,
+    slug: slugifyModel(r.brand, r.model),
+    sampleSize: Number(r.sample_size),
+    medianPrice: r.median_price == null ? null : Number(r.median_price),
+    droppedCount: Number(r.dropped_count),
+    medianDropPercent: r.median_drop_percent == null ? null : Number(r.median_drop_percent),
+    medianDropPln: r.median_drop_pln == null ? null : Number(r.median_drop_pln),
+    biggestDrop: r.biggest_drop_listing_id
+      ? {
+          listingId: r.biggest_drop_listing_id,
+          title: r.biggest_drop_title || `${r.brand} ${r.model}`,
+          from: Number(r.biggest_drop_from),
+          to: Number(r.biggest_drop_to),
+        }
+      : null,
+    medianDaysListed: r.median_days_listed == null ? null : Number(r.median_days_listed),
+  }));
 }
 
 export async function fetchModelTrend(
