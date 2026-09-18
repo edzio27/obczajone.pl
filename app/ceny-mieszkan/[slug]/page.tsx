@@ -6,7 +6,6 @@ import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { Card, CardContent } from '@/components/ui/card';
 import { ListingCard } from '@/components/listing-card';
-import { VinCheckCta } from '@/components/vin-check-cta';
 import { fetchCityPrice, fetchCityPrices, MIN_CITY_LISTINGS } from '@/lib/city-prices';
 import { attachPriceChanges } from '@/lib/home-data';
 
@@ -124,8 +123,6 @@ export default async function CityPage({ params }: Props) {
               }
             />
           </div>
-
-          <VinCheckCta context="model_page" />
 
           {listings.length > 0 && (
             <section>
