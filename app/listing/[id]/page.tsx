@@ -17,6 +17,27 @@ type Props = {
 // z bazy ruch od crawlerow.
 export const revalidate = 600;
 
+/*
+  Pusta lista parametrow, a nie brak `generateStaticParams`.
+
+  Bez tej funkcji Next 13.5 w ogole nie wpisuje trasy do prerender-manifestu i
+  traktuje ja jako w pelni dynamiczna. Produkcja oddawala na kazde zadanie
+  `cache-control: private, no-cache, no-store` i `x-vercel-cache: MISS`, wiec
+  `revalidate` powyzej nie znaczylo nic: kazde wejscie crawlera renderowalo
+  strone od nowa i szlo po dane do bazy. Przy 12 771 ogloszeniach w sitemapie
+  i robotach Google, Bing oraz czterech AI, ktore sami zaprosilismy w
+  robots.txt, to jest glowny odbiorca naszego czasu CPU na Vercelu.
+
+  Pusta tablica nie prerenderuje niczego przy budowaniu - 12 771 stron build by
+  nie udzwignal - a `dynamicParams` zostawia strone otwarta na kazde id:
+  pierwsze wejscie renderuje i zapisuje, kolejne przez 10 minut ida z cache.
+*/
+export const dynamicParams = true;
+
+export async function generateStaticParams() {
+  return [];
+}
+
 // cache() sprawia, że generateMetadata i sam render dzielą jeden komplet
 // zapytań w obrębie tego samego requestu, zamiast odpytywać bazę dwa razy.
 const getListingData = cache(async (id: string): Promise<ListingPageData | null> => {

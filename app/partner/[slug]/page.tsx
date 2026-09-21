@@ -23,6 +23,19 @@ type Props = {
 // razem wygląda to tak, jakby zatwierdzenie nie zadziałało.
 export const revalidate = 60;
 
+/*
+  To samo, co przy `/listing/[id]`: bez `generateStaticParams` Next 13.5 nie
+  wpisuje trasy do prerender-manifestu i `revalidate` powyzej jest martwe -
+  produkcja oddawala `private, no-cache, no-store` na kazde wejscie. Pusta
+  tablica wlacza ISR, a `dynamicParams` zostawia otwarte kazde nowe slug
+  partnera bez przebudowy.
+*/
+export const dynamicParams = true;
+
+export async function generateStaticParams() {
+  return [];
+}
+
 type PartnerPageData = {
   partner: Partner;
   reviews: PartnerReview[];

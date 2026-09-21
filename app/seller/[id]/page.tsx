@@ -2,6 +2,23 @@ import { Metadata } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { SellerClient } from './seller-client';
 
+
+/*
+  Profil sprzedawcy nie mial ani `revalidate`, ani `generateStaticParams`, wiec
+  szedl jako trasa w pelni dynamiczna: kazde wejscie crawlera - a linkuje tu
+  kazde z 12 771 ogloszen - renderowalo strone od nowa i pytalo baze. Godzina
+  wystarczy, bo profil zmienia sie tylko wtedy, gdy scraper dolozy temu
+  sprzedawcy ogloszenie.
+*/
+export const revalidate = 3600;
+
+export const dynamicParams = true;
+
+export async function generateStaticParams() {
+  return [];
+}
+
+
 type Props = {
   params: { id: string };
 };

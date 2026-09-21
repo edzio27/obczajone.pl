@@ -10,12 +10,18 @@ import { fetchCityPrices } from '@/lib/city-prices';
   do następnego deployu. 15 września produkcja oddawała sitemapę z `age: 78051`,
   czyli sprzed 21 godzin, mimo ustawionego `revalidate = 3600` - a scraper
   dokłada w tym czasie kilkaset ogłoszeń, o których Google nie miał jak usłyszeć.
-  Stąd `force-dynamic` zamiast `revalidate`: świeżość pilnuje CDN nagłówkiem
-  `s-maxage=3600` z odpowiedzi poniżej, a nie mechanizm, który przy budowaniu
-  zamrażał plik. Baza i tak dostaje jedno odpytanie na godzinę - przy t4g.nano
-  to nie jest szczegół, tylko warunek, żeby ta zmiana nie kosztowała nas awarii.
+
+  Ograniczenie dotyczy jednak metadata route, nie route handlera: tutaj
+  `revalidate` jest honorowany i po godzinie kolejne żądanie odświeża plik.
+  `force-dynamic`, którym to wcześniej obeszliśmy, okazał się droższy, niż
+  wyglądał - Next kasuje wtedy nasz `s-maxage=3600` i oddaje
+  `cache-control: public, max-age=0`, więc świeżości pilnował nie nagłówek,
+  tylko krótkotrwały cache Vercela, a każde jego wygaśnięcie to 13 kolejnych
+  zapytań do bazy i zbudowanie 2,4 MB XML-a od nowa. Przy `revalidate` dzieje
+  się to raz na godzinę i nie częściej - czyli dokładnie to, co ten komentarz
+  obiecywał t4g.nano od początku.
 */
-export const dynamic = 'force-dynamic';
+export const revalidate = 3600;
 
 const BASE = 'https://obczajone.pl';
 
@@ -152,6 +158,18 @@ export async function GET() {
   } catch (error) {
     console.error('Nie udało się zebrać adresów do sitemapy:', error);
     // Lepiej oddać same strony stałe niż 500 - Google ponowi za godzinę.
+  }
+
+  /*
+    Sitemapa jest teraz plikiem ISR, więc to, co tu wyjdzie, Google dostaje
+    przez następną godzinę. Nieudane zapytanie do bazy przy budowaniu dałoby
+    więc plik z dwunastoma adresami zamiast dwunastu tysięcy - dla wyszukiwarki
+    sygnał, że całe archiwum zniknęło. Przy dwóch ostatnich buildach Supabase
+    rwał połączenia, więc to nie jest przypadek teoretyczny: lepiej wywalić
+    build i powtórzyć go, niż opublikować sitemapę w tym stanie.
+  */
+  if (entries.length === staticPages.length) {
+    throw new Error('Sitemapa bez ani jednego ogłoszenia - nie publikujemy jej w tym stanie.');
   }
 
   return new Response(xml(entries), {
