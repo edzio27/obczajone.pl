@@ -13,7 +13,26 @@ import { formatRating, inspectionCountLabel, reviewCountLabel } from '@/lib/part
   `alt` i tekst kotwicy w gotowcu do wklejenia.
 */
 
-export const revalidate = 3600;
+/*
+  Nie ma tu `revalidate` i to jest świadome, nie przeoczenie.
+
+  Trasa czyta `?theme=` z `request.url`, a to w Next 13.5 czyni route handler
+  na trwałe dynamicznym: w tabelce builda stoi jako `λ`, w prerender-manifeście
+  jej nie ma, i `export const revalidate = 3600`, który stał w tym miejscu do
+  21 września, nie znaczył dosłownie nic. Ta sama pułapka kosztowała nas cały
+  cache na `/listing/[id]`, więc lepiej, żeby nikt się tu na nią drugi raz nie
+  nabrał.
+
+  Świeżość niesie nagłówek na dole, nie ISR - i niesie ją skutecznie: produkcja
+  oddaje `x-vercel-cache: HIT` osobno dla wariantu jasnego i ciemnego, czyli
+  jeden render na godzinę na wariant. `s-maxage` jest tam wypisane wprost,
+  żeby czas życia w cache współdzielonym nie zależał od tego, co akurat
+  ustawimy przeglądarce w `max-age`.
+
+  Czego tu nie robić: `force-dynamic` niczego nie zmieni w zachowaniu, za to
+  skasuje ten nagłówek - Next nadpisuje wtedy Cache-Control - czyli zabierze
+  jedyne, co tę trasę cache'uje.
+*/
 
 const PRIMARY = '#0d7a70';
 const STAR = '#facc15';
@@ -131,7 +150,7 @@ export async function GET(request: Request, { params }: { params: { slug: string
   return new Response(svg, {
     headers: {
       'Content-Type': 'image/svg+xml; charset=utf-8',
-      'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
+      'Cache-Control': 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400',
     },
   });
 }
