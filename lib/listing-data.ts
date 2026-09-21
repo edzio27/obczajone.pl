@@ -237,7 +237,26 @@ export async function fetchListingPageData(
     .eq('id', listingId)
     .maybeSingle();
 
-  if (error || !listing) return null;
+  /*
+    Błąd bazy to nie to samo co nieistniejące ogłoszenie, i od 21 września
+    trzeba to rozróżniać, bo strona jest cache'owana.
+
+    Dopóki `/listing/[id]` liczyło się przy każdym żądaniu, zwrócenie `null` na
+    jedno i drugie było niegroźne: strona oddawała 404, a następne wejście
+    próbowało od nowa. Pod ISR ten sam `null` piecze 404 w cache'u - i dokładnie
+    to zobaczyliśmy tego dnia po południu, kiedy Supabase przestał odpowiadać:
+    produkcja oddawała 404 na ogłoszenia, które istnieją. Dla archiwum, z
+    którego żyje ten serwis, 404 podany Google jest gorszy niż stara treść.
+
+    Wyjątek jest tu lepszy od `null`: Next nie zapisuje nieudanej regeneracji,
+    tylko serwuje dalej ostatnią dobrą wersję ze `stale`. Człowiek dostaje
+    wtedy ceny sprzed godziny zamiast komunikatu, że ogłoszenie nie istnieje.
+  */
+  if (error) {
+    throw new Error(`Baza nie oddała ogłoszenia ${listingId}: ${error.message}`);
+  }
+
+  if (!listing) return null;
 
   const [{ data: snapshotsData }, { data: reviewsData }] = await Promise.all([
     supabase

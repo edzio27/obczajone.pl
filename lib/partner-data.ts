@@ -135,12 +135,20 @@ export async function fetchPartnerBySlug(
   supabase: SupabaseClient,
   slug: string
 ): Promise<Partner | null> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('partners')
     .select(PARTNER_COLUMNS)
     .eq('slug', slug)
     .eq('is_active', true)
     .maybeSingle();
+
+  // Patrz `fetchListingPageData`: pod ISR zwrócenie `null` przy niedostępnej
+  // bazie zapiekłoby 404 na profilu partnera, któremu ten profil sprzedaliśmy
+  // jako "własna podstrona w Google". Wyjątek zostawia w cache'u ostatnią
+  // dobrą wersję.
+  if (error) {
+    throw new Error(`Baza nie oddała partnera ${slug}: ${error.message}`);
+  }
 
   return (data as unknown as Partner) ?? null;
 }

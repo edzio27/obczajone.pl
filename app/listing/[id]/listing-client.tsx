@@ -83,7 +83,11 @@ export function ListingClient({
     let cancelled = false;
 
     async function refreshListingData() {
-      const data = await fetchListingPageData(supabase, listingId);
+      // `fetchListingPageData` rzuca teraz przy błędzie bazy, żeby render
+      // serwerowy nie zapiekł 404 w cache'u. Tutaj to samo nie może wywrócić
+      // strony: użytkownik ma już komplet treści z HTML-a, więc nieudane
+      // odświeżenie po dodaniu opinii ma po prostu nic nie zmienić.
+      const data = await fetchListingPageData(supabase, listingId).catch(() => null);
       if (cancelled || !data) return;
 
       setListing(data.listing);
