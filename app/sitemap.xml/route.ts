@@ -78,6 +78,8 @@ export async function GET() {
   );
 
   const entries: Entry[] = [...staticPages];
+  let listingCount = 0;
+  let expectedListings = Number.POSITIVE_INFINITY;
 
   try {
     /*
@@ -94,14 +96,47 @@ export async function GET() {
       ogłoszenia ukrywa, więc sitemapa też ich nie zgłasza - nie karmimy Google
       stronami, które sami uznaliśmy za zbyt zepsute, żeby je pokazać.
     */
+    /*
+      Ile ogłoszeń ma tu wyjść, wiemy przed pętlą - i to jest jedyny sposób,
+      żeby odróżnić "tyle ich jest" od "reszta się nie dociągnęła".
+
+      21 września build tuż po restarcie bazy upiekł sitemapę z 1063 adresami
+      zamiast 12 849: druga strona paginacji oddała błąd, `data` przyszło puste,
+      a pętla uznała to za koniec zbioru i wyszła. Przy trasie dynamicznej taki
+      plik żył do następnego żądania; jako plik ISR pojechałby do Google na
+      godzinę, zgłaszając, że 92% archiwum przestało istnieć.
+    */
+    const { count, error: countError } = await supabase
+      .from('listings')
+      .select('id', { count: 'exact', head: true })
+      .gt('current_price', 0)
+      .neq('title', '');
+
+    if (countError || count == null) {
+      throw new Error(`Nie wiadomo, ile ogłoszeń ma trafić do sitemapy: ${countError?.message}`);
+    }
+
+    expectedListings = count;
+
+    /*
+      Paginacja po `id`, nie po `last_checked_at`: scraper przestawia
+      `last_checked_at` w trakcie naszego przelotu, więc sortowanie po nim
+      przesuwa wiersze między stronami i część ogłoszeń wypada z sitemapy, a
+      część wchodzi dwa razy. `id` się nie zmienia. Kolejność adresów w
+      sitemapie i tak nie ma znaczenia dla wyszukiwarki.
+    */
     for (let from = 0; from < 50_000; from += PAGE) {
-      const { data: batch } = await supabase
+      const { data: batch, error: batchError } = await supabase
         .from('listings')
         .select('id, last_checked_at, is_active')
         .gt('current_price', 0)
         .neq('title', '')
-        .order('last_checked_at', { ascending: false })
+        .order('id', { ascending: true })
         .range(from, from + PAGE - 1);
+
+      if (batchError) {
+        throw new Error(`Sitemapa urwała się na ogłoszeniu ${from}: ${batchError.message}`);
+      }
 
       if (!batch || batch.length === 0) break;
 
@@ -113,6 +148,7 @@ export async function GET() {
           changefreq: listing.is_active ? 'daily' : 'monthly',
           priority: listing.is_active ? 0.7 : 0.6,
         });
+        listingCount += 1;
       }
 
       if (batch.length < PAGE) break;
@@ -156,8 +192,18 @@ export async function GET() {
       });
     }
   } catch (error) {
+    /*
+      Rzucamy dalej, a nie oddajemy same strony stałe - i to jest odwrócenie
+      decyzji sprzed 15 września, bo zmieniło się to, co dzieje się z wynikiem.
+
+      Przy trasie dynamicznej niepełna sitemapa żyła do następnego żądania i
+      oddanie czegokolwiek było lepsze niż 500. Jako plik ISR ten sam wynik
+      jedzie do Google na godzinę. Wyjątek oznacza, że przy budowaniu deploy
+      pada i zostaje poprzedni, a przy odświeżaniu Next serwuje dalej ostatnią
+      kompletną wersję. Obie te rzeczy są lepsze niż opublikowanie obciętej.
+    */
     console.error('Nie udało się zebrać adresów do sitemapy:', error);
-    // Lepiej oddać same strony stałe niż 500 - Google ponowi za godzinę.
+    throw error;
   }
 
   /*
@@ -168,8 +214,10 @@ export async function GET() {
     rwał połączenia, więc to nie jest przypadek teoretyczny: lepiej wywalić
     build i powtórzyć go, niż opublikować sitemapę w tym stanie.
   */
-  if (entries.length === staticPages.length) {
-    throw new Error('Sitemapa bez ani jednego ogłoszenia - nie publikujemy jej w tym stanie.');
+  if (listingCount < expectedListings) {
+    throw new Error(
+      `Sitemapa zebrała ${listingCount} z ${expectedListings} ogłoszeń - nie publikujemy jej w tym stanie.`
+    );
   }
 
   return new Response(xml(entries), {
