@@ -11,6 +11,9 @@ const FROM_ADDRESS = 'obczajone.pl <alerty@obczajone.pl>';
 /** Poniżej tego progu obniżka jest szumem i nie warto pisać maila. */
 const MIN_DROP_PERCENT = 2;
 
+/** Ile ofert pokazujemy w jednym mailu o modelu. Reszta czeka na stronie. */
+const MAX_OFFERS_PER_MAIL = 5;
+
 type Drop = {
   favoriteId: string;
   userId: string;
@@ -69,6 +72,56 @@ function buildEmail(drops: Drop[], unsubscribeToken?: string): { subject: string
  * mówi o tym w logach - tak samo jak opinia AI zachowuje się bez klucza
  * Anthropica. Dzięki temu można ją wdrożyć, zanim skonfigurujesz pocztę.
  */
+/**
+ * Mail o nowych ofertach modelu.
+ *
+ * Osobny od `buildEmail`, bo mówi co innego. Tamten informuje, że cena
+ * obserwowanej sztuki spadła; ten - że pojawiło się coś, czego wcześniej nie
+ * było. Sklejanie obu w jeden szablon z warunkami dałoby wiadomość, która
+ * w obu przypadkach brzmi niezręcznie.
+ */
+function buildModelEmail(
+  brand: string,
+  model: string,
+  maxPrice: number | null,
+  offers: { listingId: string; title: string; price: number; location: string | null }[],
+  unsubscribeToken: string
+): { subject: string; html: string } {
+  const name = `${brand} ${model}`;
+  const subject =
+    offers.length === 1
+      ? `Nowa oferta: ${name} za ${formatPln(offers[0].price)}`
+      : `${offers.length} nowe oferty: ${name}`;
+
+  const items = offers
+    .map(
+      (o) => `
+        <li style="margin-bottom:16px">
+          <a href="${SITE_URL}/listing/${o.listingId}" style="color:#111;font-weight:600;text-decoration:none">${o.title}</a><br>
+          <span style="font-size:15px">${formatPln(o.price)}</span>
+          ${o.location ? `<span style="color:#777"> — ${o.location}</span>` : ''}
+        </li>`
+    )
+    .join('');
+
+  const kryterium = maxPrice
+    ? `${name} poniżej ${formatPln(maxPrice)}`
+    : `${name}`;
+
+  const html = `
+    <div style="font-family:system-ui,-apple-system,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#111">
+      <p style="font-size:16px;margin:0 0 4px">Obserwujesz: <strong>${kryterium}</strong></p>
+      <p style="color:#555;margin:0 0 20px">${offers.length === 1 ? 'Pojawiła się oferta, której wcześniej nie było.' : 'Pojawiły się oferty, których wcześniej nie było.'}</p>
+      <ul style="padding-left:18px;margin:0 0 24px">${items}</ul>
+      <p style="font-size:13px;color:#777;margin:0">
+        Cenę każdej z nich śledzimy codziennie — jeśli sprzedający zejdzie, zobaczysz to na stronie ogłoszenia.<br>
+        <a href="${SITE_URL}/wypisz/${unsubscribeToken}" style="color:#777">Wypisz się jednym kliknięciem</a>.
+      </p>
+    </div>`;
+
+  return { subject, html };
+}
+
 async function sendEmail(to: string, subject: string, html: string): Promise<boolean> {
   const apiKey = Deno.env.get('RESEND_API_KEY');
   if (!apiKey) {
@@ -240,6 +293,85 @@ Deno.serve(async (req: Request) => {
       emailSent += 1;
     }
 
+
+    /*
+      Alerty na model.
+
+      Dobieranie ofert robi baza (`pending_model_alerts`), bo inaczej trzeba by
+      ściągnąć tu wszystkie 14 tysięcy ogłoszeń raz na obserwującego. Funkcja
+      oddaje gotowe pary obserwujący-ogłoszenie, których jeszcze nie wysłaliśmy.
+    */
+    const { data: pending, error: pendingError } = await supabase.rpc('pending_model_alerts');
+
+    if (pendingError) {
+      throw new Error(`Failed to read model alerts: ${pendingError.message}`);
+    }
+
+    type Pend = {
+      watcher_id: string; email: string; unsubscribe_token: string;
+      brand: string; model: string; max_price: number | null;
+      is_first_run: boolean; listing_id: string; title: string;
+      current_price: number; location: string | null;
+    };
+
+    const byWatcher = new Map<string, Pend[]>();
+    for (const row of (pending || []) as Pend[]) {
+      const bucket = byWatcher.get(row.watcher_id);
+      bucket ? bucket.push(row) : byWatcher.set(row.watcher_id, [row]);
+    }
+
+    let modelSent = 0;
+    let modelSkipped = 0;
+    let modelPrimed = 0;
+
+    for (const [watcherId, rows] of byWatcher) {
+      const first = rows[0];
+
+      /*
+        Pierwszy przebieg tylko zapamiętuje, co już wisi. Ktoś, kto właśnie
+        zapisał się na Octavię, ma kilkadziesiąt pasujących ofert sprzed
+        tygodni - wysłanie ich wszystkich byłoby spamem, a nie alertem.
+      */
+      if (first.is_first_run) {
+        const wpisy = rows.map((r) => ({ watcher_id: watcherId, listing_id: r.listing_id }));
+        await supabase.from('model_watcher_notifications').insert(wpisy);
+        modelPrimed += rows.length;
+        continue;
+      }
+
+      // Najtańsze najpierw, a resztę zostawiamy na stronie modelu - mail z
+      // trzydziestoma pozycjami nikomu nie pomaga.
+      const offers = rows.slice(0, MAX_OFFERS_PER_MAIL).map((r) => ({
+        listingId: r.listing_id,
+        title: r.title || `${r.brand} ${r.model}`,
+        price: Number(r.current_price),
+        location: r.location,
+      }));
+
+      const { subject, html } = buildModelEmail(
+        first.brand, first.model, first.max_price == null ? null : Number(first.max_price),
+        offers, first.unsubscribe_token
+      );
+
+      const ok = await sendEmail(first.email, subject, html);
+
+      if (!ok) {
+        modelSkipped += 1;
+        continue;
+      }
+
+      /*
+        Odnotowujemy wszystkie pasujące, także te, które nie zmieściły się
+        w mailu - inaczej jutro przyszłaby o nich druga wiadomość, choć nie są
+        już niczym nowym.
+      */
+      await supabase
+        .from('model_watcher_notifications')
+        .insert(rows.map((r) => ({ watcher_id: watcherId, listing_id: r.listing_id })));
+
+      modelSent += 1;
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -250,6 +382,10 @@ Deno.serve(async (req: Request) => {
         emailWatchers: emailWatchers?.length || 0,
         emailAlertsSent: emailSent,
         emailAlertsSkipped: emailSkipped,
+        modelWatchers: byWatcher.size,
+        modelAlertsSent: modelSent,
+        modelAlertsSkipped: modelSkipped,
+        modelOffersPrimed: modelPrimed,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

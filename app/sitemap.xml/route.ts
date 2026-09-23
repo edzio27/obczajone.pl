@@ -125,20 +125,38 @@ export async function GET() {
       część wchodzi dwa razy. `id` się nie zmienia. Kolejność adresów w
       sitemapie i tak nie ma znaczenia dla wyszukiwarki.
     */
-    for (let from = 0; from < 50_000; from += PAGE) {
-      const { data: batch, error: batchError } = await supabase
+    /*
+      Kursor po `id`, nie `range(from, …)`.
+
+      OFFSET każe bazie przejść przez wszystkie pominięte wiersze, więc koszt
+      rośnie z kwadratem liczby stron - przy 14 tysiącach ogłoszeń czwarta
+      porcja (offset 4000) przekraczała ośmiosekundowy limit i budowanie
+      przestawało produkować sitemapę w ogóle. Warunek `id > ostatnie`
+      korzysta z klucza głównego i kosztuje tyle samo na pierwszej co na
+      czternastej porcji.
+    */
+    let cursor: string | null = null;
+
+    for (let page = 0; page < 50; page += 1) {
+      let query = supabase
         .from('listings')
         .select('id, last_checked_at, is_active')
         .gt('current_price', 0)
         .neq('title', '')
         .order('id', { ascending: true })
-        .range(from, from + PAGE - 1);
+        .limit(PAGE);
+
+      if (cursor) query = query.gt('id', cursor);
+
+      const { data: batch, error: batchError } = await query;
 
       if (batchError) {
-        throw new Error(`Sitemapa urwała się na ogłoszeniu ${from}: ${batchError.message}`);
+        throw new Error(`Sitemapa urwała się przy ogłoszeniu ${listingCount}: ${batchError.message}`);
       }
 
       if (!batch || batch.length === 0) break;
+
+      cursor = (batch[batch.length - 1] as { id: string }).id;
 
       for (const listing of batch as { id: string; last_checked_at: string; is_active: boolean }[]) {
         entries.push({

@@ -9,6 +9,7 @@ import { ListingCard } from '@/components/listing-card';
 import { TrendingDown } from 'lucide-react';
 import { fetchModelTrend, fetchModelTrends, MIN_SAMPLE_SIZE } from '@/lib/price-trends';
 import { VinCheckCta } from '@/components/vin-check-cta';
+import { ModelWatchForm } from '@/components/model-watch-form';
 
 export const revalidate = 3600;
 
@@ -182,6 +183,20 @@ export default async function ModelTrendPage({ params }: { params: { slug: strin
               )}
             </CardContent>
           </Card>
+
+          {/*
+            Alert nad blokiem o VIN-ie, bo odpowiada na wcześniejsze pytanie.
+            Czytelnik tej strony albo już ma auto na oku - i wtedy potrzebuje
+            VIN-u - albo dopiero szuka, i wtedy jedyne, co możemy dla niego
+            zrobić, to dać znać, gdy coś się pojawi.
+          */}
+          <div className="mb-6">
+            <ModelWatchForm
+              brand={trend.brand}
+              model={trend.model}
+              medianPrice={trend.medianPrice}
+            />
+          </div>
 
           <VinCheckCta context="model_page" />
 
