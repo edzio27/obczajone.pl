@@ -15,7 +15,20 @@ type Props = {
 // terminu waznosci - strona z historia cen serwowalaby wtedy nieaktualne dane
 // po kazdym przebiegu scrapera. 10 minut daje swiezosc, a jednoczesnie zdejmuje
 // z bazy ruch od crawlerow.
-export const revalidate = 600;
+/*
+  Doba, nie dziesięć minut.
+
+  Cena ogłoszenia zmienia się raz na dobę - tyle razy sprawdza ją scraper - więc
+  odświeżanie strony co dziesięć minut regenerowało ją kilkadziesiąt razy między
+  dwiema kolejnymi zmianami czegokolwiek. Każda regeneracja to zapytanie do bazy,
+  a stron ogłoszeń jest czternaście tysięcy.
+
+  23 września Google zaindeksował 2420 stron i wziął się za resztę; instancja
+  przestała odpowiadać, a ogłoszenia zaczęły oddawać 500. Przy dobie regeneracji
+  jest ich kilkanaście razy mniej, a czytelnik i tak widzi cenę z tego samego
+  przelotu co wcześniej.
+*/
+export const revalidate = 86400;
 
 /*
   Pusta lista parametrow, a nie brak `generateStaticParams`.

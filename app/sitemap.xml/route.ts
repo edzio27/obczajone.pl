@@ -79,97 +79,43 @@ export async function GET() {
 
   const entries: Entry[] = [...staticPages];
   let listingCount = 0;
-  let expectedListings = Number.POSITIVE_INFINITY;
 
   try {
     /*
-      Ogłoszenia, i te wygaszone też.
+      Do sitemapy trafia to, co ma czytelnikowi coś do powiedzenia.
 
-      Wcześniej sitemapa filtrowała po `is_active`, więc zdjęte oferty z niej
-      znikały - a to jest dokładnie ta treść, której ludzie szukają: trzy z pięciu
-      najlepszych zapytań w Search Console to "archiwum otomoto", "historia
-      ogłoszeń otomoto" i "otomoto historia cen". Zdjęte ogłoszenie z zapisaną
-      historią cen jest jedyną stroną w sieci, która na nie odpowiada, bo Otomoto
-      swoje po prostu kasuje.
+      Wybiera baza (`sitemap_listings`), nie ten kod. Pierwsze podejście
+      pobierało wszystkie czternaście tysięcy ogłoszeń i odsiewało je tutaj -
+      czyli dokładnie ten wzorzec, przez który 7 września skończył się budżet
+      Disk IO, a 18 września przestał przechodzić build. Przy przeciążonej
+      instancji nie dało się nawet wdrożyć naprawy obciążenia.
 
-      Nieudany scrape zostawia wiersz z pustym tytułem i ceną 0; interfejs takie
-      ogłoszenia ukrywa, więc sitemapa też ich nie zgłasza - nie karmimy Google
-      stronami, które sami uznaliśmy za zbyt zepsute, żeby je pokazać.
+      Kryterium jest treściowe: strona ogłoszenia ma sens, gdy pokazuje coś,
+      czego nie ma w samym ogłoszeniu - historię ceny albo to, że oferta
+      zniknęła. Zostają więc wszystkie wygaszone (archiwum, po które ludzie tu
+      przychodzą) i aktywne z realną zmianą ceny. Aktywna oferta stojąca od
+      początku na tej samej cenie jest kopią treści z Otomoto; zostaje dostępna
+      w serwisie, ale nie zgłaszamy jej do indeksowania.
+
+          14 622 -> 3 504 adresy
     */
-    /*
-      Ile ogłoszeń ma tu wyjść, wiemy przed pętlą - i to jest jedyny sposób,
-      żeby odróżnić "tyle ich jest" od "reszta się nie dociągnęła".
+    const { data: listingRows, error: listingError } = await supabase.rpc('sitemap_listings');
 
-      21 września build tuż po restarcie bazy upiekł sitemapę z 1063 adresami
-      zamiast 12 849: druga strona paginacji oddała błąd, `data` przyszło puste,
-      a pętla uznała to za koniec zbioru i wyszła. Przy trasie dynamicznej taki
-      plik żył do następnego żądania; jako plik ISR pojechałby do Google na
-      godzinę, zgłaszając, że 92% archiwum przestało istnieć.
-    */
-    const { count, error: countError } = await supabase
-      .from('listings')
-      .select('id', { count: 'exact', head: true })
-      .gt('current_price', 0)
-      .neq('title', '');
-
-    if (countError || count == null) {
-      throw new Error(`Nie wiadomo, ile ogłoszeń ma trafić do sitemapy: ${countError?.message}`);
+    if (listingError) {
+      throw new Error(`Sitemapa nie dostała ogłoszeń: ${listingError.message}`);
     }
 
-    expectedListings = count;
+    type Row = { id: string; last_checked_at: string; is_active: boolean };
 
-    /*
-      Paginacja po `id`, nie po `last_checked_at`: scraper przestawia
-      `last_checked_at` w trakcie naszego przelotu, więc sortowanie po nim
-      przesuwa wiersze między stronami i część ogłoszeń wypada z sitemapy, a
-      część wchodzi dwa razy. `id` się nie zmienia. Kolejność adresów w
-      sitemapie i tak nie ma znaczenia dla wyszukiwarki.
-    */
-    /*
-      Kursor po `id`, nie `range(from, …)`.
-
-      OFFSET każe bazie przejść przez wszystkie pominięte wiersze, więc koszt
-      rośnie z kwadratem liczby stron - przy 14 tysiącach ogłoszeń czwarta
-      porcja (offset 4000) przekraczała ośmiosekundowy limit i budowanie
-      przestawało produkować sitemapę w ogóle. Warunek `id > ostatnie`
-      korzysta z klucza głównego i kosztuje tyle samo na pierwszej co na
-      czternastej porcji.
-    */
-    let cursor: string | null = null;
-
-    for (let page = 0; page < 50; page += 1) {
-      let query = supabase
-        .from('listings')
-        .select('id, last_checked_at, is_active')
-        .gt('current_price', 0)
-        .neq('title', '')
-        .order('id', { ascending: true })
-        .limit(PAGE);
-
-      if (cursor) query = query.gt('id', cursor);
-
-      const { data: batch, error: batchError } = await query;
-
-      if (batchError) {
-        throw new Error(`Sitemapa urwała się przy ogłoszeniu ${listingCount}: ${batchError.message}`);
-      }
-
-      if (!batch || batch.length === 0) break;
-
-      cursor = (batch[batch.length - 1] as { id: string }).id;
-
-      for (const listing of batch as { id: string; last_checked_at: string; is_active: boolean }[]) {
-        entries.push({
-          loc: `${BASE}/listing/${listing.id}`,
-          lastmod: iso(listing.last_checked_at),
-          // Wygaszone ogłoszenie już się nie zmieni - nie ma po co po nie wracać codziennie.
-          changefreq: listing.is_active ? 'daily' : 'monthly',
-          priority: listing.is_active ? 0.7 : 0.6,
-        });
-        listingCount += 1;
-      }
-
-      if (batch.length < PAGE) break;
+    for (const listing of (listingRows ?? []) as Row[]) {
+      entries.push({
+        loc: `${BASE}/listing/${listing.id}`,
+        lastmod: iso(listing.last_checked_at),
+        // Wygaszone ogłoszenie już się nie zmieni - nie ma po co po nie wracać codziennie.
+        changefreq: listing.is_active ? 'daily' : 'monthly',
+        priority: listing.is_active ? 0.7 : 0.6,
+      });
+      listingCount += 1;
     }
 
     // Miasta. Strony istnieją i odpowiadają 200 od dawna, ale nie było ich w
@@ -232,10 +178,19 @@ export async function GET() {
     rwał połączenia, więc to nie jest przypadek teoretyczny: lepiej wywalić
     build i powtórzyć go, niż opublikować sitemapę w tym stanie.
   */
-  if (listingCount < expectedListings) {
-    throw new Error(
-      `Sitemapa zebrała ${listingCount} z ${expectedListings} ogłoszeń - nie publikujemy jej w tym stanie.`
-    );
+  /*
+    Zabezpieczenie zostaje, zmienia się tylko jego kształt.
+
+    Dopóki ogłoszenia szły stronami, dało się urwać w połowie i trzeba było
+    porównywać licznik z oczekiwaną liczbą. Teraz przychodzą jednym zapytaniem:
+    albo mamy komplet, albo `sitemap_listings` zwróciło błąd i jesteśmy wyżej,
+    w catch. Zostaje przypadek, którego to nie łapie - zapytanie udane, ale puste.
+    Przy bazie z czternastoma tysiącami ogłoszeń zero oznacza awarię, nie prawdę
+    o serwisie, a opublikowanie takiej mapy powiedziałoby Google, że całe
+    archiwum zniknęło.
+  */
+  if (listingCount === 0) {
+    throw new Error('Sitemapa nie dostała ani jednego ogłoszenia - nie publikujemy jej w tym stanie.');
   }
 
   return new Response(xml(entries), {
