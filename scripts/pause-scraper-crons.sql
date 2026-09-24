@@ -9,7 +9,7 @@
 
     price-scraper-sweep  co godzinę o :07  — ceny pojedynczych ogłoszeń
     model-sweep          3:20 i 15:20      — przelot po modelach Otomoto
-    price-drop-alerts    7:00              — maile o obniżkach
+    otodom-sweep         co godzinę o :50  — przelot po Otodomie
 
   Nic z tego nie jest pilne w skali godzin. Ceny nie zmieniają się co godzinę,
   a mail o obniżce wysłany dzień później nadal jest na czas. Historia cen
@@ -21,7 +21,6 @@
 
 SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = 'price-scraper-sweep';
 SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = 'model-sweep';
-SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = 'price-drop-alerts';
 SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = 'otodom-sweep';
 
 -- Kontrola: po wykonaniu ta lista powinna być pusta.

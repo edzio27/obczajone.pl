@@ -1,4 +1,16 @@
 /*
+  UWAGA na symetrię z pause-scraper-crons.sql.
+
+  Do 24 września ta para była niesymetryczna: pauza wyłączała `otodom-sweep`,
+  a wznowienie go nie włączało. Każde użycie obu skryptów po cichu kasowało
+  zbieranie mieszkań i wychodziło to na jaw dopiero wtedy, gdy ktoś porównał
+  listy. Dopisując tu przelot, dopisz go też tam - i odwrotnie.
+
+  Alerty cenowe mają własny wpis (`send-price-alerts`, 7:15) założony migracją
+  i nie należą do tej pary. Wcześniej stał tu `price-drop-alerts` wołający tę
+  samą funkcję, co po wznowieniu dawało dwa zadania robiące to samo.
+*/
+/*
   Przywraca zadania cykliczne wyłączone przez pause-scraper-crons.sql.
 
   Godziny są te same co wcześniej i celowo rozsunięte, żeby trzy zadania nie
@@ -55,11 +67,11 @@ SELECT cron.schedule(
 );
 
 SELECT cron.schedule(
-  'price-drop-alerts',
-  '0 7 * * *',
+  'otodom-sweep',
+  '50 * * * *',
   $$
   SELECT net.http_post(
-    url := 'https://tumyxmvbytwizmyqnvgc.supabase.co/functions/v1/send-price-alerts',
+    url := 'https://tumyxmvbytwizmyqnvgc.supabase.co/functions/v1/sweep-otodom-listings',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
       'Authorization', 'Bearer ' || COALESCE((

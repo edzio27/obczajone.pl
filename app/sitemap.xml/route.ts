@@ -99,7 +99,15 @@ export async function GET() {
 
           14 622 -> 3 504 adresy
     */
-    const { data: listingRows, error: listingError } = await supabase.rpc('sitemap_listings');
+    /*
+      Funkcja oddaje jedną tablicę jsonb, a nie wiersze.
+
+      PostgREST tnie odpowiedź do 1000 wierszy także przy funkcjach: pierwsze
+      wdrożenie dało sitemapę z 1064 adresami zamiast 3504 i zgubiło 2500
+      ogłoszeń, w większości archiwalnych. Limit liczy wiersze, nie ich
+      zawartość, więc jeden wiersz z tablicą przechodzi w całości.
+    */
+    const { data: listingJson, error: listingError } = await supabase.rpc('sitemap_listings');
 
     if (listingError) {
       throw new Error(`Sitemapa nie dostała ogłoszeń: ${listingError.message}`);
@@ -107,7 +115,7 @@ export async function GET() {
 
     type Row = { id: string; last_checked_at: string; is_active: boolean };
 
-    for (const listing of (listingRows ?? []) as Row[]) {
+    for (const listing of ((listingJson ?? []) as Row[])) {
       entries.push({
         loc: `${BASE}/listing/${listing.id}`,
         lastmod: iso(listing.last_checked_at),
