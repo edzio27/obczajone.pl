@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
@@ -20,13 +21,21 @@ function client() {
   );
 }
 
+/*
+  cache() sprawia, że generateMetadata i render tej samej strony dzielą jeden
+  odczyt, zamiast dwa razy iść po ten sam snapshot. Przy jedenastu miastach to
+  różnica między dwudziestoma a dziesięcioma round-tripami w buildzie - a to
+  właśnie ich liczba, nie ciężar pojedynczego zapytania, wywalała deploy.
+*/
+const getCity = cache(async (slug: string) => fetchCityPrice(client(), slug));
+
 export async function generateStaticParams() {
   const cities = await fetchCityPrices(client());
   return cities.map((c) => ({ slug: c.slug }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const city = await fetchCityPrice(client(), params.slug);
+  const city = await getCity(params.slug);
   if (!city) return { title: 'Nie znaleziono miasta | obczajone.pl' };
 
   const perM2 = city.medianPricePerM2
@@ -60,7 +69,7 @@ function Stat({ label, value, hint }: { label: string; value: string; hint?: str
 
 export default async function CityPage({ params }: Props) {
   const supabase = client();
-  const city = await fetchCityPrice(supabase, params.slug);
+  const city = await getCity(params.slug);
   // Miasto poniżej progu wraca na listę, nie na 404 - z tego samego powodu
   // co modele aut: próg liczy się od bieżących ogłoszeń i bywa przekraczany w obie strony.
   if (!city) redirect('/ceny-mieszkan');

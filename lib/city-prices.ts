@@ -26,18 +26,28 @@ export function slugifyCity(city: string): string {
 }
 
 /**
- * Ceny mieszkań miasto po mieście.
+ * Ceny mieszkań miasto po mieście, czytane z gotowego wiersza.
  *
- * Liczy baza i oddaje kilkanaście wierszy - tak samo jak barometr i z tego
- * samego powodu. Mediana wyciągana w Next z pobranych ogłoszeń jest dokładnie
- * tym, co 7 września wyczerpało budżet Disk IO tej instancji.
+ * Percentyle liczy cron o :55 i zapisuje do `city_prices_snapshot`; tutaj
+ * zostaje jeden odczyt. Liczenie ich przy renderowaniu wywaliło deploy
+ * 24 i 25 września: `fetchCityPrice` przeliczała komplet median dla jednego
+ * miasta, więc budowanie jedenastu stron miejskich oznaczało około dwudziestu
+ * pięciu pełnych przebiegów po mieszkaniach Otodomu - 37 sekund przy spokojnej
+ * bazie, więcej niż limit Next przy obciążonej.
  */
 export async function fetchCityPrices(supabase: SupabaseClient): Promise<CityPrices[]> {
-  const { data } = await supabase.rpc('city_price_stats', {
-    min_listings: MIN_CITY_LISTINGS,
-  });
+  const { data, error } = await supabase
+    .from('city_prices_snapshot')
+    .select('cities')
+    .eq('id', 1)
+    .maybeSingle();
 
-  return (data ?? []).map((r: any) => ({
+  if (error || !data) {
+    console.error('Nie udało się odczytać cen miast:', error?.message);
+    return [];
+  }
+
+  return ((data.cities as any[]) ?? []).map((r) => ({
     city: r.city,
     slug: slugifyCity(r.city),
     listings: Number(r.listings),
