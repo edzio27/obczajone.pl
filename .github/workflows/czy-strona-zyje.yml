@@ -1,0 +1,74 @@
+# Sprawdza, czy obczajone.pl pokazuje treść - nie tylko czy odpowiada.
+#
+# 26 września strona główna zwracała 200 z pustą zawartością przez kilka godzin:
+# baza padła w chwili regeneracji, a Next zapisał pustkę w cache i podawał ją
+# dalej. Każdy monitoring pytający "czy jest 200?" uznałby to za stan zdrowy.
+# Dlatego tutaj liczymy ogłoszenia w HTML-u, adresy w sitemapie i sprawdzamy
+# stronę miasta, która potrafiła zamienić się w trwałe przekierowanie.
+#
+# Świadomie poza Vercelem i Supabase: monitoring w tej samej infrastrukturze
+# co monitorowany serwis milczy dokładnie wtedy, gdy jest potrzebny.
+#
+# Powiadomienie: nieudany przebieg wysyła maila właścicielowi repozytorium
+# (GitHub robi to sam, o ile w Settings → Notifications włączone są powiadomienia
+# o Actions). Nie trzeba konfigurować żadnych kluczy.
+
+name: Czy strona żyje
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+jobs:
+  sprawdz:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Strona główna pokazuje ogłoszenia
+        run: |
+          # Dwie próby, bo pojedynczy timeout to jeszcze nie awaria serwisu.
+          for proba in 1 2; do
+            html=$(curl -s --max-time 30 https://obczajone.pl/ || true)
+            rozmiar=${#html}
+            ogloszenia=$(printf '%s' "$html" | grep -o 'href="/listing/' | wc -l | tr -d ' ')
+            echo "próba $proba: ${rozmiar} znaków, ${ogloszenia} ogłoszeń"
+            if [ "$ogloszenia" -ge 5 ]; then exit 0; fi
+            sleep 20
+          done
+          echo "::error::Strona główna bez ogłoszeń (${ogloszenia}) - prawdopodobnie pustka zapisana w cache"
+          exit 1
+
+      - name: Sitemapa zgłasza komplet adresów
+        if: always()
+        run: |
+          adresy=$(curl -s --max-time 60 https://obczajone.pl/sitemap.xml | grep -c '<loc>' || true)
+          echo "adresów w sitemapie: ${adresy}"
+          # Przy zdrowym serwisie jest ich kilka tysięcy. Kilkadziesiąt oznacza,
+          # że ogłoszenia wypadły - tak wyglądała awaria z 24 września.
+          if [ "${adresy:-0}" -lt 500 ]; then
+            echo "::error::Sitemapa ma tylko ${adresy} adresów zamiast tysięcy"
+            exit 1
+          fi
+
+      - name: Strona miasta odpowiada, a nie przekierowuje
+        if: always()
+        run: |
+          kod=$(curl -s -o /dev/null --max-time 30 -w '%{http_code}' https://obczajone.pl/ceny-mieszkan/warszawa || true)
+          echo "ceny-mieszkan/warszawa: ${kod}"
+          # 307 znaczy, że strona nie znalazła swoich danych i odesłała na listę.
+          if [ "$kod" != "200" ]; then
+            echo "::error::Strona Warszawy zwraca ${kod} zamiast 200"
+            exit 1
+          fi
+
+      - name: Archiwum i dane dla mediów działają
+        if: always()
+        run: |
+          for sciezka in archiwum-otomoto dla-mediow ile-spada-cena; do
+            kod=$(curl -s -o /dev/null --max-time 30 -w '%{http_code}' "https://obczajone.pl/${sciezka}" || true)
+            echo "/${sciezka}: ${kod}"
+            if [ "$kod" != "200" ]; then
+              echo "::error::/${sciezka} zwraca ${kod}"
+              exit 1
+            fi
+          done
