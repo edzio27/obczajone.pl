@@ -86,23 +86,24 @@ async function getHomeData() {
       partners,
     };
   } catch (error) {
+    /*
+      Puste dane nie mogą trafić do cache'u.
+
+      Wcześniej ten catch oddawał komplet pustych wartości, a strona renderowała
+      się "poprawnie" - bez ogłoszeń, bez liczb, bez niczego. Pod ISR Next
+      zapisywał taki wynik jak każdy inny i serwował go przez godzinę, także po
+      powrocie bazy. 26 września strona główna stała tak pusta, mimo że
+      wszystkie dane były na miejscu.
+
+      Wyjątek zatrzymuje regenerację: Next nie nadpisuje tego, co ma w cache'u,
+      i dalej podaje ostatnią dobrą wersję. Człowiek widzi wtedy ogłoszenia
+      sprzed godziny zamiast komunikatu, że serwis jest pusty.
+
+      Ta sama decyzja co na stronie ogłoszenia, podjęta tam 21 września. Tutaj
+      jej brakowało i dlatego awaria bazy zamieniła się w awarię treści.
+    */
     console.error('Nie udalo sie pobrac danych strony glownej:', error);
-    return {
-      stats: {
-        listingCount: null,
-        reviewCount: null,
-        inspectionCount: null,
-        partnerCount: null,
-        archivedCount: null,
-      },
-      spotlight: null,
-      recentListings: [],
-      recentlyReviewed: [],
-      priceDrops: [],
-      recentlyInspected: [],
-      dealerMapCounts: { sellerCount: null, reviewCount: null },
-      partners: [],
-    };
+    throw error;
   }
 }
 

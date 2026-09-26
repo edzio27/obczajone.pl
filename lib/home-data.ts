@@ -70,7 +70,17 @@ export async function fetchRecentListings(
     .order('created_at', { ascending: false })
     .range(from, from + pageSize - 1);
 
-  if (error || !data) return [];
+  /*
+    Błąd bazy to nie to samo co brak ogłoszeń.
+
+    Zwracanie `[]` na jedno i drugie sprawiało, że Next traktował awarię jak
+    prawidłowo pusty serwis i zapisywał taką stronę w cache na godzinę -
+    26 września strona główna poszła w świat bez ani jednego ogłoszenia i
+    została tak, mimo że baza wróciła. Wyjątek przerywa regenerację, więc
+    zostaje serwowana ostatnia dobra wersja.
+  */
+  if (error) throw new Error(`Nie udało się pobrać ogłoszeń: ${error.message}`);
+  if (!data) return [];
 
   return attachPriceChanges(supabase, data);
 }
@@ -189,7 +199,8 @@ export async function fetchRecentlyReviewedListings(
     .order('created_at', { ascending: false })
     .limit(limit * 3);
 
-  if (error || !reviewsData) return [];
+  if (error) throw new Error(`Nie udało się pobrać opinii: ${error.message}`);
+  if (!reviewsData) return [];
 
   const uniqueIds: string[] = [];
   for (const r of reviewsData) {
