@@ -42,10 +42,22 @@ export async function fetchCityPrices(supabase: SupabaseClient): Promise<CityPri
     .eq('id', 1)
     .maybeSingle();
 
-  if (error || !data) {
-    console.error('Nie udało się odczytać cen miast:', error?.message);
-    return [];
+  /*
+    Błąd odczytu to nie to samo co brak miast.
+
+    Strona miasta robi `redirect()`, gdy nie znajdzie swojego wpisu - a pod ISR
+    przekierowanie zapisuje się w cache jak każda inna odpowiedź. 26 września
+    strony miast zbudowały się, zanim cron wypełnił snapshot, i zaczęły odsyłać
+    na listę mimo kompletu danych w bazie. Ta sama pułapka co z pustą stroną
+    główną i z 404 na ogłoszeniach: awaria odczytu udaje prawdę o serwisie.
+
+    Wyjątek przerywa regenerację, więc zostaje ostatnia dobra wersja.
+  */
+  if (error) {
+    throw new Error(`Nie udało się odczytać cen miast: ${error.message}`);
   }
+
+  if (!data) return [];
 
   return ((data.cities as any[]) ?? []).map((r) => ({
     city: r.city,

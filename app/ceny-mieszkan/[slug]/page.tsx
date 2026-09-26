@@ -70,9 +70,23 @@ function Stat({ label, value, hint }: { label: string; value: string; hint?: str
 export default async function CityPage({ params }: Props) {
   const supabase = client();
   const city = await getCity(params.slug);
-  // Miasto poniżej progu wraca na listę, nie na 404 - z tego samego powodu
-  // co modele aut: próg liczy się od bieżących ogłoszeń i bywa przekraczany w obie strony.
-  if (!city) redirect('/ceny-mieszkan');
+  /*
+    Odsyłamy dopiero wtedy, gdy wiemy, że miasta naprawdę nie ma.
+
+    Samo `!city` tego nie rozstrzyga: tak samo wygląda miasto poniżej progu
+    i nieudany odczyt snapshotu. Pod ISR przekierowanie zapisuje się w cache,
+    więc chwilowa awaria zamieniała stronę Krakowa w trwały redirect - i tak
+    się stało 26 września. Jeśli snapshot ma jakiekolwiek miasta, brak tego
+    jednego jest prawdą o danych; jeśli jest pusty, to awaria i lepiej nie
+    zapisywać niczego (fetchCityPrices rzuca wtedy wyjątek wyżej).
+  */
+  if (!city) {
+    const wszystkie = await fetchCityPrices(supabase);
+    if (wszystkie.length === 0) {
+      throw new Error('Snapshot cen miast jest pusty - nie zapisujemy tej strony');
+    }
+    redirect('/ceny-mieszkan');
+  }
 
   const { data: rows } = await supabase
     .from('listings')
