@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
-import { createClient } from '@supabase/supabase-js';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { ContestClient } from './konkurs-client';
 import { fetchCurrentRound, fetchRoundEntries } from '@/lib/contest-data';
+import { klientSerwerowy } from '@/lib/supabase-server';
 
 export const metadata: Metadata = {
   title: 'Które auto sprawdzamy w tym tygodniu — głosowanie | obczajone.pl',
@@ -17,10 +17,7 @@ export const metadata: Metadata = {
 export const revalidate = 60;
 
 export default async function ContestPage() {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = klientSerwerowy();
 
   const round = await fetchCurrentRound(supabase);
   const entries = round ? await fetchRoundEntries(supabase, round.id) : [];

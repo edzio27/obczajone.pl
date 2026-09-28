@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
-import { createClient } from '@supabase/supabase-js';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { InspectedCard } from '@/components/inspected-card';
 import { fetchRecentlyInspected } from '@/lib/home-data';
+import { klientSerwerowy } from '@/lib/supabase-server';
 
 export const metadata: Metadata = {
   title: 'Werdykty po oględzinach — auta obejrzane na żywo | obczajone.pl',
@@ -22,10 +22,7 @@ export const revalidate = 3600;
 const MAX_VERDICTS = 200;
 
 export default async function VerdictsPage() {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = klientSerwerowy();
 
   const inspections = await fetchRecentlyInspected(supabase, MAX_VERDICTS);
 

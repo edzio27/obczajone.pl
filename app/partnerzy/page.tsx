@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
-import { createClient } from '@supabase/supabase-js';
 import { fetchLatestInspectionByPartner, fetchPartners } from '@/lib/partner-data';
 import { PartnersMapClient } from './partnerzy-client';
+import { klientSerwerowy } from '@/lib/supabase-server';
 
 export const metadata: Metadata = {
   title: 'Partnerzy — diagnostyka aut i nieruchomości przed zakupem | obczajone.pl',
@@ -30,10 +30,7 @@ export const metadata: Metadata = {
 export const revalidate = 60;
 
 export default async function PartnersMapPage() {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = klientSerwerowy();
 
   const partners = await fetchPartners(supabase);
   const latestInspections = await fetchLatestInspectionByPartner(

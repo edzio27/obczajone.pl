@@ -1,7 +1,6 @@
 import { cache } from 'react';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
 import { safeJsonLdString } from '@/lib/json-ld';
 import {
   fetchPartnerBySlug,
@@ -13,6 +12,7 @@ import {
   type PartnerReview,
 } from '@/lib/partner-data';
 import { PartnerClient } from './partner-client';
+import { klientSerwerowy } from '@/lib/supabase-server';
 
 type Props = {
   params: { slug: string };
@@ -43,10 +43,7 @@ type PartnerPageData = {
 };
 
 const getPartnerPageData = cache(async (slug: string): Promise<PartnerPageData | null> => {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = klientSerwerowy();
 
   const partner = await fetchPartnerBySlug(supabase, slug);
   if (!partner) return null;

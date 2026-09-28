@@ -3,6 +3,7 @@ import { Footer } from '@/components/footer';
 import { ListingUrlForm } from '@/components/listing-url-form';
 import { MobileActionBar } from '@/components/mobile-action-bar';
 import { ArchiveTeaser } from '@/components/archive-teaser';
+import { trwaBudowanie } from '@/lib/retry';
 import { RecentListings } from '@/components/recent-listings';
 import { RecentReviews } from '@/components/recent-reviews';
 import { PartnersSection } from '@/components/promotional-banner';
@@ -18,8 +19,8 @@ import { Faq, faqs } from '@/components/home/faq';
 import { Reveal } from '@/components/motion/reveal';
 import { Eye, Search } from 'lucide-react';
 import type { Metadata } from 'next';
-import { createClient } from '@supabase/supabase-js';
 import { fetchPartners } from '@/lib/partner-data';
+import { klientSerwerowy } from '@/lib/supabase-server';
 import {
   fetchBiggestPriceDrops,
   fetchDealerMapCounts,
@@ -50,10 +51,7 @@ const RECENT_LISTINGS_PAGE_SIZE = 9;
  */
 async function getHomeData() {
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
+    const supabase = klientSerwerowy();
 
     const [
       stats,
@@ -103,7 +101,34 @@ async function getHomeData() {
       jej brakowało i dlatego awaria bazy zamieniła się w awarię treści.
     */
     console.error('Nie udalo sie pobrac danych strony glownej:', error);
-    throw error;
+
+    /*
+      Przy budowaniu pustka jest do zniesienia, w czasie żądania nie.
+
+      Wyjątek w czasie żądania chroni cache: Next zostawia ostatnią dobrą wersję
+      zamiast zapisać pusty serwis. Ten sam wyjątek przy budowaniu przewraca
+      deploy - a skoro API bywa niedostępne po kilka razy dziennie, oznaczało to,
+      że w trakcie awarii nie dało się wdrożyć niczego, łącznie z jej naprawą.
+      Zbudowana pustka żyje najwyżej do pierwszej rewalidacji.
+    */
+    if (!trwaBudowanie()) throw error;
+
+    return {
+      stats: {
+        listingCount: null,
+        reviewCount: null,
+        inspectionCount: null,
+        partnerCount: null,
+        archivedCount: null,
+      },
+      spotlight: null,
+      recentListings: [],
+      recentlyReviewed: [],
+      priceDrops: [],
+      recentlyInspected: [],
+      dealerMapCounts: { sellerCount: null, reviewCount: null },
+      partners: [],
+    };
   }
 }
 

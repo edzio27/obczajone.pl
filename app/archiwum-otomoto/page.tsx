@@ -1,11 +1,11 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { createClient } from '@supabase/supabase-js';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { Card, CardContent } from '@/components/ui/card';
 import { ListingCard } from '@/components/listing-card';
 import { fetchArchivedListings, fetchArchiveStats } from '@/lib/archive-data';
+import { klientSerwerowy } from '@/lib/supabase-server';
 
 export const metadata: Metadata = {
   title: 'Archiwum ogłoszeń Otomoto — zdjęte oferty i historia cen | obczajone.pl',
@@ -39,10 +39,7 @@ function Stat({ value, label, hint }: { value: string; label: string; hint?: str
 }
 
 export default async function OtomotoArchivePage() {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = klientSerwerowy();
 
   const [listings, stats] = await Promise.all([
     fetchArchivedListings(supabase, { source: 'otomoto', limit: MAX_ARCHIVED }),

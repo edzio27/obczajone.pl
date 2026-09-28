@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { createClient } from '@supabase/supabase-js';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { Card, CardContent } from '@/components/ui/card';
+import { klientSerwerowy } from '@/lib/supabase-server';
 import {
   fetchModelReport,
   fetchReport,
@@ -58,10 +58,7 @@ function Figure({
 }
 
 export default async function PressPage() {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = klientSerwerowy();
 
   const [report, models] = await Promise.all([
     fetchReport(supabase),

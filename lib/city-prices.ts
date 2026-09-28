@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { ponawiaj, trwaBudowanie } from './retry';
 
 /** Poniżej tylu ogłoszeń mediana ceny za metr opisuje przypadek, nie miasto. */
 export const MIN_CITY_LISTINGS = 20;
@@ -36,11 +37,14 @@ export function slugifyCity(city: string): string {
  * bazie, więcej niż limit Next przy obciążonej.
  */
 export async function fetchCityPrices(supabase: SupabaseClient): Promise<CityPrices[]> {
-  const { data, error } = await supabase
-    .from('city_prices_snapshot')
-    .select('cities')
-    .eq('id', 1)
-    .maybeSingle();
+  const { data, error } = await ponawiaj('Ceny miast', async (sygnal) =>
+    supabase
+      .from('city_prices_snapshot')
+      .select('cities')
+      .eq('id', 1)
+      .abortSignal(sygnal)
+      .maybeSingle()
+  );
 
   /*
     Błąd odczytu to nie to samo co brak miast.
@@ -54,6 +58,8 @@ export async function fetchCityPrices(supabase: SupabaseClient): Promise<CityPri
     Wyjątek przerywa regenerację, więc zostaje ostatnia dobra wersja.
   */
   if (error) {
+    // Przy budowaniu pusta lista, w czasie żądania wyjątek - patrz trwaBudowanie().
+    if (trwaBudowanie()) return [];
     throw new Error(`Nie udało się odczytać cen miast: ${error.message}`);
   }
 

@@ -1,5 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
 import { formatRating, inspectionCountLabel, reviewCountLabel } from '@/lib/partner-data';
+import { klientSerwerowy } from '@/lib/supabase-server';
 
 /*
   Odznaka partnera jako obrazek SVG serwowany z naszej domeny.
@@ -88,10 +88,7 @@ function star(x: number, y: number, filled: boolean): string {
 }
 
 export async function GET(request: Request, { params }: { params: { slug: string } }) {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = klientSerwerowy();
 
   const { data } = await supabase
     .from('partners')

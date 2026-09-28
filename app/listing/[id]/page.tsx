@@ -1,11 +1,11 @@
 import { cache } from 'react';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
 import { extractBrand, fetchListingPageData, type ListingPageData } from '@/lib/listing-data';
 import { VERDICT_LABELS } from '@/lib/partner-data';
 import { safeJsonLdString } from '@/lib/json-ld';
 import { ListingClient } from './listing-client';
+import { klientSerwerowy } from '@/lib/supabase-server';
 
 type Props = {
   params: { id: string };
@@ -54,10 +54,7 @@ export async function generateStaticParams() {
 // cache() sprawia, że generateMetadata i sam render dzielą jeden komplet
 // zapytań w obrębie tego samego requestu, zamiast odpytywać bazę dwa razy.
 const getListingData = cache(async (id: string): Promise<ListingPageData | null> => {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = klientSerwerowy();
 
   return fetchListingPageData(supabase, id);
 });

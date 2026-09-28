@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { ponawiaj, trwaBudowanie } from './retry';
 import { slugifyModel } from '@/lib/model-slug';
 
 /**
@@ -119,11 +120,14 @@ export async function fetchModelSlugs(supabase: SupabaseClient): Promise<string[
  * dokumentacja decyzji - baza dostaje je jako argumenty przy przeliczaniu.
  */
 export async function fetchModelTrends(supabase: SupabaseClient): Promise<ModelTrend[]> {
-  const { data, error } = await supabase
-    .from('model_trends_snapshot')
-    .select('trends')
-    .eq('id', 1)
-    .maybeSingle();
+  const { data, error } = await ponawiaj('Trendy modeli', async (sygnal) =>
+    supabase
+      .from('model_trends_snapshot')
+      .select('trends')
+      .eq('id', 1)
+      .abortSignal(sygnal)
+      .maybeSingle()
+  );
 
   if (error || !data) {
     console.error('Nie udało się odczytać trendów modeli:', error?.message);

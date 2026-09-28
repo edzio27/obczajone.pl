@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { ponawiaj, trwaBudowanie } from './retry';
 
 /*
   Liczby dla strony /dla-mediow.
@@ -68,11 +69,14 @@ function row(r: any): SourceReport {
 async function readSnapshot(
   supabase: SupabaseClient
 ): Promise<{ sources: any[]; models: any[]; computedAt: string } | null> {
-  const { data, error } = await supabase
-    .from('report_snapshot')
-    .select('sources, models, computed_at')
-    .eq('id', 1)
-    .maybeSingle();
+  const { data, error } = await ponawiaj('Raport dla mediów', async (sygnal) =>
+    supabase
+      .from('report_snapshot')
+      .select('sources, models, computed_at')
+      .eq('id', 1)
+      .abortSignal(sygnal)
+      .maybeSingle()
+  );
 
   if (error || !data) {
     console.error('Nie udało się odczytać raportu:', error?.message);
@@ -87,7 +91,12 @@ async function readSnapshot(
 }
 
 export async function fetchReport(supabase: SupabaseClient): Promise<Report | null> {
-  const snapshot = await readSnapshot(supabase);
+  // Przy budowaniu brak danych oddajemy jako null - strona pokaże komunikat,
+  // a pierwsza rewalidacja zastąpi go liczbami. W czasie żądania wyjątek leci
+  // dalej, żeby awaria nie zapisała się w cache'u.
+  const snapshot = trwaBudowanie()
+    ? await readSnapshot(supabase).catch(() => null)
+    : await readSnapshot(supabase);
   if (!snapshot || snapshot.sources.length === 0) return null;
 
   const rows = snapshot.sources.map(row);
@@ -102,7 +111,9 @@ export async function fetchReport(supabase: SupabaseClient): Promise<Report | nu
 }
 
 export async function fetchModelReport(supabase: SupabaseClient): Promise<ModelReport[]> {
-  const snapshot = await readSnapshot(supabase);
+  const snapshot = trwaBudowanie()
+    ? await readSnapshot(supabase).catch(() => null)
+    : await readSnapshot(supabase);
   if (!snapshot) return [];
 
   return snapshot.models.map((r: any) => ({

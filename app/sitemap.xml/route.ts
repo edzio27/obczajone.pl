@@ -1,6 +1,7 @@
-import { createClient } from '@supabase/supabase-js';
 import { fetchModelSlugs } from '@/lib/price-trends';
 import { fetchCityPrices } from '@/lib/city-prices';
+import { trwaBudowanie } from '@/lib/retry';
+import { klientSerwerowy } from '@/lib/supabase-server';
 
 /*
   Sitemapa jako Route Handler, a nie metadata route (app/sitemap.ts).
@@ -72,10 +73,7 @@ const staticPages: Entry[] = [
 ];
 
 export async function GET() {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = klientSerwerowy();
 
   const entries: Entry[] = [...staticPages];
   let listingCount = 0;
@@ -107,10 +105,49 @@ export async function GET() {
       ogłoszeń, w większości archiwalnych. Limit liczy wiersze, nie ich
       zawartość, więc jeden wiersz z tablicą przechodzi w całości.
     */
-    const { data: listingJson, error: listingError } = await supabase.rpc('sitemap_listings');
+    /*
+      Twardy limit czasu na zapytanie.
+
+      supabase-js nie ma własnego timeoutu: gdy API nie odpowiada, zapytanie
+      wisi, a nie zwraca błędu. Cała obsługa "gdy nie dostaliśmy ogłoszeń"
+      poniżej nigdy się wtedy nie wykonywała - kod po prostu czekał, aż Next
+      przerwie generowanie strony po sześćdziesięciu sekundach i uzna build za
+      nieudany. Bez abortSignal żadne wyjście awaryjne nie ma szansy zadziałać.
+
+      Przy budowaniu dziesięć sekund wystarcza z zapasem (zdrowe API odpowiada
+      w sekundę), a w czasie żądania zostawiamy więcej miejsca, bo tam czeka
+      człowiek, nie deploy.
+    */
+    const limitMs = trwaBudowanie() ? 10_000 : 45_000;
+
+    const { data: listingJson, error: listingError } = await supabase
+      .rpc('sitemap_listings')
+      .abortSignal(AbortSignal.timeout(limitMs));
 
     if (listingError) {
-      throw new Error(`Sitemapa nie dostała ogłoszeń: ${listingError.message}`);
+      if (!trwaBudowanie()) {
+        throw new Error(`Sitemapa nie dostała ogłoszeń: ${listingError.message}`);
+      }
+
+      /*
+        Przy budowaniu wychodzimy od razu, bez próbowania reszty.
+
+        Dalej czekają jeszcze zapytania o miasta, modele i partnerów. Gdy API
+        nie odpowiada, każde z nich wisi do własnego timeoutu - cztery po sobie
+        przekraczają sześćdziesiąt sekund, po których Next przerywa generowanie
+        strony. Skoro pierwsze zapytanie już zawiodło, kolejne nie mają czego
+        szukać; jedyne, co dołożą, to czas.
+
+        Wychodzimy ze stronami stałymi i prośbą o odświeżenie po minucie.
+      */
+      console.warn('Sitemapa: API nie odpowiada przy budowaniu - wychodzę ze stronami stałymi');
+
+      return new Response(xml(entries), {
+        headers: {
+          'content-type': 'application/xml',
+          'cache-control': 'public, max-age=0, s-maxage=60, stale-while-revalidate=86400',
+        },
+      });
     }
 
     type Row = { id: string; last_checked_at: string; is_active: boolean };
@@ -198,7 +235,30 @@ export async function GET() {
     archiwum zniknęło.
   */
   if (listingCount === 0) {
-    throw new Error('Sitemapa nie dostała ani jednego ogłoszenia - nie publikujemy jej w tym stanie.');
+    /*
+      W czasie żądania pusta mapa to awaria i nie wolno jej podać - Google
+      odczytałby ją jako zniknięcie całego archiwum, a `stale-while-revalidate`
+      i tak poda poprzednią, kompletną wersję.
+
+      Przy budowaniu ten sam wyjątek przewracał deploy, a API Supabase bywa
+      niedostępne po kilka razy dziennie - więc w trakcie awarii nie dało się
+      wdrożyć niczego. Wychodzimy wtedy z samymi stronami stałymi, ale prosimy
+      CDN o odświeżenie po minucie zamiast po godzinie: pierwsza regeneracja
+      dołoży ogłoszenia, a okno, w którym mapa jest niepełna, liczy się
+      w minutach zamiast w godzinach.
+    */
+    if (!trwaBudowanie()) {
+      throw new Error('Sitemapa nie dostała ani jednego ogłoszenia - nie publikujemy jej w tym stanie.');
+    }
+
+    console.warn('Sitemapa budowana bez ogłoszeń - API niedostępne. Odświeży się za minutę.');
+
+    return new Response(xml(entries), {
+      headers: {
+        'content-type': 'application/xml',
+        'cache-control': 'public, max-age=0, s-maxage=60, stale-while-revalidate=86400',
+      },
+    });
   }
 
   return new Response(xml(entries), {

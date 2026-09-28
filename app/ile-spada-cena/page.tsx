@@ -1,11 +1,11 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { createClient } from '@supabase/supabase-js';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { Card, CardContent } from '@/components/ui/card';
 import { TrendingDown } from 'lucide-react';
 import { fetchModelTrends, MIN_SAMPLE_SIZE, MIN_DROPS_FOR_MEDIAN } from '@/lib/price-trends';
+import { klientSerwerowy } from '@/lib/supabase-server';
 
 export const metadata: Metadata = {
   title: 'Ile realnie spada cena samochodu na Otomoto — dane z ogłoszeń | obczajone.pl',
@@ -22,10 +22,7 @@ function formatPln(value: number): string {
 }
 
 export default async function PriceTrendsIndex() {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = klientSerwerowy();
 
   const trends = await fetchModelTrends(supabase);
 

@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
-import { createClient } from '@supabase/supabase-js';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { ListingCard } from '@/components/listing-card';
 import { fetchBiggestPriceDrops } from '@/lib/home-data';
+import { klientSerwerowy } from '@/lib/supabase-server';
 
 export const metadata: Metadata = {
   title: 'Auta, które staniały — wszystkie obniżki cen | obczajone.pl',
@@ -23,10 +23,7 @@ export const revalidate = 3600;
 const MAX_DROPS = 300;
 
 export default async function PriceDropsPage() {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = klientSerwerowy();
 
   const drops = await fetchBiggestPriceDrops(supabase, MAX_DROPS);
 

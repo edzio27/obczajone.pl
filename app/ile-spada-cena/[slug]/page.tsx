@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,6 +9,7 @@ import { TrendingDown } from 'lucide-react';
 import { fetchModelTrend, fetchModelTrends, MIN_SAMPLE_SIZE } from '@/lib/price-trends';
 import { VinCheckCta } from '@/components/vin-check-cta';
 import { ModelWatchForm } from '@/components/model-watch-form';
+import { klientSerwerowy } from '@/lib/supabase-server';
 
 export const revalidate = 3600;
 
@@ -18,15 +18,29 @@ function formatPln(value: number): string {
 }
 
 function client() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  return klientSerwerowy();
 }
 
+/*
+  Pusta lista, a nie wykaz z bazy.
+
+  Prerenderowanie tych stron przy budowaniu wiązało każdy deploy z dostępnością
+  API Supabase - a ono bywa niedostępne po kilka razy dziennie. Efekt był taki,
+  że w trakcie awarii nie dało się wypchnąć żadnej poprawki, łącznie z
+  poprawkami samej awarii. Sprzężenie nie do utrzymania.
+
+  `dynamicParams` zostawia trasę otwartą na każdy slug: pierwsze wejście
+  renderuje i zapisuje, kolejne idą z cache'u przez `revalidate`. Strony
+  powstają więc tak samo, tylko na żądanie zamiast przy budowaniu - a build
+  przestaje potrzebować bazy.
+
+  Ten sam zabieg co na /listing/[id], zastosowany tam wcześniej i z tego samego
+  powodu.
+*/
+export const dynamicParams = true;
+
 export async function generateStaticParams() {
-  const trends = await fetchModelTrends(client());
-  return trends.map((trend) => ({ slug: trend.slug }));
+  return [];
 }
 
 export async function generateMetadata({

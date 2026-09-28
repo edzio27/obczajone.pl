@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
-import { createClient } from '@supabase/supabase-js';
 import { SellerClient } from './seller-client';
+import { klientSerwerowy } from '@/lib/supabase-server';
 
 
 /*
@@ -24,10 +24,7 @@ type Props = {
 };
 
 async function getSellerName(id: string) {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = klientSerwerowy();
 
   const { data: seller } = await supabase
     .from('sellers')

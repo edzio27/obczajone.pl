@@ -1,11 +1,11 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { createClient } from '@supabase/supabase-js';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { Card, CardContent } from '@/components/ui/card';
 import { CityPricesChart } from '@/components/city-prices-chart';
 import { fetchCityPrices, MIN_CITY_LISTINGS } from '@/lib/city-prices';
+import { klientSerwerowy } from '@/lib/supabase-server';
 
 export const metadata: Metadata = {
   title: 'Ceny mieszkań miasto po mieście — dane z ogłoszeń Otodom | obczajone.pl',
@@ -21,10 +21,7 @@ function pln(value: number): string {
 }
 
 export default async function CityPricesPage() {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = klientSerwerowy();
 
   const cities = await fetchCityPrices(supabase);
   const withM2 = cities.filter((c) => c.medianPricePerM2 != null);

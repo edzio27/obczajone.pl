@@ -1,11 +1,11 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { createClient } from '@supabase/supabase-js';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { Card, CardContent } from '@/components/ui/card';
 import { ModelDropsChart, DropDistributionChart } from '@/components/barometer-charts';
 import { fetchBarometer } from '@/lib/barometer-data';
+import { klientSerwerowy } from '@/lib/supabase-server';
 
 export const metadata: Metadata = {
   title: 'Barometr obniżek — ile naprawdę schodzą sprzedający | obczajone.pl',
@@ -37,10 +37,7 @@ function Stat({
 }
 
 export default async function BarometerPage() {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = klientSerwerowy();
 
   const { overview, byModel, distribution } = await fetchBarometer(supabase);
 
