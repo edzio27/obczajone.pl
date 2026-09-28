@@ -4,6 +4,17 @@ import { Footer } from '@/components/footer';
 import { Card, CardContent } from '@/components/ui/card';
 import { UnsubscribeClient } from './unsubscribe-client';
 
+/*
+  Górny pułap na czas wykonania.
+
+  Ta trasa rusza przy każdym żądaniu, a Vercel liczy czas działania funkcji -
+  bez pułapu jedno żądanie na niedostępnej bazie potrafi się ciągnąć do limitu
+  planu i tyle nas kosztuje. Odczyty mają własny termin sześciu sekund
+  (lib/supabase-server.ts); dziesięć zostawia zapas na sam render i zamyka
+  sprawę, gdyby coś poza odczytem zaczęło się wlec.
+*/
+export const maxDuration = 10;
+
 export const metadata: Metadata = {
   title: 'Wypisanie z powiadomień | obczajone.pl',
   // Strona istnieje dla jednej osoby z jednym linkiem - token nie ma czego

@@ -23,10 +23,17 @@ import { trwaBudowanie } from './retry';
  *
  * Przy budowaniu dziesięć sekund: zdrowe API odpowiada w sekundę, a deploy nie
  * ma po co czekać na coś, czego nie dostanie - Next i tak przerywa stronę po
- * sześćdziesięciu. W czasie żądania dwadzieścia, bo tam czeka człowiek.
+ * sześćdziesięciu.
+ *
+ * W czasie żądania sześć, nie dwadzieścia. Poprzednia wartość była zła z dwóch
+ * powodów. Vercel liczy czas wykonania funkcji, więc każde żądanie wiszące na
+ * martwej bazie to rachunek za czekanie - a przy awariach po kilka razy dziennie
+ * płacimy za nie regularnie. I nikt nie czeka dwudziestu sekund na stronę:
+ * zdrowe API odpowiada tutaj w kilkadziesiąt milisekund, więc wszystko powyżej
+ * kilku sekund to już nie wolna baza, tylko baza, której nie ma.
  */
 function limitCzasuMs(): number {
-  return trwaBudowanie() ? 10_000 : 20_000;
+  return trwaBudowanie() ? 10_000 : 6_000;
 }
 
 function fetchZLimitem(wejscie: RequestInfo | URL, init?: RequestInit): Promise<Response> {

@@ -4,6 +4,17 @@ import { trwaBudowanie } from '@/lib/retry';
 import { klientSerwerowy } from '@/lib/supabase-server';
 
 /*
+  Górny pułap na czas wykonania.
+
+  Ta trasa rusza przy każdym żądaniu, a Vercel liczy czas działania funkcji -
+  bez pułapu jedno żądanie na niedostępnej bazie potrafi się ciągnąć do limitu
+  planu i tyle nas kosztuje. Odczyty mają własny termin sześciu sekund
+  (lib/supabase-server.ts); dziesięć zostawia zapas na sam render i zamyka
+  sprawę, gdyby coś poza odczytem zaczęło się wlec.
+*/
+export const maxDuration = 10;
+
+/*
   Sitemapa jako Route Handler, a nie metadata route (app/sitemap.ts).
 
   Powód jest pomiarowy, nie stylistyczny. W Next 13.5 `export const revalidate`
