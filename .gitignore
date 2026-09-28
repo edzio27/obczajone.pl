@@ -11,3 +11,6 @@ foty/
 .superpowers/
 .migration-tmp/
 supabase/.temp/
+
+# Kopie danych - nie trafiaja do repo (moga zawierac dane osobowe z opinii)
+backups/
