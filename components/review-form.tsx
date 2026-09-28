@@ -371,7 +371,7 @@ export function ReviewForm({ listingId, onReviewAdded, hasUserReview }: ReviewFo
                   onChange={(e) => setInspectedAt(e.target.value)}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Dzień, w którym stałeś przy tym aucie — zwykle nie ten, w którym to piszesz.
+                  Dzień, w którym byłeś na miejscu — zwykle nie ten, w którym to piszesz.
                 </p>
               </div>
             </>

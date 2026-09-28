@@ -624,7 +624,11 @@ export function ListingClient({
             watchOutFor={aiOpinion?.watchOutFor ?? []}
           />
 
-          <VinCheckCta context="listing" listingId={listingId} />
+          <VinCheckCta
+            context="listing"
+            listingId={listingId}
+            source={listing.source as 'otomoto' | 'otodom'}
+          />
 
           {initialData?.priceComparison && (
             <PriceComparisonCard comparison={initialData.priceComparison} />

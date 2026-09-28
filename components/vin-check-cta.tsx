@@ -18,6 +18,12 @@ type VinCheckCtaProps = {
   context: AffiliateClickContext;
   /** Tylko na stronie ogłoszenia - na stronie modelu nie ma jednego auta. */
   listingId?: string;
+  /**
+   * Z czego jest ogłoszenie. Bez tego strona mieszkania w Krakowie namawiała
+   * do sprawdzenia numeru VIN i odsyłała do rejestru pojazdów - blok pokazywał
+   * się wszędzie, bo nie miał skąd wiedzieć, czego dotyczy oferta.
+   */
+  source?: 'otomoto' | 'otodom';
 };
 
 /**
@@ -35,8 +41,53 @@ type VinCheckCtaProps = {
  * mówienie kupującemu rzeczy, których sprzedający mu nie powie. Zaufanie jest
  * tu aktywem, z którego bierze się przychód, a nie kosztem przychodu.
  */
-export function VinCheckCta({ context, listingId }: VinCheckCtaProps) {
+export function VinCheckCta({ context, listingId, source }: VinCheckCtaProps) {
   const hasAffiliate = Boolean(AFFILIATE_URL && AFFILIATE_NAME && AFFILIATE_PROVIDER);
+
+  /*
+    Nieruchomość dostaje swój odpowiednik, a nie samą pustkę po usuniętym bloku.
+
+    Przy aucie pytanie brzmi "co ten egzemplarz ma za sobą" i odpowiada na nie
+    VIN. Przy mieszkaniu to samo pytanie zadaje się księdze wieczystej: kto jest
+    właścicielem, czy nie ma hipoteki, czy zgadza się powierzchnia. Numeru KW
+    tak samo nie ma w ogłoszeniu i tak samo trzeba o niego poprosić - a rejestr
+    jest bezpłatny, więc nie ma tu czego sprzedawać.
+  */
+  if (source === 'otodom') {
+    return (
+      <Card className="mb-6">
+        <CardContent className="pt-6">
+          <div className="flex items-center gap-2 mb-1">
+            <FileSearch className="h-5 w-5 text-muted-foreground shrink-0" />
+            <h3 className="font-semibold">Sprawdź księgę wieczystą przed zaliczką</h3>
+          </div>
+
+          <p className="text-sm text-muted-foreground mb-4">
+            Numeru księgi nie ma w ogłoszeniu — poproś o niego sprzedającego albo pośrednika.
+            Odmowa bez powodu jest sama w sobie odpowiedzią, tak samo jak przy aucie.
+          </p>
+
+          <div className="rounded-lg border p-4">
+            <p className="text-sm font-medium">Za darmo, w rejestrze państwowym</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              <strong>ekw.ms.gov.pl</strong> pokaże właściciela, powierzchnię, hipoteki
+              i wpisy o roszczeniach — czyli to, czego ogłoszenie nie powie, a co decyduje
+              o tym, czy transakcja jest bezpieczna.
+            </p>
+            <a
+              href="https://ekw.ms.gov.pl"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-sm font-semibold text-primary mt-2 hover:underline"
+            >
+              Otwórz elektroniczną księgę wieczystą
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="mb-6">

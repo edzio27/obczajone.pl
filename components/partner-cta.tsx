@@ -43,8 +43,10 @@ export function PartnerCta({
             </h3>
           </div>
           <p className="text-sm text-gray-600 mb-4">
-            Szukamy firm, które sprawdzają auta przed zakupem w okolicy tego ogłoszenia.
-            Znasz kogoś dobrego albo sam prowadzisz taką firmę? Daj znać.
+            {/* Komponent zna `source` od początku - tylko ten tekst go nie używał. */}
+            Szukamy firm, które sprawdzają {source === 'otodom' ? 'nieruchomości' : 'auta'} przed
+            zakupem w okolicy tego ogłoszenia. Znasz kogoś dobrego albo sam prowadzisz taką firmę?
+            Daj znać.
           </p>
           <div className="flex flex-wrap gap-3">
             <Button variant="outline" size="sm" asChild>

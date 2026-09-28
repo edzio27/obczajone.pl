@@ -15,11 +15,18 @@ import { CalendarX, Car, HandCoins, PhoneOff, Eye } from 'lucide-react';
  * rzeczy: tam jest relacja, tu jest fakt.
  */
 
+/*
+  Jeden sygnał brzmi inaczej przy aucie, a inaczej przy mieszkaniu.
+
+  Reszta jest wspólna: ogłoszenie może być nieaktualne, cena inna, a sprzedawca
+  nieuchwytny niezależnie od tego, co sprzedaje. Tylko "wygląda inaczej" wymaga
+  nazwania rzeczy - strona mieszkania pytała dotąd, czy auto wygląda inaczej.
+*/
 const SIGNALS = [
   { kind: 'sold', label: 'Ogłoszenie nieaktualne', icon: CalendarX },
   { kind: 'price_differs', label: 'Cena inna niż w ogłoszeniu', icon: HandCoins },
   { kind: 'no_answer', label: 'Sprzedawca nie odbiera', icon: PhoneOff },
-  { kind: 'differs', label: 'Auto wygląda inaczej', icon: Car },
+  { kind: 'differs', label: 'Wygląda inaczej niż na zdjęciach', icon: Car },
   { kind: 'visited', label: 'Byłem/byłam oglądać', icon: Eye },
 ] as const;
 
@@ -123,7 +130,7 @@ export function ListingSignals({ listingId }: { listingId: string }) {
       <p className="text-sm text-muted-foreground">
         {total > 0
           ? 'Co zgłosili inni oglądający — kliknij, jeśli u Ciebie było tak samo:'
-          : 'Byłeś przy tym aucie? Kliknij, co się zgadzało — bez zakładania konta.'}
+          : `Byłeś na miejscu? Kliknij, co się zgadzało — bez zakładania konta.`}
       </p>
       <div className="flex flex-wrap gap-2">
         {SIGNALS.map(({ kind, label, icon: Icon }) => {
