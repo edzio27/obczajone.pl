@@ -13,6 +13,12 @@ import { logAffiliateClick, type AffiliateClickContext } from '@/lib/affiliate-c
 const AFFILIATE_URL = process.env.NEXT_PUBLIC_VIN_AFFILIATE_URL;
 const AFFILIATE_NAME = process.env.NEXT_PUBLIC_VIN_AFFILIATE_NAME;
 const AFFILIATE_PROVIDER = process.env.NEXT_PUBLIC_VIN_AFFILIATE_PROVIDER;
+/*
+  Kod rabatowy jest opcjonalny. Program może go nie dawać albo cofnąć, a link
+  działa bez niego, więc brak tych zmiennych chowa tylko linijkę z kodem.
+*/
+const DISCOUNT_CODE = process.env.NEXT_PUBLIC_VIN_AFFILIATE_DISCOUNT_CODE;
+const DISCOUNT_PERCENT = process.env.NEXT_PUBLIC_VIN_AFFILIATE_DISCOUNT_PERCENT;
 
 type VinCheckCtaProps = {
   context: AffiliateClickContext;
@@ -145,6 +151,15 @@ export function VinCheckCta({ context, listingId, source }: VinCheckCtaProps) {
                 powypadkowych i zapisy o szkodach — czyli dokładnie to, co
                 sprzedający „sprowadzonego, bezwypadkowego" woli przemilczeć.
               </p>
+              {DISCOUNT_CODE && DISCOUNT_PERCENT && (
+                <p className="text-sm mt-2">
+                  Z kodem{' '}
+                  <code className="rounded bg-muted px-1.5 py-0.5 font-mono font-semibold">
+                    {DISCOUNT_CODE}
+                  </code>{' '}
+                  raport jest tańszy o {DISCOUNT_PERCENT}%.
+                </p>
+              )}
               <a
                 href={AFFILIATE_URL}
                 target="_blank"
@@ -161,6 +176,14 @@ export function VinCheckCta({ context, listingId, source }: VinCheckCtaProps) {
                 Sprawdź VIN w {AFFILIATE_NAME}
                 <ExternalLink className="h-3.5 w-3.5" />
               </a>
+              {/*
+                Umowa (pkt 1.3) wymaga, żeby przy linku było jasne, kto sprzedaje
+                usługę i do kogo należą prawa - stąd ta linijka, a nie stopka.
+              */}
+              <p className="text-[11px] text-muted-foreground mt-2">
+                Raport sprzedaje i dostarcza {AFFILIATE_NAME}, który ma wszystkie
+                prawa do usługi i znaku. Za zakup z tego linku dostajemy prowizję.
+              </p>
             </div>
           )}
         </div>

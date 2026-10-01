@@ -3,7 +3,30 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+/*
+  Termin na żądanie z przeglądarki.
+
+  supabase-js nie ma własnego timeoutu, a `fetch` czeka bez końca. Gdy API
+  przyjmuje połączenie i milczy - a tak wygląda tutejsza awaria - zapytanie
+  nie kończy się ani sukcesem, ani błędem. `RecentListings` ma stan błędu
+  i komunikat dla czytelnika, ale nigdy się nie włączał: nie było błędu, było
+  czekanie. Odwiedzający widział wirujący spinner bez końca, przez trzy dni
+  awarii z 28 września.
+
+  Dwanaście sekund: więcej niż potrzeba zdrowemu API (dziesiątki milisekund)
+  i mniej, niż człowiek jest gotów patrzeć na kręcące się kółko. Po tym czasie
+  leci błąd, a komponent pokazuje to, co ma przygotowane.
+
+  Ta sama decyzja co w lib/supabase-server.ts, tyle że dla przeglądarki.
+*/
+function fetchZLimitem(wejscie: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  if (init?.signal) return fetch(wejscie, init);
+  return fetch(wejscie, { ...init, signal: AbortSignal.timeout(12_000) });
+}
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  global: { fetch: fetchZLimitem },
+});
 
 export type Database = {
   public: {
