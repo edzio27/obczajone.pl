@@ -1,0 +1,51 @@
+[
+  {
+    "jobid": "28",
+    "jobname": "model-sweep",
+    "schedule": "20 3,15 * * *",
+    "active": true,
+    "command": "\n  SELECT net.http_post(\n    url := 'https://tumyxmvbytwizmyqnvgc.supabase.co/functions/v1/sweep-model-listings',\n    headers := jsonb_build_object(\n      'Content-Type', 'application/json',\n      'Authorization', 'Bearer ' || COALESCE((\n        SELECT decrypted_secret FROM vault.decrypted_secrets\n        WHERE name = 'daily_scraper_invoke_key'\n        LIMIT 1\n      ), '')\n    ),\n    body := '{}'::jsonb,\n    timeout_milliseconds := 120000\n  )\n  "
+  },
+  {
+    "jobid": "29",
+    "jobname": "otodom-sweep",
+    "schedule": "50 * * * *",
+    "active": true,
+    "command": "\n  SELECT net.http_post(\n    url := 'https://tumyxmvbytwizmyqnvgc.supabase.co/functions/v1/sweep-otodom-listings',\n    headers := jsonb_build_object(\n      'Content-Type', 'application/json',\n      'Authorization', 'Bearer ' || COALESCE((\n        SELECT decrypted_secret FROM vault.decrypted_secrets\n        WHERE name = 'daily_scraper_invoke_key'\n        LIMIT 1\n      ), '')\n    ),\n    body := '{}'::jsonb,\n    timeout_milliseconds := 60000\n  )\n  "
+  },
+  {
+    "jobid": "27",
+    "jobname": "price-scraper-sweep",
+    "schedule": "7 * * * *",
+    "active": true,
+    "command": "\n  SELECT net.http_post(\n    url := 'https://tumyxmvbytwizmyqnvgc.supabase.co/functions/v1/daily-price-scraper',\n    headers := jsonb_build_object(\n      'Content-Type', 'application/json',\n      'Authorization', 'Bearer ' || COALESCE((\n        SELECT decrypted_secret FROM vault.decrypted_secrets\n        WHERE name = 'daily_scraper_invoke_key'\n        LIMIT 1\n      ), '')\n    ),\n    body := '{}'::jsonb,\n    timeout_milliseconds := 110000\n  )\n  "
+  },
+  {
+    "jobid": "23",
+    "jobname": "refresh-city-prices",
+    "schedule": "55 * * * *",
+    "active": true,
+    "command": " SELECT refresh_city_prices_snapshot(); "
+  },
+  {
+    "jobid": "17",
+    "jobname": "refresh-model-trends",
+    "schedule": "45 * * * *",
+    "active": true,
+    "command": " SELECT refresh_model_trends_snapshot(); "
+  },
+  {
+    "jobid": "16",
+    "jobname": "refresh-report-snapshot",
+    "schedule": "35 * * * *",
+    "active": true,
+    "command": " SELECT refresh_report_snapshot(); "
+  },
+  {
+    "jobid": "18",
+    "jobname": "send-price-alerts",
+    "schedule": "15 7 * * *",
+    "active": true,
+    "command": "\n  SELECT net.http_post(\n    url := 'https://tumyxmvbytwizmyqnvgc.supabase.co/functions/v1/send-price-alerts',\n    headers := jsonb_build_object(\n      'Content-Type', 'application/json',\n      'Authorization', 'Bearer ' || COALESCE((\n        SELECT decrypted_secret FROM vault.decrypted_secrets\n        WHERE name = 'daily_scraper_invoke_key'\n        LIMIT 1\n      ), '')\n    ),\n    body := '{}'::jsonb,\n    timeout_milliseconds := 60000\n  )\n  "
+  }
+]
