@@ -1,0 +1,134 @@
+# Codzienne testy przepływów, którymi chodzi człowiek.
+#
+# `czy-strona-zyje.yml` pyta co 15 minut, czy serwis ma treść - i to wystarcza
+# na awarie całościowe. Nie wyłapał za to niczego z 2 października, kiedy
+# właściciel sam odkrył trzy rzeczy naraz: kółko kręcące się w nieskończoność
+# zamiast opinii, kafelki "podobnych ogłoszeń" prowadzące donikąd i okno
+# logowania zawieszone na "Ładowanie...". Strona główna przez cały ten czas
+# odpowiadała 200 z kompletem ogłoszeń, więc monitoring milczał.
+#
+# Wniosek: sprawdzanie stron głównych nie wystarczy, bo psują się przepływy -
+# wejście w ogłoszenie, wczytanie opinii, logowanie. Ten plik chodzi po nich
+# tak, jak chodziłby odwiedzający.
+#
+# Raz na dobę, nie co 15 minut: te testy wołają bazę kilkanaście razy, a ta
+# instancja przewraca się od obciążenia. Monitoring ma wykrywać awarie, nie
+# dokładać się do nich.
+#
+# Poza Vercelem i Supabase z tego samego powodu co tamten: monitoring w tej
+# samej infrastrukturze co serwis milczy dokładnie wtedy, gdy jest potrzebny.
+
+name: Testy przepływów
+
+on:
+  schedule:
+    - cron: '20 6 * * *'
+  workflow_dispatch:
+
+jobs:
+  przeplywy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Strona ogłoszenia otwiera się i ma historię ceny
+        run: |
+          # Adres bierzemy z sitemapy, a nie na sztywno: wpisane na stałe
+          # ogłoszenie kiedyś wygaśnie i test zacznie kłamać.
+          adres=$(curl -s --max-time 60 https://obczajone.pl/sitemap.xml \
+            | grep -oE 'https://obczajone\.pl/listing/[a-z0-9-]+' | head -1)
+
+          if [ -z "$adres" ]; then
+            echo "Sitemapa nie podała ani jednego ogłoszenia."
+            exit 1
+          fi
+          echo "Testuję: $adres"
+
+          kod=$(curl -s -o /tmp/ogloszenie.html --max-time 45 -w '%{http_code}' "$adres")
+          if [ "$kod" != "200" ]; then
+            echo "Strona ogłoszenia zwróciła $kod zamiast 200."
+            exit 1
+          fi
+
+          # Cena w treści: strona, która wczytała się bez danych, wygląda
+          # poprawnie dla monitoringu patrzącego tylko na kod odpowiedzi.
+          if ! grep -qE '[0-9]{1,3}[ &][^<]{0,8}[0-9]{3}[^<]{0,12}zł' /tmp/ogloszenie.html; then
+            echo "Na stronie ogłoszenia nie ma żadnej ceny."
+            exit 1
+          fi
+          echo "OK - ogłoszenie otwiera się i pokazuje cenę."
+
+      - name: Kafelki podobnych ogłoszeń prowadzą do działających stron
+        run: |
+          # 2 października kafelki wyglądały na zepsute linki: klik prowadził
+          # na stronę, która zwracała 500, więc nawigacja kończyła się niczym.
+          adres=$(curl -s --max-time 60 https://obczajone.pl/sitemap.xml \
+            | grep -oE 'https://obczajone\.pl/listing/[a-z0-9-]+' | head -1)
+          curl -s -o /tmp/o.html --max-time 45 "$adres"
+
+          sasiad=$(grep -oE '/listing/[a-z0-9-]+' /tmp/o.html | sort -u \
+            | grep -v "$(basename "$adres")" | head -1)
+
+          if [ -z "$sasiad" ]; then
+            echo "Strona ogłoszenia nie linkuje do żadnego innego ogłoszenia."
+            exit 1
+          fi
+
+          kod=$(curl -s -o /dev/null --max-time 45 -w '%{http_code}' "https://obczajone.pl$sasiad")
+          if [ "$kod" != "200" ]; then
+            echo "Kafelek prowadzi do $sasiad, które zwraca $kod."
+            exit 1
+          fi
+          echo "OK - przeklik na sąsiednie ogłoszenie działa."
+
+      - name: Opinie wczytują się, zamiast kręcić kółkiem
+        run: |
+          # Opinie dociąga przeglądarka prosto z Supabase, więc sprawdzamy to
+          # samo zapytanie, które robi komponent. Wiszące żądanie to dla
+          # odwiedzającego spinner bez końca - najgorsza możliwa odpowiedź,
+          # bo nie niesie żadnej informacji.
+          kod=$(curl -s -o /dev/null --max-time 20 -w '%{http_code}' \
+            "${SUPABASE_URL}/rest/v1/reviews?select=id&is_approved=eq.true&limit=1" \
+            -H "apikey: ${SUPABASE_ANON_KEY}")
+          if [ "$kod" != "200" ]; then
+            echo "Zapytanie o opinie zwróciło $kod - u odwiedzającego to wieczny spinner."
+            exit 1
+          fi
+          echo "OK - opinie odpowiadają."
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+
+      - name: Logowanie odpowiada
+        run: |
+          # Nie logujemy się naprawdę - wysyłamy celowo złe dane i sprawdzamy,
+          # czy usługa auth w ogóle odpowiada. 400 to zdrowa odpowiedź
+          # ("złe hasło"), 504 oznacza, że okno logowania zawiśnie na
+          # "Ładowanie..." - tak było 2 października.
+          kod=$(curl -s -o /dev/null --max-time 20 -w '%{http_code}' \
+            -X POST "${SUPABASE_URL}/auth/v1/token?grant_type=password" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H 'Content-Type: application/json' \
+            -d '{"email":"test-monitoringu@obczajone.pl","password":"nieistniejace-haslo"}')
+
+          case "$kod" in
+            400|401|403) echo "OK - logowanie odpowiada ($kod)." ;;
+            *) echo "Usługa logowania zwróciła $kod - okno logowania zawiesi się."; exit 1 ;;
+          esac
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+
+      - name: Żadna kluczowa strona nie zwraca 5xx
+        run: |
+          bledne=""
+          for sciezka in "" barometr obnizki werdykty partnerzy posrednicy \
+                         dla-mediow archiwum-otomoto ceny-mieszkan ile-spada-cena; do
+            kod=$(curl -s -o /dev/null --max-time 45 -w '%{http_code}' "https://obczajone.pl/${sciezka}")
+            printf '  /%-20s %s\n' "${sciezka:-(główna)}" "$kod"
+            case "$kod" in 5*) bledne="$bledne /${sciezka:-(główna)}($kod)" ;; esac
+          done
+
+          if [ -n "$bledne" ]; then
+            echo "Strony z błędem serwera:$bledne"
+            exit 1
+          fi
+          echo "OK - żadna strona nie zwraca 5xx."

@@ -14,6 +14,33 @@ type AuthDialogProps = {
   onOpenChange: (open: boolean) => void;
 };
 
+/*
+  Termin dla okna logowania.
+
+  Klient auth Supabase przy błędzie sieci ponawia próby sam, z narastającym
+  odstępem. Nasz limit na pojedyncze żądanie (lib/supabase.ts) mnoży się więc
+  przez liczbę ponowień i okno potrafi stać na "Ładowanie..." minutami - tak
+  wyglądało 2 października, gdy baza nie odpowiadała. `try/finally` tego nie
+  łapie, bo nic nie rzuca; po prostu jeszcze się nie skończyło.
+
+  Okno obiecuje człowiekowi odpowiedź i musi jej dotrzymać. Po piętnastu
+  sekundach mówimy, że się nie udało - ponowienia w tle mogą sobie trwać,
+  ale nie kosztem wpatrywania się w kręcące kółko.
+*/
+const LIMIT_LOGOWANIA_MS = 15_000;
+
+function zTerminem<T>(operacja: Promise<T>): Promise<T> {
+  return Promise.race([
+    operacja,
+    new Promise<T>((_, odrzuc) =>
+      setTimeout(
+        () => odrzuc(new Error('Serwis nie odpowiada. Spróbuj ponownie za chwilę.')),
+        LIMIT_LOGOWANIA_MS
+      )
+    ),
+  ]);
+}
+
 export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
   const [mode, setMode] = useState<'login' | 'register' | 'reset'>('login');
   const [email, setEmail] = useState('');
@@ -48,7 +75,7 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
 
     try {
       if (mode === 'login') {
-        await signIn(email, password);
+        await zTerminem(signIn(email, password));
         toast({
           title: 'Zalogowano pomyślnie',
           description: 'Witaj ponownie!',
@@ -57,7 +84,7 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
         setEmail('');
         setPassword('');
       } else if (mode === 'register') {
-        await signUp(email, password);
+        await zTerminem(signUp(email, password));
         toast({
           title: 'Konto utworzone',
           description: 'Możesz się teraz zalogować',
@@ -66,7 +93,7 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
         setEmail('');
         setPassword('');
       } else {
-        await resetPassword(email);
+        await zTerminem(resetPassword(email));
         toast({
           title: 'Link wysłany',
           description: 'Sprawdź swoją skrzynkę e-mail, aby zresetować hasło',
@@ -96,9 +123,9 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
     setOauthLoading(provider);
     try {
       if (provider === 'google') {
-        await signInWithGoogle();
+        await zTerminem(signInWithGoogle());
       } else {
-        await signInWithFacebook();
+        await zTerminem(signInWithFacebook());
       }
       // Przy powodzeniu przeglądarka wychodzi na stronę dostawcy, więc tutaj
       // nie wracamy - stan ładowania zdejmujemy tylko przy błędzie.
