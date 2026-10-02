@@ -67,10 +67,22 @@ export function ReviewList({
   // Majac opinie z serwera nie pokazujemy "Ladowanie opinii..." - tresc jest
   // juz wyrenderowana, a doczytujemy tylko oczekujace opinie zalogowanego.
   const [loading, setLoading] = useState(initialReviews === undefined);
+  const [loadError, setLoadError] = useState(false);
   const [editingReview, setEditingReview] = useState<Review | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   const fetchReviews = useCallback(async () => {
+    /*
+      try/finally, bo `setLoading(false)` stało na samym końcu tej funkcji.
+
+      Wystarczyło, żeby którykolwiek `await` po drodze rzucił - a przy
+      niedostępnej bazie `attachReviewDetails` ma do tego pełne prawo - i ta
+      linia nigdy się nie wykonywała. Czytelnik oglądał wtedy "Ładowanie
+      opinii..." bez końca, tak jak 2 października, gdy instancja przestała
+      odpowiadać. Kręcące się kółko to najgorsza z możliwych odpowiedzi: nie
+      niesie żadnej informacji, a wygląda, jakby coś się działo.
+    */
+    try {
     const { data, error } = await supabase
       .from('reviews')
       .select('*')
@@ -79,7 +91,7 @@ export function ReviewList({
       .order('created_at', { ascending: false });
 
     const profilesById = new Map<string, Profile>();
-    async function loadProfiles(userIds: string[]) {
+    const loadProfiles = async (userIds: string[]) => {
       const missingIds = Array.from(new Set(userIds)).filter((id) => !profilesById.has(id));
       if (missingIds.length === 0) return;
 
@@ -95,7 +107,7 @@ export function ReviewList({
           partner_logo_url: p.partner_logo_url,
         });
       });
-    }
+    };
 
     if (!error && data) {
       setReviews(await attachReviewDetails(supabase, data));
@@ -131,12 +143,24 @@ export function ReviewList({
       }
     }
 
-    setLoading(false);
+      setLoadError(false);
+    } catch (err) {
+      console.error('Nie udało się wczytać opinii:', err);
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
   }, [listingId, user, onHasUserReview]);
 
   useEffect(() => {
     setLoading(true);
-    fetchReviews();
+    // .catch() na wszelki wypadek: fetchReviews ma własne try/catch, ale
+    // nieobsłużone odrzucenie w useEffect nie zostawia po sobie nawet wpisu.
+    fetchReviews().catch((err) => {
+      console.error('Nie udało się wczytać opinii:', err);
+      setLoadError(true);
+      setLoading(false);
+    });
   }, [refreshTrigger, fetchReviews]);
 
   const handleReport = async (reviewId: string) => {
@@ -177,6 +201,37 @@ export function ReviewList({
       <Card>
         <CardContent className="pt-6">
           <p className="text-center text-gray-500">Ładowanie opinii...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  /*
+    Nieudany odczyt to nie to samo co brak opinii.
+
+    Gdyby tu nic nie stało, awaria bazy wyglądałaby jak ogłoszenie, którego
+    nikt nie skomentował - a to nieprawda i akurat przy opiniach nieprawda
+    kosztowna, bo cały sens serwisu polega na tym, że ktoś już tam był.
+  */
+  if (loadError) {
+    return (
+      <Card>
+        <CardContent className="pt-6 text-center">
+          <p className="text-sm text-muted-foreground">
+            Nie udało się wczytać opinii — spróbuj odświeżyć stronę za chwilę.
+          </p>
+          <button
+            onClick={() => {
+              setLoading(true);
+              fetchReviews().catch(() => {
+                setLoadError(true);
+                setLoading(false);
+              });
+            }}
+            className="mt-3 text-sm font-medium underline underline-offset-4 hover:no-underline"
+          >
+            Spróbuj ponownie
+          </button>
         </CardContent>
       </Card>
     );
