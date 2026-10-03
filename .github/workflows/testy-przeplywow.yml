@@ -50,11 +50,27 @@ jobs:
 
           # Cena w treści: strona, która wczytała się bez danych, wygląda
           # poprawnie dla monitoringu patrzącego tylko na kod odpowiedzi.
-          if ! grep -qE '[0-9]{1,3}[ &][^<]{0,8}[0-9]{3}[^<]{0,12}zł' /tmp/ogloszenie.html; then
-            echo "Na stronie ogłoszenia nie ma żadnej ceny."
-            exit 1
-          fi
-          echo "OK - ogłoszenie otwiera się i pokazuje cenę."
+          #
+          # Pythonem, a nie grepem, i to nie z upodobania: serwis formatuje
+          # kwoty twardą spacją (35\u00a0900), której wyrażenie z grepa nie
+          # łapało. Pierwsza wersja tego testu zgłaszała błąd na stronie, która
+          # pokazywała cenę szesnaście razy - czyli robiła dokładnie to, przed
+          # czym ten plik ma chronić. Sprawdzamy też samo body, bo cena stoi
+          # również w <meta description> i tam znalazłaby się nawet wtedy,
+          # gdyby treść była pusta.
+          python3 - <<'PY'
+          import re, sys
+          html = open('/tmp/ogloszenie.html', encoding='utf-8', errors='replace').read()
+          body = html.split('</head>', 1)[-1]
+          # Liczba MUSI sąsiadować ze złotówką. Luźniejsze wyrażenie
+          # (same cyfry ze spacją) dopasowywało się do '0 100' z osi wykresu,
+          # więc przeszłoby i na stronie bez ceny - czyli nie testowałoby nic.
+          ceny = re.findall(r'\d[\d\s\u00a0\u202f]{2,}\s*zł', body)
+          if not ceny:
+              print('Na stronie ogłoszenia nie ma żadnej ceny w treści.')
+              sys.exit(1)
+          print(f'OK - ogłoszenie pokazuje cenę ({len(ceny)} wystąpień, np. {ceny[0]!r}).')
+          PY
 
       - name: Kafelki podobnych ogłoszeń prowadzą do działających stron
         run: |
