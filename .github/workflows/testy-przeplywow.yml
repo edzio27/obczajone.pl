@@ -101,9 +101,27 @@ jobs:
           # samo zapytanie, które robi komponent. Wiszące żądanie to dla
           # odwiedzającego spinner bez końca - najgorsza możliwa odpowiedź,
           # bo nie niesie żadnej informacji.
+          # Brak sekretu musi powiedzieć, czego brakuje.
+          #
+          # GitHub uruchamia te skrypty z `bash -e`, więc przy pustym adresie
+          # curl kończy się błędem i krok umiera na tej linii - zanim dojdzie
+          # do jakiegokolwiek komunikatu. 4 października przyszedł mail "All
+          # jobs have failed" bez słowa o przyczynie, czyli alarm, który nie
+          # niesie informacji. Ta sama wada, którą tydzień wcześniej usuwaliśmy
+          # z serwisu.
+          if [ -z "${SUPABASE_URL}" ] || [ -z "${SUPABASE_ANON_KEY}" ]; then
+            echo "Brak sekretów repozytorium: SUPABASE_URL i/lub SUPABASE_ANON_KEY."
+            echo "Dodaj je w Settings → Secrets and variables → Actions:"
+            echo "  SUPABASE_URL      = wartość NEXT_PUBLIC_SUPABASE_URL"
+            echo "  SUPABASE_ANON_KEY = wartość NEXT_PUBLIC_SUPABASE_ANON_KEY"
+            echo "To klucz publiczny (anon), ten sam, który jest w kodzie strony."
+            exit 1
+          fi
+
+          # `|| true`, żeby nieudany curl nie ubił kroku przed sprawdzeniem kodu.
           kod=$(curl -s -o /dev/null --max-time 20 -w '%{http_code}' \
             "${SUPABASE_URL}/rest/v1/reviews?select=id&is_approved=eq.true&limit=1" \
-            -H "apikey: ${SUPABASE_ANON_KEY}")
+            -H "apikey: ${SUPABASE_ANON_KEY}" || true)
           if [ "$kod" != "200" ]; then
             echo "Zapytanie o opinie zwróciło $kod - u odwiedzającego to wieczny spinner."
             exit 1
@@ -119,11 +137,28 @@ jobs:
           # czy usługa auth w ogóle odpowiada. 400 to zdrowa odpowiedź
           # ("złe hasło"), 504 oznacza, że okno logowania zawiśnie na
           # "Ładowanie..." - tak było 2 października.
+          # Brak sekretu musi powiedzieć, czego brakuje.
+          #
+          # GitHub uruchamia te skrypty z `bash -e`, więc przy pustym adresie
+          # curl kończy się błędem i krok umiera na tej linii - zanim dojdzie
+          # do jakiegokolwiek komunikatu. 4 października przyszedł mail "All
+          # jobs have failed" bez słowa o przyczynie, czyli alarm, który nie
+          # niesie informacji. Ta sama wada, którą tydzień wcześniej usuwaliśmy
+          # z serwisu.
+          if [ -z "${SUPABASE_URL}" ] || [ -z "${SUPABASE_ANON_KEY}" ]; then
+            echo "Brak sekretów repozytorium: SUPABASE_URL i/lub SUPABASE_ANON_KEY."
+            echo "Dodaj je w Settings → Secrets and variables → Actions:"
+            echo "  SUPABASE_URL      = wartość NEXT_PUBLIC_SUPABASE_URL"
+            echo "  SUPABASE_ANON_KEY = wartość NEXT_PUBLIC_SUPABASE_ANON_KEY"
+            echo "To klucz publiczny (anon), ten sam, który jest w kodzie strony."
+            exit 1
+          fi
+
           kod=$(curl -s -o /dev/null --max-time 20 -w '%{http_code}' \
             -X POST "${SUPABASE_URL}/auth/v1/token?grant_type=password" \
             -H "apikey: ${SUPABASE_ANON_KEY}" \
             -H 'Content-Type: application/json' \
-            -d '{"email":"test-monitoringu@obczajone.pl","password":"nieistniejace-haslo"}')
+            -d '{"email":"test-monitoringu@obczajone.pl","password":"nieistniejace-haslo"}' || true)
 
           case "$kod" in
             400|401|403) echo "OK - logowanie odpowiada ($kod)." ;;
