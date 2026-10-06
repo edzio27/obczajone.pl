@@ -167,24 +167,41 @@ async function fetchActiveListings(supabase: SupabaseClient, columns: string): P
 }
 
 
+/**
+ * Największe obniżki - wybrane i odsiane w bazie, nie tutaj.
+ *
+ * Do 6 października ta funkcja pobierała WSZYSTKIE aktywne ogłoszenia
+ * (13 892 wiersze, stronami po tysiąc), liczyła procenty w Node i brała trzy.
+ * Przy każdej regeneracji strony głównej i /obnizki. Ten sam wzorzec wywracał
+ * nam deploye we wrześniu przy medianach cen mieszkań: praca należąca do bazy
+ * wykonywana w aplikacji.
+ *
+ * Funkcja `biggest_price_drops` odsiewa przy okazji błędy scrapera, które
+ * dotąd stały na szczycie listy jako "największe obniżki": ogłoszenie bez
+ * tytułu z ceną zero, Audi 648 888 -> 64 888 i apartament 7 750 000 -> 775 000.
+ * W dwóch ostatnich zgubiła się cyfra. Pierwsza prawdziwa obniżka była
+ * czwarta. Kryterium opisuje nagłówek migracji.
+ */
 export async function fetchBiggestPriceDrops(
   supabase: SupabaseClient,
   limit = 3
 ): Promise<HomeListing[]> {
-  const pool = await fetchActiveListings(supabase, CARD_COLUMNS);
-  if (pool.length === 0) return [];
+  const { data, error } = await supabase.rpc('biggest_price_drops', { p_limit: limit });
 
-  return pool
-    .map((listing) => ({
-      ...listing,
-      priceChangePercent:
-        listing.first_price != null
-          ? computePriceChangePercent(listing.current_price, listing.first_price)
-          : null,
-    }))
-    .filter((l) => l.priceChangePercent != null && l.priceChangePercent < 0)
-    .sort((a, b) => a.priceChangePercent! - b.priceChangePercent!)
-    .slice(0, limit) as HomeListing[];
+  /*
+    Błąd odczytu to nie brak obniżek. Pusta lista ukryłaby całą sekcję, a pod
+    ISR taki wynik żyje do następnej regeneracji - tę lekcję odrobiliśmy już
+    na stronie głównej i na stronach miast.
+  */
+  if (error) throw new Error(`Nie udało się pobrać obniżek: ${error.message}`);
+
+  return ((data as any[]) ?? []).map((listing) => ({
+    ...listing,
+    priceChangePercent: computePriceChangePercent(
+      listing.current_price,
+      listing.first_price
+    ),
+  })) as HomeListing[];
 }
 
 
