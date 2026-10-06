@@ -247,11 +247,39 @@ function extractOtomotoSpecs(ad: any): OtomotoSpecs {
 
 async function scrapeOtomoto(url: string) {
   try {
+    /*
+      Pelny User-Agent, nie uciety w polowie.
+
+      Do 6 pazdziernika konczyl sie na "AppleWebKit/537.36", podczas gdy
+      prawdziwy Chrome dopisuje jeszcze "(KHTML, like Gecko) Chrome/... Safari/
+      537.36". Taki ogon to czytelny podpis bota i odsetek odrzuconych przelotow
+      rosl z miesiaca na miesiac: 9 w czerwcu, 29 w lipcu, 50 w sierpniu,
+      87 we wrzesniu, 34 przez pierwsze szesc dni pazdziernika.
+    */
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
+          '(KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
+        'Accept-Language': 'pl-PL,pl;q=0.9',
       },
     });
+
+    /*
+      Status odpowiedzi nie byl sprawdzany ani razu.
+
+      Gdy serwis zwracal 403, 429 albo 404, kod i tak bral `response.text()`
+      i probowal to parsowac. Nie znajdowal ani ceny, ani tytulu - i zwracal
+      rekord zastepczy, ktory wolajacy zapisywal jako pelnoprawne ogloszenie.
+      Tak powstalo 212 wpisow z cena zero, w tym siedemnascie zatytulowanych
+      "Blad 404". Zwrocenie null sprawia, ze wolajacy rzuca wyjatkiem i nie
+      nadpisuje niczego - tak jak juz robimy przy seller_id i wspolrzednych.
+    */
+    if (!response.ok) {
+      console.error(`Scrape odrzucony: ${response.status} ${response.statusText} dla ${url}`);
+      return null;
+    }
+
     const html = await response.text();
 
     let title = '';
@@ -377,6 +405,16 @@ async function scrapeOtomoto(url: string) {
       }
     }
 
+    /*
+      Ogloszenie bez ceny nie istnieje - 211 z 212 takich rekordow nie mialo
+      ceny nigdy, od pierwszego zapisu. Zero w tym polu zawsze oznaczalo
+      nieudany odczyt, nie oferte za darmo.
+    */
+    if (!price || price <= 0) {
+      console.error(`Scrape bez ceny dla ${url} - traktuje jako nieudany`);
+      return null;
+    }
+
     return {
       title: title || 'Ogłoszenie Otomoto',
       price,
@@ -483,11 +521,39 @@ function extractOtodomCity(ad: any): string {
 
 async function scrapeOtodom(url: string) {
   try {
+    /*
+      Pelny User-Agent, nie uciety w polowie.
+
+      Do 6 pazdziernika konczyl sie na "AppleWebKit/537.36", podczas gdy
+      prawdziwy Chrome dopisuje jeszcze "(KHTML, like Gecko) Chrome/... Safari/
+      537.36". Taki ogon to czytelny podpis bota i odsetek odrzuconych przelotow
+      rosl z miesiaca na miesiac: 9 w czerwcu, 29 w lipcu, 50 w sierpniu,
+      87 we wrzesniu, 34 przez pierwsze szesc dni pazdziernika.
+    */
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
+          '(KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
+        'Accept-Language': 'pl-PL,pl;q=0.9',
       },
     });
+
+    /*
+      Status odpowiedzi nie byl sprawdzany ani razu.
+
+      Gdy serwis zwracal 403, 429 albo 404, kod i tak bral `response.text()`
+      i probowal to parsowac. Nie znajdowal ani ceny, ani tytulu - i zwracal
+      rekord zastepczy, ktory wolajacy zapisywal jako pelnoprawne ogloszenie.
+      Tak powstalo 212 wpisow z cena zero, w tym siedemnascie zatytulowanych
+      "Blad 404". Zwrocenie null sprawia, ze wolajacy rzuca wyjatkiem i nie
+      nadpisuje niczego - tak jak juz robimy przy seller_id i wspolrzednych.
+    */
+    if (!response.ok) {
+      console.error(`Scrape odrzucony: ${response.status} ${response.statusText} dla ${url}`);
+      return null;
+    }
+
     const html = await response.text();
 
     let title = '';
@@ -555,6 +621,16 @@ async function scrapeOtodom(url: string) {
           console.error('Error parsing JSON-LD:', e);
         }
       }
+    }
+
+    /*
+      Ogloszenie bez ceny nie istnieje - 211 z 212 takich rekordow nie mialo
+      ceny nigdy, od pierwszego zapisu. Zero w tym polu zawsze oznaczalo
+      nieudany odczyt, nie oferte za darmo.
+    */
+    if (!price || price <= 0) {
+      console.error(`Scrape bez ceny dla ${url} - traktuje jako nieudany`);
+      return null;
     }
 
     return {

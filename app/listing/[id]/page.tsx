@@ -73,6 +73,31 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { listing, snapshots, reviewCount, averageRating } = data;
 
   /*
+    Rekord bez ceny to nieudany przelot, nie ogłoszenie za darmo.
+
+    6 października w bazie było 212 takich wpisów - 211 z Otomoto - i tylko
+    jeden z nich miał kiedykolwiek cenę. Tytuły mówią resztę: puste,
+    "Ogłoszenie Otomoto", "Błąd 404". Scraper zapisał nawet stronę błędu jako
+    pełnoprawne ogłoszenie.
+
+    Żaden z nich nie jest w sitemapie ani linkowany z serwisu, więc Google nie
+    ma jak ich znaleźć - ale strona odpowiadała 200 i była indeksowalna, więc
+    wystarczyłby jeden link z zewnątrz, żeby do wyników trafiła strona
+    zatytułowana "Błąd 404" w serwisie o rzetelnej historii cen.
+
+    `index: false` zamyka tę furtkę niezależnie od tego, kiedy poprawimy samego
+    scrapera. `follow: true`, bo linki na stronie prowadzą do zdrowych ogłoszeń
+    i nie ma powodu ich zrywać.
+  */
+  if (!listing.current_price || listing.current_price <= 0) {
+    return {
+      title: 'Ogłoszenie bez danych | obczajone.pl',
+      description: 'Nie udało się pobrać danych tego ogłoszenia.',
+      robots: { index: false, follow: true },
+    };
+  }
+
+  /*
     Zdjęte ogłoszenie dostaje inny tytuł niż żywe, bo odpowiada na inne pytanie.
 
     Przy żywym człowiek zastanawia się, czy kupić. Przy zdjętym - co się z nim
