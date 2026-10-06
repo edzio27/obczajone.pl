@@ -55,9 +55,32 @@ export async function attachPriceChanges(
   });
 }
 
+/**
+ * Kolejne strony bierzemy kursorem, nie offsetem.
+ *
+ * `.range(from, ...)` liczy od początku zbioru, a zbiór rośnie pod ręką:
+ * scraper dopisuje ogłoszenia seriami o :07, :20 i :50, po kilkadziesiąt naraz.
+ * Między pobraniem pierwszej a drugiej strony wszystko przesuwa się w dół, więc
+ * offset 9 trafia w wiersze NOWSZE niż te już pokazane - i czytelnik widzi
+ * "20 minut temu" pod "około godziny temu". Tak to wyglądało 6 października.
+ *
+ * Kursor `created_at` tego nie ma: pytamy o wiersze starsze od ostatniego, więc
+ * dopisywanie nowych na górze nie rusza tego, co już zostało pokazane. Ta sama
+ * poprawka co we wrześniu w sitemapie, gdzie paginacja po przestawianym polu
+ * gubiła i duplikowała adresy.
+ */
 export async function fetchRecentListings(
   supabase: SupabaseClient,
-  { pageSize = 9, page = 0, search = '' }: { pageSize?: number; page?: number; search?: string } = {}
+  {
+    pageSize = 9,
+    search = '',
+    before,
+  }: {
+    pageSize?: number;
+    search?: string;
+    /** Ostatni już pokazany wiersz: od niego ruszamy w dół. */
+    before?: { created_at: string; id: string };
+  } = {}
 ): Promise<HomeListing[]> {
   let query = supabase.from('listings').select('*, reviews(rating)').gt('current_price', 0);
 
@@ -65,10 +88,26 @@ export async function fetchRecentListings(
     query = query.ilike('title', `%${search}%`);
   }
 
-  const from = page * pageSize;
+  /*
+    Kursor złożony z czasu I identyfikatora, nie z samego czasu.
+
+    Scraper wstawia seriami, więc kilkanaście ogłoszeń dzieli co do sekundy ten
+    sam `created_at` - w pomiarze z 6 października pięć wierszy pod rząd miało
+    18:50:01. Samo "starsze niż znacznik kursora" wycięłoby całą taką grupę
+    razem z wierszami, których czytelnik jeszcze nie widział. Dokładamy więc
+    drugi warunek: ten sam czas, ale mniejszy identyfikator.
+  */
+  if (before) {
+    query = query.or(
+      `created_at.lt.${before.created_at},` +
+        `and(created_at.eq.${before.created_at},id.lt.${before.id})`
+    );
+  }
+
   const { data, error } = await query
     .order('created_at', { ascending: false })
-    .range(from, from + pageSize - 1);
+    .order('id', { ascending: false })
+    .limit(pageSize);
 
   /*
     Błąd bazy to nie to samo co brak ogłoszeń.

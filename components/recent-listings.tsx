@@ -21,7 +21,6 @@ export function RecentListings({ pageSize = 9, initialListings = [] }: RecentLis
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(false);
   const [hasMore, setHasMore] = useState(initialListings.length === pageSize);
-  const [page, setPage] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
 
@@ -48,7 +47,6 @@ export function RecentListings({ pageSize = 9, initialListings = [] }: RecentLis
 
       const data = await fetchRecentListings(supabase, {
         pageSize,
-        page: 0,
         search: debouncedQuery,
       });
 
@@ -56,7 +54,6 @@ export function RecentListings({ pageSize = 9, initialListings = [] }: RecentLis
 
       setListings(data);
       setHasMore(data.length === pageSize);
-      setPage(0);
       setLoading(false);
     }
 
@@ -67,19 +64,22 @@ export function RecentListings({ pageSize = 9, initialListings = [] }: RecentLis
     };
   }, [pageSize, debouncedQuery]);
 
+  /*
+    Dociągamy to, co starsze od ostatniego już pokazanego wiersza - stąd
+    `before`. Numer strony nie wystarczał, bo zbiór rośnie między kliknięciami.
+  */
   async function loadMore() {
     setLoadingMore(true);
-    const nextPage = page + 1;
+    const ostatni = listings[listings.length - 1];
 
     const data = await fetchRecentListings(supabase, {
       pageSize,
-      page: nextPage,
+      before: ostatni ? { created_at: ostatni.created_at, id: ostatni.id } : undefined,
       search: debouncedQuery,
     });
 
     setListings((prev) => [...prev, ...data]);
     setHasMore(data.length === pageSize);
-    setPage(nextPage);
     setLoadingMore(false);
   }
 
