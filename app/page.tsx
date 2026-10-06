@@ -176,15 +176,32 @@ export default async function Home() {
             ogłoszenie. Objaśnienia zeszły niżej, do FAQ, gdzie szuka ich ten,
             komu wciąż czegoś brakuje.
           */}
+          {/*
+            Na górze to, co się zmienia codziennie.
+
+            Do 6 października pierwszą sekcją były opinie. Liczby pokazały, że
+            to zły wybór: szesnaście zatwierdzonych opinii na dwunastu
+            ogłoszeniach, najnowsza z 30 sierpnia - czyli odwiedzający od
+            pięciu tygodni oglądał dokładnie to samo. W tym samym czasie
+            scraper dołożył 1174 ogłoszenia w tydzień i zaobserwował zmiany
+            cen na 1645. Pierwsze wrażenie brało się więc z najwolniej
+            rosnącego zasobu, jaki mamy.
+
+            Opinie nie znikają - schodzą niżej, gdzie są tym, czym są
+            naprawdę: dowodem, że ktoś tam pojechał, a nie świeżością.
+          */}
           <section className="pt-4" aria-labelledby="ostatnio-sprawdzone">
             <SectionHeading
               id="ostatnio-sprawdzone"
-              eyebrow="Świeżo sprawdzone"
-              icon={Eye}
-              title="Zobacz, co znaleźli inni"
-              description="Oferty, przy których ktoś już zostawił opinię albo wyłapał zmianę ceny."
+              eyebrow="Ostatnio sprawdzone"
+              icon={Search}
+              title="Co sprawdzano przed chwilą"
+              description="Oferty wklejone i odświeżone najpóźniej — z historią ceny i opiniami."
             />
-            <RecentReviews listings={recentlyReviewed} showMoreButton={true} />
+            <RecentListings
+              pageSize={RECENT_LISTINGS_PAGE_SIZE}
+              initialListings={recentListings}
+            />
           </section>
 
           <RecentlyInspected listings={recentlyInspected} />
@@ -213,18 +230,15 @@ export default async function Home() {
 
           <PartnersSection partners={partners} />
 
-          <section className="mt-20" aria-labelledby="wszystkie-ogloszenia">
+          <section className="mt-20" aria-labelledby="co-znalezli-inni">
             <SectionHeading
-              id="wszystkie-ogloszenia"
-              eyebrow="Baza ofert"
-              icon={Search}
-              title="Wszystkie sprawdzone ogłoszenia"
-              description="Każda oferta, którą ktokolwiek tu wkleił — z historią ceny i opiniami."
+              id="co-znalezli-inni"
+              eyebrow="Oględziny na żywo"
+              icon={Eye}
+              title="Zobacz, co znaleźli inni"
+              description="Oferty, przy których ktoś już zostawił opinię po obejrzeniu na miejscu."
             />
-            <RecentListings
-              pageSize={RECENT_LISTINGS_PAGE_SIZE}
-              initialListings={recentListings}
-            />
+            <RecentReviews listings={recentlyReviewed} showMoreButton={true} />
           </section>
 
           <HowItWorks />
