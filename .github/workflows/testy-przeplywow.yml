@@ -168,6 +168,43 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
 
+      - name: Scraper nie zapisuje ogłoszeń bez ceny
+        run: |
+          # Rekord z ceną zero zawsze oznaczał nieudany odczyt, nie ofertę za
+          # darmo: 6 października było ich 212, w tym siedemnaście zatytułowanych
+          # "Błąd 404". Scraper od tego dnia odmawia zapisu, gdy nie wyciągnął
+          # ceny - ten krok pilnuje, czy odmawia naprawdę.
+          #
+          # Liczymy od chwili wdrożenia poprawki, nie z ostatniej doby.
+          # Okno kroczące dawałoby fałszywy alarm przez pierwszą dobę, bo
+          # łapałoby rekordy sprzed naprawy - a monitoring, który krzyczy bez
+          # powodu, uczy ignorowania maili. Data jest stała celowo: ten licznik
+          # ma prawo rosnąć wyłącznie wtedy, gdy odmowa zapisu przestanie
+          # działać, i wtedy ma zostać czerwony aż do naprawy.
+          if [ -z "${SUPABASE_URL}" ] || [ -z "${SUPABASE_ANON_KEY}" ]; then
+            echo "Brak sekretów repozytorium: SUPABASE_URL i/lub SUPABASE_ANON_KEY."
+            exit 1
+          fi
+
+          od='2026-10-06T19:10:00Z'   # wdrożenie poprawki w scrape-listing
+
+          ile=$(curl -s --max-time 25 -o /dev/null -D - \
+            "${SUPABASE_URL}/rest/v1/listings?select=id&current_price=eq.0&first_seen_at=gte.${od}" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Prefer: count=exact" -H "Range: 0-0" \
+            | grep -i '^content-range:' | sed 's|.*/||' | tr -d '\r' || true)
+
+          echo "Ogłoszeń bez ceny zapisanych po naprawie: ${ile:-?}"
+
+          if [ -n "$ile" ] && [ "$ile" -gt 0 ] 2>/dev/null; then
+            echo "Scraper nadal zapisuje rekordy bez ceny - odmowa zapisu nie działa."
+            exit 1
+          fi
+          echo "OK - żaden nieudany odczyt nie trafił do bazy."
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+
       - name: Żadna kluczowa strona nie zwraca 5xx
         run: |
           bledne=""
