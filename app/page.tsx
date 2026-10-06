@@ -204,12 +204,14 @@ export default async function Home() {
             />
           </section>
 
-          <RecentlyInspected listings={recentlyInspected} />
+          {/*
+            Obniżki tuż za listą ostatnio sprawdzonych.
 
-          {/* Argument komercyjny stoi dopiero tutaj - po tym, jak czytelnik
-              zobaczył, że serwis coś realnie sprawdził, a nie przed. */}
-          <InspectionCta partners={partners} />
-
+            To jedyna sekcja poza samą listą, która odświeża się codziennie -
+            w tygodniu kończącym 6 października ceny ruszyły na 1645
+            ogłoszeniach. Jest też najbliżej pytania, z którym ludzie tu
+            przychodzą: nie "co ktoś o tym sądzi", tylko "ile da się utargować".
+          */}
           <BiggestPriceDrops listings={priceDrops} />
 
           {/*
@@ -228,7 +230,17 @@ export default async function Home() {
             />
           </Reveal>
 
-          <PartnersSection partners={partners} />
+          {/*
+            Werdykty i opinie stoją razem i niżej.
+
+            Obie sekcje mówią to samo - ktoś pojechał i obejrzał - i obie rosną
+            najwolniej w całym serwisie: dziesięć oględzin, najnowsza z 2
+            września, i szesnaście opinii, najnowsza z 30 sierpnia. Jako
+            pierwsze wrażenie dawały obraz serwisu, który stanął; tutaj robią
+            to, do czego się nadają, czyli pokazują, że za liczbami stoi
+            czyjaś wizyta na miejscu.
+          */}
+          <RecentlyInspected listings={recentlyInspected} />
 
           <section className="mt-20" aria-labelledby="co-znalezli-inni">
             <SectionHeading
@@ -240,6 +252,12 @@ export default async function Home() {
             />
             <RecentReviews listings={recentlyReviewed} showMoreButton={true} />
           </section>
+
+          {/* Argument komercyjny stoi dopiero tutaj - po tym, jak czytelnik
+              zobaczył, że serwis coś realnie sprawdził, a nie przed. */}
+          <InspectionCta partners={partners} />
+
+          <PartnersSection partners={partners} />
 
           <HowItWorks />
           <WhyUs />
