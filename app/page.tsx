@@ -20,6 +20,7 @@ import { Reveal } from '@/components/motion/reveal';
 import { Eye, Search } from 'lucide-react';
 import type { Metadata } from 'next';
 import { fetchPartners } from '@/lib/partner-data';
+import { fetchModelTrends } from '@/lib/price-trends';
 import { klientSerwerowy } from '@/lib/supabase-server';
 import {
   fetchBiggestPriceDrops,
@@ -62,6 +63,7 @@ async function getHomeData() {
       recentlyInspected,
       dealerMapCounts,
       partners,
+      modelTrends,
     ] = await Promise.all([
       fetchHomeStats(supabase),
       fetchHeroSpotlight(supabase),
@@ -71,6 +73,7 @@ async function getHomeData() {
       fetchRecentlyInspected(supabase),
       fetchDealerMapCounts(supabase),
       fetchPartners(supabase),
+      fetchModelTrends(supabase),
     ]);
 
     return {
@@ -82,6 +85,17 @@ async function getHomeData() {
       recentlyInspected,
       dealerMapCounts,
       partners,
+      /*
+        Sześć modeli o największej próbce - tyle mieści się w jednym rzędzie na
+        telefonie i tyle wystarczy, żeby ktoś rozpoznał swój. Reszta jest pod
+        "Wszystkie modele".
+      */
+      heroModels: modelTrends.slice(0, 6).map((t) => ({
+        slug: t.slug,
+        brand: t.brand,
+        model: t.model,
+        medianDropPercent: t.medianDropPercent,
+      })),
     };
   } catch (error) {
     /*
@@ -128,6 +142,7 @@ async function getHomeData() {
       recentlyInspected: [],
       dealerMapCounts: { sellerCount: null, reviewCount: null },
       partners: [],
+      heroModels: [],
     };
   }
 }
@@ -142,6 +157,7 @@ export default async function Home() {
     recentlyInspected,
     dealerMapCounts,
     partners,
+    heroModels,
   } = await getHomeData();
 
   const faqJsonLd = {
@@ -165,7 +181,7 @@ export default async function Home() {
       />
       <Header />
 
-      <Hero stats={stats} spotlight={spotlight} />
+      <Hero stats={stats} spotlight={spotlight} models={heroModels} />
 
       <main className="container mx-auto px-4 pb-8">
         <div className="max-w-6xl mx-auto">

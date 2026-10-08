@@ -5,8 +5,17 @@ import { HeroSpotlight } from '@/components/home/hero-spotlight';
 import { CountUp } from '@/components/motion/count-up';
 import type { HeroSpotlight as Spotlight, HomeStats } from '@/lib/home-data';
 
+export type HeroModel = {
+  slug: string;
+  brand: string;
+  model: string;
+  medianDropPercent: number | null;
+};
+
 type HeroProps = {
   stats: HomeStats;
+  /** Kilka modeli dla kogoś, kto nie ma linku pod ręką. */
+  models?: HeroModel[];
   /** Prawdziwa oferta z bazy pod wykres. Bez niej nagłówek jest jednokolumnowy. */
   spotlight: Spotlight | null;
 };
@@ -21,7 +30,7 @@ type HeroProps = {
  * obie ścieżki stoją obok siebie jako równorzędne karty, a płatna ma kolor
  * zarezerwowany wyłącznie dla niej.
  */
-export function Hero({ stats, spotlight }: HeroProps) {
+export function Hero({ stats, spotlight, models = [] }: HeroProps) {
   // Liczba poniżej progu działa gorzej niż jej brak - "12 sprawdzonych ogłoszeń"
   // mówi odwiedzającemu, że jest tu pierwszy.
   const tiles = [
@@ -91,9 +100,62 @@ export function Hero({ stats, spotlight }: HeroProps) {
             )}
           </div>
 
-          <div className="mt-8 animate-fade-in" style={{ animationDelay: '180ms' }}>
-            <ListingUrlForm tone="ink" />
-          </div>
+        <div className="mt-8 animate-fade-in" style={{ animationDelay: '180ms' }}>
+          <ListingUrlForm tone="ink" />
+        </div>
+
+        {/*
+            Trzecia droga: dla kogoś, kto nie ma linku.
+
+            Formularz wyżej wymaga rzeczy, której większość odwiedzających nie
+            ma pod ręką. 8 października dane pokazały, co z tego wynika: ruch
+            przychodzi z wyszukiwania samej nazwy serwisu, ląduje tutaj,
+            przegląda trzy podstrony i wychodzi, a wstawianie ogłoszeń nie ma
+            rytmu dobowego - czyli ludzie praktycznie nie wklejają linków.
+
+            Kto słyszał o serwisie, ma zwykle w głowie model, nie konkretne
+            ogłoszenie. "Ile spada cena golfa" to pytanie, które może zadać
+            każdy, kto tu trafił - i prowadzi na stronę, która na nie
+            odpowiada, zamiast na kotwicę niżej na tej samej stronie.
+
+            Procent przy nazwie jest tu celowo: odpowiada na pytanie, zanim
+            ktokolwiek kliknie, więc kafelek niesie wartość sam w sobie.
+          */}
+          {models.length > 0 && (
+            <div className="mt-6 animate-fade-in" style={{ animationDelay: '210ms' }}>
+              <p className="text-[13px] text-white/55">
+                Nie masz linku pod ręką? Zobacz, ile schodzi na konkretnym modelu:
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {models.map((m) => (
+                  <Link
+                    key={m.slug}
+                    href={`/ile-spada-cena/${m.slug}`}
+                    className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-3.5 py-1.5 text-[13px] text-white/85 transition-colors hover:bg-white/[0.12] hover:border-white/30"
+                  >
+                    <span className="font-medium">
+                      {m.brand} {m.model}
+                    </span>
+                    {m.medianDropPercent != null && (
+                      <span className="tabular text-white/55">
+                        −{Math.abs(m.medianDropPercent).toLocaleString('pl-PL', {
+                            minimumFractionDigits: 1,
+                            maximumFractionDigits: 1,
+                          })}%
+                      </span>
+                    )}
+                  </Link>
+                ))}
+                <Link
+                  href="/ile-spada-cena"
+                  className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[13px] font-semibold text-white/70 hover:text-white transition-colors"
+                >
+                  Wszystkie modele
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
+            </div>
+          )}
 
           {/* Dwie drogi, dwa kafelki. Lewy - to, po co ludzie tu trafiają
               z Google. Prawy - to, z czego serwis żyje. */}
