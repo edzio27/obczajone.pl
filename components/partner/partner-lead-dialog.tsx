@@ -18,7 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
 import { Loader as Loader2, CircleCheck as CheckCircle2 } from 'lucide-react';
 
-export type LeadContext = 'partner_page' | 'listing_cta' | 'partners_page';
+export type LeadContext = 'partner_page' | 'listing_cta' | 'partners_page' | 'alert';
 
 type PartnerLeadDialogProps = {
   partnerId: string;

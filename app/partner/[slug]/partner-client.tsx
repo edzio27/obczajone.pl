@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/lib/supabase';
+import { useSearchParams } from 'next/navigation';
 import { logPartnerClick } from '@/lib/partner-clicks';
 import { PartnerStars } from '@/components/partner/partner-stars';
 import { PromotedBadge, VerifiedBadge } from '@/components/partner/partner-badges';
@@ -49,6 +50,16 @@ type PartnerClientProps = {
 };
 
 export function PartnerClient({ partner, initialReviews, inspections }: PartnerClientProps) {
+  /*
+    Klik z maila alertowego liczy się osobno.
+
+    Bez tego rozróżnienia 27 kliknięć w partnerów i zero leadów nie mówi nic
+    o tym, który kanał zawodzi - a cały sens dołożenia oferty do alertów polega
+    na tym, żeby dało się to zmierzyć.
+  */
+  const zrodloAlert = useSearchParams().get('z') === 'alert';
+  const kanal = zrodloAlert ? ('alert' as const) : ('partners_page' as const);
+
   const [reviews, setReviews] = useState<PartnerReview[]>(initialReviews);
 
   const refreshReviews = useCallback(async () => {
@@ -117,7 +128,7 @@ export function PartnerClient({ partner, initialReviews, inspections }: PartnerC
                 <PartnerLeadDialog
                   partnerId={partner.id}
                   partnerName={partner.name}
-                  context="partner_page"
+                  context={zrodloAlert ? 'alert' : 'partner_page'}
                 >
                   <Button variant="signal" size="lg">
                     Zamów sprawdzenie
@@ -138,7 +149,7 @@ export function PartnerClient({ partner, initialReviews, inspections }: PartnerC
                     href={partner.website || partner.contact_url}
                     target="_blank"
                     rel="noopener noreferrer nofollow"
-                    onClick={() => logPartnerClick(partner.id, 'partners_page')}
+                    onClick={() => logPartnerClick(partner.id, kanal)}
                   >
                     <Globe className="h-4 w-4 mr-2" />
                     Strona firmy

@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
 
-type PartnerClickContext = 'listing_cta' | 'homepage' | 'partners_page';
+type PartnerClickContext = 'listing_cta' | 'homepage' | 'partners_page' | 'alert';
 
 export function logPartnerClick(
   partnerId: string,

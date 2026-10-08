@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { LeafletMapView, escapeHtml, type MapMarker } from '@/components/leaflet-map';
@@ -47,6 +48,18 @@ type PartnersMapClientProps = {
 };
 
 export function PartnersMapClient({ initialPartners, latestInspections }: PartnersMapClientProps) {
+  /*
+    Skąd przyszedł czytelnik, przeniesione dalej w adresie.
+
+    Mail alertowy linkuje tu z `?z=alert`. Bez przekazania tego znacznika do
+    profilu partnera klik z maila byłby nie do odróżnienia od wejścia z katalogu
+    i po dwóch tygodniach znowu nie wiedzielibyśmy, czy kanał cokolwiek daje.
+    Parametr w adresie zamiast stanu globalnego, bo przeżywa odświeżenie
+    i udostępnienie linku.
+  */
+  const parametry = useSearchParams();
+  const zrodlo = parametry.get('z') === 'alert' ? '?z=alert' : '';
+
   const [category, setCategory] = useState('all');
   const [voivodeship, setVoivodeship] = useState('all');
 
@@ -206,7 +219,7 @@ export function PartnersMapClient({ initialPartners, latestInspections }: Partne
               }`}
             >
               {filteredPartners.map((partner) => (
-                <Link key={partner.id} href={`/partner/${partner.slug}`} className="block">
+                <Link key={partner.id} href={`/partner/${partner.slug}${zrodlo}`} className="block">
                   <Card className="p-4 hover:shadow-md hover:border-primary/30 transition-all cursor-pointer">
                     <div className="flex items-start gap-4">
                       {partner.logo_url && (

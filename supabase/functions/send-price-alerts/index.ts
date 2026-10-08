@@ -27,6 +27,40 @@ function formatPln(value: number): string {
   return `${Math.round(value).toLocaleString('pl-PL')} zł`;
 }
 
+/*
+  Oferta oględzin w mailu alertowym.
+
+  Sześć tygodni pilotażu partnerskiego dało 27 kliknięć i zero wypełnionych
+  formularzy. Formularz działa - sprawdzone zapisem przez klucz publiczny.
+  Brakuje nie mechanizmu, tylko momentu: odwiedzający trafiają na stronę główną
+  z wyszukiwania po nazwie, bez konkretnego auta w głowie, a oferta oględzin
+  leży o jedno kliknięcie głębiej, na stronie ogłoszenia.
+
+  Ten mail jest odwrotnością tamtej sytuacji. Wiemy, kto go czyta, wiemy, które
+  ogłoszenie obserwuje, i wiemy, że właśnie dostał powód, żeby działać. To
+  najcieplejszy kontakt, jaki ma ten serwis - i do dziś nie niósł ani słowa
+  o tym, że ktoś może to auto obejrzeć.
+
+  `?z=alert` nie jest ozdobą: bez niego klik z maila byłby nie do odróżnienia
+  od wejścia ze strony partnerów i za dwa tygodnie znowu zgadywalibyśmy, czy
+  kanał działa.
+
+  Jedno zdanie, nie reklama. Mail ma służyć czytelnikowi; gdyby zaczął wyglądać
+  na wysyłkę handlową, stracimy kanał, zanim cokolwiek przyniesie.
+*/
+function blokOgledzin(): string {
+  return `
+      <div style="border-top:1px solid #eee;margin:0 0 20px;padding-top:16px">
+        <p style="color:#444;margin:0;font-size:14px">
+          Zanim wpłacisz zaliczkę — ktoś z okolicy może pojechać i obejrzeć
+          to auto albo mieszkanie na żywo, i wystawić werdykt.
+          <a href="${SITE_URL}/partnerzy?z=alert" style="color:#111;font-weight:600">
+            Zobacz, kto sprawdza w Twoim regionie
+          </a>.
+        </p>
+      </div>`;
+}
+
 function buildEmail(drops: Drop[], unsubscribeToken?: string): { subject: string; html: string } {
   const subject =
     drops.length === 1
@@ -56,6 +90,7 @@ function buildEmail(drops: Drop[], unsubscribeToken?: string): { subject: string
         To dobry moment na negocjacje.
       </p>
       <ul style="padding-left:18px;margin:0 0 24px">${items}</ul>
+      ${blokOgledzin()}
       <p style="color:#777;font-size:12px;margin:0">
         Dostajesz tę wiadomość, bo włączyłeś powiadomienia o cenie w serwisie obczajone.pl.
         ${unsubscribeToken
@@ -113,6 +148,7 @@ function buildModelEmail(
       <p style="font-size:16px;margin:0 0 4px">Obserwujesz: <strong>${kryterium}</strong></p>
       <p style="color:#555;margin:0 0 20px">${offers.length === 1 ? 'Pojawiła się oferta, której wcześniej nie było.' : 'Pojawiły się oferty, których wcześniej nie było.'}</p>
       <ul style="padding-left:18px;margin:0 0 24px">${items}</ul>
+      ${blokOgledzin()}
       <p style="font-size:13px;color:#777;margin:0">
         Cenę każdej z nich śledzimy codziennie — jeśli sprzedający zejdzie, zobaczysz to na stronie ogłoszenia.<br>
         <a href="${SITE_URL}/wypisz/${unsubscribeToken}" style="color:#777">Wypisz się jednym kliknięciem</a>.
