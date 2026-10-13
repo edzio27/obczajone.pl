@@ -106,6 +106,19 @@ export function ListingClient({
     };
   }, [listingId, reviewRefresh]);
 
+  // Oglądane ogłoszenia trafiają do kolejki z codzienną ceną (cron :27).
+  // Zapis idzie z przeglądarki, bo strona jest w cache'u i render serwerowy
+  // nie widzi pojedynczych wejść. Roboty pomijamy, inaczej crawler Google
+  // wpisałby do kolejki całą sitemapę.
+  const isActive = listing?.is_active ?? false;
+  useEffect(() => {
+    if (!isActive) return;
+    if (navigator.webdriver || /bot|crawl|spider|slurp|headless|lighthouse/i.test(navigator.userAgent)) {
+      return;
+    }
+    supabase.rpc('mark_listing_viewed', { p_listing_id: listingId }).then(() => {});
+  }, [listingId, isActive]);
+
   useEffect(() => {
     async function checkFavorite() {
       if (!user || !listingId) return;

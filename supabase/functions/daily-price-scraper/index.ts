@@ -222,20 +222,31 @@ Deno.serve(async (req: Request) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { data: listings, error: listingsError } = await supabase
-      .from('listings')
-      .select('id, url, source, current_price, specs')
-      /*
-        Wygaszonych nie odpytujemy. Do tej pory `is_active` nie znaczylo nic -
-        zadne miejsce w kodzie go nie ustawialo i zadne po nim nie filtrowalo -
-        wiec oferty zdjete z Otomoto krazyly w kolejce w nieskonczonosc, zjadajac
-        miejsca w partii ogloszeniom, ktore jeszcze zyja.
-      */
-      .eq('is_active', true)
-      // Najdawniej sprawdzane najpierw - dzięki temu kolejne przebiegi
-      // przesuwają się po całej bazie zamiast krążyć wokół najnowszych.
-      .order('last_checked_at', { ascending: true, nullsFirst: true })
-      .limit(BATCH_SIZE);
+    /*
+      Dwie kolejki, ten sam przebieg. `watched` (cron :27) to ogloszenia, ktore
+      ktos ostatnio ogladal albo obserwuje - te maja dostawac cene codziennie.
+      Bez trybu (cron :07) idziemy po calej bazie, od najdawniej sprawdzanych.
+    */
+    const body = await req.json().catch(() => ({}));
+    const mode = body?.mode === 'watched' ? 'watched' : 'sweep';
+
+    const { data: listings, error: listingsError } =
+      mode === 'watched'
+        ? await supabase.rpc('watched_listings_due', { p_limit: BATCH_SIZE })
+        : await supabase
+            .from('listings')
+            .select('id, url, source, current_price, specs')
+            /*
+              Wygaszonych nie odpytujemy. Do tej pory `is_active` nie znaczylo nic -
+              zadne miejsce w kodzie go nie ustawialo i zadne po nim nie filtrowalo -
+              wiec oferty zdjete z Otomoto krazyly w kolejce w nieskonczonosc, zjadajac
+              miejsca w partii ogloszeniom, ktore jeszcze zyja.
+            */
+            .eq('is_active', true)
+            // Najdawniej sprawdzane najpierw - dzięki temu kolejne przebiegi
+            // przesuwają się po całej bazie zamiast krążyć wokół najnowszych.
+            .order('last_checked_at', { ascending: true, nullsFirst: true })
+            .limit(BATCH_SIZE);
 
     if (listingsError) {
       throw new Error(`Failed to fetch listings: ${listingsError.message}`);
@@ -387,6 +398,7 @@ Deno.serve(async (req: Request) => {
     return new Response(
       JSON.stringify({
         success: true,
+        mode,
         total: listings?.length || 0,
         successCount,
         failCount,
