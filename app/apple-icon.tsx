@@ -1,5 +1,5 @@
 import { ImageResponse } from 'next/server';
-import { LogoMark } from '@/components/brand/logo-mark';
+import { LogoMark, BRAND_BLUE_HEX } from '@/components/brand/logo-mark';
 
 export const size = { width: 180, height: 180 };
 export const contentType = 'image/png';
@@ -17,7 +17,7 @@ export default function AppleIcon() {
           background: '#F8F9FA',
         }}
       >
-        <LogoMark size={120} />
+        <LogoMark size={120} color={BRAND_BLUE_HEX} />
       </div>
     ),
     { ...size }

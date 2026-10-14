@@ -1,5 +1,5 @@
 import { ImageResponse } from 'next/server';
-import { LogoMark } from '@/components/brand/logo-mark';
+import { LogoMark, BRAND_BLUE_HEX } from '@/components/brand/logo-mark';
 
 export const runtime = 'edge';
 
@@ -16,7 +16,7 @@ export async function GET() {
           background: '#F8F9FA',
         }}
       >
-        <LogoMark size={340} />
+        <LogoMark size={340} color={BRAND_BLUE_HEX} />
       </div>
     ),
     { width: 512, height: 512 }

@@ -1,7 +1,7 @@
 import { ImageResponse } from 'next/server';
-import { LogoMark } from '@/components/brand/logo-mark';
+import { LogoMark, BRAND_BLUE_HEX } from '@/components/brand/logo-mark';
 
-export const alt = 'obczajone.pl — historia cen i opinie o ogłoszeniach';
+export const alt = 'obczajone.pl — historia cen i archiwum ofert z Otomoto i Otodom';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
@@ -21,15 +21,15 @@ export default function OpengraphImage() {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 24, marginBottom: 40 }}>
-          <LogoMark size={90} />
+          <LogoMark size={90} color={BRAND_BLUE_HEX} />
           <span style={{ fontSize: 64, fontWeight: 800, display: 'flex' }}>
             <span style={{ color: 'white' }}>obczajone</span>
             <span style={{ color: '#175CE0' }}>.pl</span>
           </span>
         </div>
-        {/* ASCII-only: Satori has no loaded font here that covers Polish diacritics */}
+        {/* ASCII-only: Satori has no loaded font here that covers Polish diacritics, so the wording avoids them instead of misspelling */}
         <span style={{ fontSize: 32, color: '#CBD5E1', textAlign: 'center', display: 'flex' }}>
-          Sprawdz historie cen i opinie o ogloszeniach z Otomoto i Otodom
+          Historia cen i archiwum ofert z Otomoto i Otodom
         </span>
       </div>
     ),

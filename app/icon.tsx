@@ -1,7 +1,9 @@
 import { ImageResponse } from 'next/server';
-import { LogoMark } from '@/components/brand/logo-mark';
+import { LogoMark, BRAND_BLUE_HEX } from '@/components/brand/logo-mark';
 
-export const size = { width: 32, height: 32 };
+// Google pokazuje w wynikach tylko favicon o boku będącym wielokrotnością 48 px.
+// Przeglądarka przeskaluje go w karcie sama.
+export const size = { width: 96, height: 96 };
 export const contentType = 'image/png';
 
 export default function Icon() {
@@ -17,7 +19,7 @@ export default function Icon() {
           background: '#F8F9FA',
         }}
       >
-        <LogoMark size={26} />
+        <LogoMark size={78} color={BRAND_BLUE_HEX} />
       </div>
     ),
     { ...size }
