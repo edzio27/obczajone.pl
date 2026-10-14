@@ -209,6 +209,32 @@ async function scrapeOtodom(url: string): Promise<ScrapeResult> {
   }
 }
 
+/*
+  Po przebiegu prosimy stronę o odświeżenie ogłoszeń, które właśnie sprawdziliśmy.
+  Strony ogłoszeń trzymają cache 24 h, więc bez tego nowa cena pojawiała się na
+  stronie nawet dobę po tym, jak ją zapisaliśmy. Brak sekretu albo błąd strony
+  nie może wywrócić przebiegu - cena jest już w bazie, a strona odświeży się
+  sama najpóźniej po dobie.
+*/
+async function revalidateListingPages(ids: string[]): Promise<string> {
+  if (ids.length === 0) return 'nothing to revalidate';
+  const secret = Deno.env.get('REVALIDATE_SECRET');
+  if (!secret) return 'skipped: REVALIDATE_SECRET not set';
+  const siteUrl = Deno.env.get('SITE_URL') ?? 'https://obczajone.pl';
+  try {
+    const response = await fetch(`${siteUrl}/api/revalidate-listings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${secret}` },
+      body: JSON.stringify({ ids }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    return response.ok ? `revalidated ${ids.length}` : `failed: HTTP ${response.status}`;
+  } catch (error) {
+    console.error('Revalidation request failed:', error);
+    return 'failed: request error';
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, {
@@ -401,10 +427,24 @@ Deno.serve(async (req: Request) => {
       await new Promise(resolve => setTimeout(resolve, 2000));
     }
 
+    /*
+      Oglądane odświeżamy wszystkie, bo zmienia się przynajmniej „ostatnio
+      sprawdzona”. W głównym przelocie tylko te, przy których coś widać:
+      zmiana ceny albo zdjęcie ogłoszenia - inaczej odświeżalibyśmy setki
+      stron, na które i tak nikt nie wejdzie przed upływem doby.
+    */
+    const touched = results
+      .filter((r: any) =>
+        mode === 'watched' ? true : r.changed === true || String(r.error ?? '').startsWith('Advert removed')
+      )
+      .map((r: any) => r.id);
+    const revalidation = await revalidateListingPages(touched);
+
     return new Response(
       JSON.stringify({
         success: true,
         mode,
+        revalidation,
         total: listings?.length || 0,
         successCount,
         failCount,
