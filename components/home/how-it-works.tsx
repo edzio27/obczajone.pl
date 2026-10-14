@@ -1,4 +1,4 @@
-import { Link2, LineChart, MessagesSquare, ShieldCheck } from 'lucide-react';
+import { HandCoins, Link2, LineChart, ShieldCheck } from 'lucide-react';
 import { SectionHeading } from '@/components/home/section-heading';
 import { Reveal } from '@/components/motion/reveal';
 
@@ -14,9 +14,9 @@ const steps = [
     description: 'Sprawdzamy, czy cena była zmieniana i czy ogłoszenie wisiało tu wcześniej.',
   },
   {
-    icon: MessagesSquare,
-    title: 'Przeczytaj opinie',
-    description: 'Zobacz, co napisali ci, którzy tę ofertę już oglądali na żywo.',
+    icon: HandCoins,
+    title: 'Sprawdź ocenę ceny',
+    description: 'Porównujemy z podobnymi ofertami i podpowiadamy, od jakiej kwoty zacząć rozmowę.',
   },
   {
     icon: ShieldCheck,

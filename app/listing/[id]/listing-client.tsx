@@ -31,7 +31,9 @@ import { ListingPrimaryActions } from '@/components/listing-primary-actions';
 import { ListingSignals } from '@/components/listing-signals';
 import { PriceWatchForm } from '@/components/price-watch-form';
 import { coordsFromLocation } from '@/lib/geo';
-import { PriceComparisonCard } from '@/components/price-comparison-card';
+import { PriceVerdictCard } from '@/components/price-verdict-card';
+import { assessNegotiation, assessPriceVerdict } from '@/lib/price-verdict';
+import { slugifyModel } from '@/lib/model-slug';
 import { PartnerCta } from '@/components/partner-cta';
 import { VinCheckCta } from '@/components/vin-check-cta';
 import { ListingInspections } from '@/components/partner/listing-inspections';
@@ -327,6 +329,16 @@ export function ListingClient({
           watchOutFor: listing.ai_opinion_watch_out ?? [],
         }
       : null;
+
+  const modelTrend = initialData?.modelTrend ?? null;
+  const priceVerdict = assessPriceVerdict(
+    listing.current_price,
+    initialData?.priceComparison ?? null
+  );
+  // Pierwsza cena z historii, tak samo jak przy wyliczaniu zmiany ceny wyżej.
+  const negotiation = listing.is_active
+    ? assessNegotiation(listing.current_price, earliestSnapshot?.price ?? null, modelTrend)
+    : null;
 
   const listingScore = computeListingScore({
     priceChangePercent,
@@ -626,6 +638,17 @@ export function ListingClient({
               żywo, jego zdanie idzie przed opinią modelu. Specjalista stał przy
               samochodzie, model przeczytał opis. Gdy oględzin nie ma, karta
               zwraca null i opinia AI zostaje pierwsza, tak jak dotąd. */}
+          {/* Ocena ceny zaraz pod ogłoszeniem: to pytanie, z którym tu się
+              przychodzi ("czy to drogo i ile mogę zaproponować"). Niżej, za
+              opinią AI i dwoma zaproszeniami, docierała do niewielu. */}
+          <PriceVerdictCard
+            comparison={initialData?.priceComparison ?? null}
+            verdict={priceVerdict}
+            negotiation={negotiation}
+            trend={modelTrend}
+            trendSlug={modelTrend ? slugifyModel(modelTrend.brand, modelTrend.model) : null}
+          />
+
           <ListingInspections inspections={initialData?.inspections ?? []} />
 
           {aiOpinion && <AiOpinionCard opinion={aiOpinion} />}
@@ -642,10 +665,6 @@ export function ListingClient({
             listingId={listingId}
             source={listing.source as 'otomoto' | 'otodom'}
           />
-
-          {initialData?.priceComparison && (
-            <PriceComparisonCard comparison={initialData.priceComparison} />
-          )}
 
           <ListingScoreCard score={listingScore} />
 

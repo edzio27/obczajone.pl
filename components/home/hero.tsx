@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowRight, BadgeCheck, Gauge, MapPin, ShieldCheck, Star, Zap } from 'lucide-react';
+import { Archive, ArrowRight, BadgeCheck, Gauge, MapPin, ShieldCheck, Zap } from 'lucide-react';
 import { ListingUrlForm } from '@/components/listing-url-form';
 import { HeroSpotlight } from '@/components/home/hero-spotlight';
 import { CountUp } from '@/components/motion/count-up';
@@ -36,7 +36,7 @@ export function Hero({ stats, spotlight, models = [] }: HeroProps) {
   const tiles = [
     { value: stats.listingCount, min: 100, label: 'sprawdzonych ogłoszeń', icon: Gauge },
     { value: stats.inspectionCount, min: 1, label: 'oględzin na żywo', icon: BadgeCheck },
-    { value: stats.reviewCount, min: 5, label: 'opinii od kupujących', icon: Star },
+    { value: stats.archivedCount, min: 100, label: 'zdjętych ofert w archiwum', icon: Archive },
     { value: stats.partnerCount, min: 1, label: 'firm w katalogu', icon: MapPin },
   ].filter((t): t is typeof t & { value: number } => t.value != null && t.value >= t.min);
 
@@ -59,7 +59,7 @@ export function Hero({ stats, spotlight, models = [] }: HeroProps) {
                 <span className="absolute inline-flex h-full w-full rounded-full bg-signal animate-pulse-ring" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-signal" />
               </span>
-              Otomoto i Otodom — historia cen, opinie, oględziny
+              Otomoto i Otodom — historia cen, archiwum, ocena ceny
             </div>
 
             <h1
@@ -82,8 +82,9 @@ export function Hero({ stats, spotlight, models = [] }: HeroProps) {
               style={{ animationDelay: '120ms' }}
             >
               Zdjęcia w ogłoszeniu pokazują tylko to, co sprzedający chciał pokazać.
-              My pokazujemy historię ceny, opinie tych, którzy już tam pojechali —
-              a jeśli trzeba, wysyłamy kogoś na miejsce.
+              My pokazujemy, ile kosztowało miesiąc temu, czy cena odstaje od podobnych
+              ofert i od jakiej kwoty zacząć negocjacje — a jeśli trzeba, wysyłamy kogoś
+              na miejsce.
             </p>
             </div>
 
@@ -164,7 +165,7 @@ export function Hero({ stats, spotlight, models = [] }: HeroProps) {
             style={{ animationDelay: '240ms' }}
           >
             <Link
-              href="#ostatnio-sprawdzone"
+              href="#ile-da-sie-utargowac"
               className="group rounded-2xl border border-white/12 bg-white/[0.05] p-5 transition-all duration-300 ease-spring hover:bg-white/[0.09] hover:border-white/25 hover:-translate-y-0.5"
             >
               <div className="flex items-start gap-3.5">
@@ -174,8 +175,8 @@ export function Hero({ stats, spotlight, models = [] }: HeroProps) {
                 <div className="min-w-0">
                   <h2 className="text-[15px] font-bold text-white">Sprawdzam sam</h2>
                   <p className="mt-1 text-[13px] leading-relaxed text-white/60">
-                    Historia ceny, opinia AI i komentarze innych kupujących. Za darmo,
-                    bez zakładania konta.
+                    Historia ceny, ocena na tle podobnych ofert i propozycja do negocjacji.
+                    Za darmo, bez zakładania konta.
                   </p>
                   <span className="mt-2.5 inline-flex items-center gap-1.5 text-[13px] font-semibold text-white/85 group-hover:gap-2.5 transition-all">
                     Zobacz przykłady

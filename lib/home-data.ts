@@ -75,9 +75,12 @@ export async function fetchRecentListings(
     pageSize = 9,
     search = '',
     before,
+    source,
   }: {
     pageSize?: number;
     search?: string;
+    /** Tylko z jednego serwisu - strona główna pokazuje same auta. */
+    source?: 'otomoto' | 'otodom';
     /** Ostatni już pokazany wiersz: od niego ruszamy w dół. */
     before?: { created_at: string; id: string };
   } = {}
@@ -86,6 +89,10 @@ export async function fetchRecentListings(
 
   if (search) {
     query = query.ilike('title', `%${search}%`);
+  }
+
+  if (source) {
+    query = query.eq('source', source);
   }
 
   /*

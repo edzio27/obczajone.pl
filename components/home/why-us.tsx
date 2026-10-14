@@ -12,9 +12,9 @@ const reasons = [
   },
   {
     icon: Users,
-    title: 'Opinie tych, którzy tam byli',
+    title: 'Ile realnie da się utargować',
     description:
-      'Nie recenzje portalu — relacje ludzi, którzy pojechali obejrzeć dokładnie to auto albo to mieszkanie i opisali, co zastali.',
+      'Widzimy, o ile schodzą sprzedający danego modelu i po ilu dniach. Z tego bierze się propozycja na start rozmowy przy każdym ogłoszeniu.',
   },
   {
     icon: ScanSearch,
@@ -24,9 +24,9 @@ const reasons = [
   },
   {
     icon: ShieldCheck,
-    title: 'Moderacja i prawo do odpowiedzi',
+    title: 'Archiwum zdjętych ofert',
     description:
-      'Każda opinia przechodzi przez moderację, a firma, której dotyczy, ma prawo publicznie odpowiedzieć.',
+      'Otomoto kasuje ogłoszenie po sprzedaży. U nas zostaje z ostatnią ceną i historią obniżek — przydaje się, gdy auto wraca na rynek.',
   },
 ];
 

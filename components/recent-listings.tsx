@@ -13,9 +13,10 @@ type RecentListingsProps = {
   pageSize?: number;
   /** Pierwsza strona wyników wyrenderowana serwerowo - trafia do HTML-a. */
   initialListings?: HomeListing[];
+  source?: 'otomoto' | 'otodom';
 };
 
-export function RecentListings({ pageSize = 9, initialListings = [] }: RecentListingsProps) {
+export function RecentListings({ pageSize = 9, initialListings = [], source }: RecentListingsProps) {
   const [listings, setListings] = useState<HomeListing[]>(initialListings);
   const [loading, setLoading] = useState(initialListings.length === 0);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -48,6 +49,7 @@ export function RecentListings({ pageSize = 9, initialListings = [] }: RecentLis
       const data = await fetchRecentListings(supabase, {
         pageSize,
         search: debouncedQuery,
+        source,
       });
 
       if (cancelled) return;
@@ -62,7 +64,7 @@ export function RecentListings({ pageSize = 9, initialListings = [] }: RecentLis
     return () => {
       cancelled = true;
     };
-  }, [pageSize, debouncedQuery]);
+  }, [pageSize, debouncedQuery, source]);
 
   /*
     Dociągamy to, co starsze od ostatniego już pokazanego wiersza - stąd
@@ -76,6 +78,7 @@ export function RecentListings({ pageSize = 9, initialListings = [] }: RecentLis
       pageSize,
       before: ostatni ? { created_at: ostatni.created_at, id: ostatni.id } : undefined,
       search: debouncedQuery,
+      source,
     });
 
     setListings((prev) => [...prev, ...data]);

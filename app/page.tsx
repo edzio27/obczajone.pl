@@ -15,6 +15,7 @@ import { WhyUs } from '@/components/home/why-us';
 import { BiggestPriceDrops } from '@/components/biggest-price-drops';
 import { RecentlyInspected } from '@/components/recently-inspected';
 import { DealerMapTeaser } from '@/components/dealer-map-teaser';
+import { ModelDropsGrid } from '@/components/home/model-drops-grid';
 import { Faq, faqs } from '@/components/home/faq';
 import { Reveal } from '@/components/motion/reveal';
 import { Eye, Search } from 'lucide-react';
@@ -67,7 +68,7 @@ async function getHomeData() {
     ] = await Promise.all([
       fetchHomeStats(supabase),
       fetchHeroSpotlight(supabase),
-      fetchRecentListings(supabase, { pageSize: RECENT_LISTINGS_PAGE_SIZE }),
+      fetchRecentListings(supabase, { pageSize: RECENT_LISTINGS_PAGE_SIZE, source: 'otomoto' }),
       fetchRecentlyReviewedListings(supabase, 10),
       fetchBiggestPriceDrops(supabase),
       fetchRecentlyInspected(supabase),
@@ -85,6 +86,8 @@ async function getHomeData() {
       recentlyInspected,
       dealerMapCounts,
       partners,
+      // Dziewięć modeli o największej próbce: trzy rzędy na szerokim ekranie.
+      dropModels: modelTrends.slice(0, 9),
       /*
         Sześć modeli o największej próbce - tyle mieści się w jednym rzędzie na
         telefonie i tyle wystarczy, żeby ktoś rozpoznał swój. Reszta jest pod
@@ -142,6 +145,7 @@ async function getHomeData() {
       recentlyInspected: [],
       dealerMapCounts: { sellerCount: null, reviewCount: null },
       partners: [],
+      dropModels: [],
       heroModels: [],
     };
   }
@@ -157,6 +161,7 @@ export default async function Home() {
     recentlyInspected,
     dealerMapCounts,
     partners,
+    dropModels,
     heroModels,
   } = await getHomeData();
 
@@ -186,48 +191,15 @@ export default async function Home() {
       <main className="container mx-auto px-4 pb-8">
         <div className="max-w-6xl mx-auto">
           {/*
-            Dowody przed tłumaczeniem. "Jak to działa" i "Dlaczego warto" stały
-            wyżej niż cokolwiek, co serwis faktycznie zrobił - czyli odwiedzający
-            czytał dwie sekcje o nas, zanim zobaczył choć jedno sprawdzone
-            ogłoszenie. Objaśnienia zeszły niżej, do FAQ, gdzie szuka ich ten,
-            komu wciąż czegoś brakuje.
+            Na górze to, z czym tu się przychodzi: ile kosztuje auto i ile da
+            się utargować. Do 14 października pierwsza była lista „Ostatnio
+            sprawdzone”, ale przelot Otodom dokłada mieszkania co godzinę, więc
+            w praktyce wyglądała jak serwis o nieruchomościach bez lokalizacji.
+            Wyszukiwarka zostaje wyżej, w nagłówku: ludzie z Google wchodzą
+            z linkiem w schowku i to jest odpowiedź na ich zapytanie.
           */}
-          {/*
-            Na górze to, co się zmienia codziennie.
+          <ModelDropsGrid trends={dropModels} />
 
-            Do 6 października pierwszą sekcją były opinie. Liczby pokazały, że
-            to zły wybór: szesnaście zatwierdzonych opinii na dwunastu
-            ogłoszeniach, najnowsza z 30 sierpnia - czyli odwiedzający od
-            pięciu tygodni oglądał dokładnie to samo. W tym samym czasie
-            scraper dołożył 1174 ogłoszenia w tydzień i zaobserwował zmiany
-            cen na 1645. Pierwsze wrażenie brało się więc z najwolniej
-            rosnącego zasobu, jaki mamy.
-
-            Opinie nie znikają - schodzą niżej, gdzie są tym, czym są
-            naprawdę: dowodem, że ktoś tam pojechał, a nie świeżością.
-          */}
-          <section className="pt-4" aria-labelledby="ostatnio-sprawdzone">
-            <SectionHeading
-              id="ostatnio-sprawdzone"
-              eyebrow="Ostatnio sprawdzone"
-              icon={Search}
-              title="Co sprawdzano przed chwilą"
-              description="Oferty wklejone i odświeżone najpóźniej — z historią ceny i opiniami."
-            />
-            <RecentListings
-              pageSize={RECENT_LISTINGS_PAGE_SIZE}
-              initialListings={recentListings}
-            />
-          </section>
-
-          {/*
-            Obniżki tuż za listą ostatnio sprawdzonych.
-
-            To jedyna sekcja poza samą listą, która odświeża się codziennie -
-            w tygodniu kończącym 6 października ceny ruszyły na 1645
-            ogłoszeniach. Jest też najbliżej pytania, z którym ludzie tu
-            przychodzą: nie "co ktoś o tym sądzi", tylko "ile da się utargować".
-          */}
           <BiggestPriceDrops listings={priceDrops} />
 
           {/*
@@ -238,6 +210,21 @@ export default async function Home() {
           <Reveal className="mt-20 block">
             <ArchiveTeaser archivedCount={stats.archivedCount} />
           </Reveal>
+
+          <section className="mt-20" aria-labelledby="ostatnio-sprawdzone">
+            <SectionHeading
+              id="ostatnio-sprawdzone"
+              eyebrow="Ostatnio sprawdzone"
+              icon={Search}
+              title="Auta, które właśnie trafiły do bazy"
+              description="Każde z historią ceny i oceną na tle podobnych ofert."
+            />
+            <RecentListings
+              pageSize={RECENT_LISTINGS_PAGE_SIZE}
+              initialListings={recentListings}
+              source="otomoto"
+            />
+          </section>
 
           <Reveal className="mt-20 block">
             <DealerMapTeaser
@@ -289,8 +276,8 @@ export default async function Home() {
                   Masz link do oferty? Sprawdź go, zanim wpłacisz zaliczkę.
                 </h2>
                 <p className="mx-auto mt-4 max-w-xl text-[15px] md:text-base text-white/65 text-pretty">
-                  Historia ceny, opinie i analiza ogłoszenia — w kilka sekund, bez konta
-                  i bez opłat.
+                  Historia ceny, ocena na tle podobnych ofert i propozycja do negocjacji —
+                  w kilka sekund, bez konta i bez opłat.
                 </p>
                 <div className="mt-8 flex justify-center">
                   <ListingUrlForm tone="ink" />
