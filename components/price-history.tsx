@@ -1,9 +1,10 @@
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { format } from 'date-fns';
+import { Button } from '@/components/ui/button';
+import { format, formatDistanceToNow } from 'date-fns';
 import { pl } from 'date-fns/locale';
-import { TrendingDown } from 'lucide-react';
+import { Bell, TrendingDown } from 'lucide-react';
 import { useId } from 'react';
 import {
   ResponsiveContainer,
@@ -26,7 +27,19 @@ type Snapshot = {
 
 type PriceHistoryProps = {
   snapshots: Snapshot[];
+  /** Kiedy ostatnio sprawdzaliśmy cenę, także bez zmiany. */
+  lastCheckedAt?: string | null;
+  /** Element z zapisem na powiadomienie, do którego przewija przycisk. */
+  watchTargetId?: string;
 };
+
+function changesLabel(count: number): string {
+  if (count === 1) return '1 zmiana ceny';
+  const lastDigit = count % 10;
+  const lastTwo = count % 100;
+  const few = lastDigit >= 2 && lastDigit <= 4 && (lastTwo < 12 || lastTwo > 14);
+  return `${count} ${few ? 'zmiany' : 'zmian'} ceny`;
+}
 
 function CustomTooltip({ active, payload, label }: any) {
   if (active && payload && payload.length) {
@@ -42,7 +55,7 @@ function CustomTooltip({ active, payload, label }: any) {
   return null;
 }
 
-export function PriceHistory({ snapshots }: PriceHistoryProps) {
+export function PriceHistory({ snapshots, lastCheckedAt, watchTargetId }: PriceHistoryProps) {
   const gradientId = useId();
 
   if (snapshots.length === 0) {
@@ -67,6 +80,52 @@ export function PriceHistory({ snapshots }: PriceHistoryProps) {
     price: s.price,
   }));
 
+  /*
+    Jeden punkt to nie „jeden pomiar”. Od 14 września zapisujemy cenę tylko
+    wtedy, gdy się zmieni, więc jeden punkt znaczy „cena stoi od tego dnia”.
+    Wykres z jedną kropką na całą szerokość strony nic nie mówił, a od
+    14 października stoi zaraz pod zdjęciem.
+  */
+  if (sorted.length === 1) {
+    const only = sorted[0];
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingDown className="h-5 w-5 text-primary" />
+            Historia ceny
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-foreground">
+            Cena <span className="font-semibold">{only.price.toLocaleString('pl-PL')} zł</span> bez
+            zmian od {format(new Date(only.scraped_at), 'd MMMM yyyy', { locale: pl })}.
+          </p>
+          {lastCheckedAt && (
+            <p className="text-sm text-muted-foreground">
+              Ostatnio sprawdzona{' '}
+              {formatDistanceToNow(new Date(lastCheckedAt), { addSuffix: true, locale: pl })}.
+              Każdą zmianę dopiszemy tutaj.
+            </p>
+          )}
+          {watchTargetId && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                const target = document.getElementById(watchTargetId);
+                target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                target?.querySelector('input')?.focus({ preventScroll: true });
+              }}
+            >
+              <Bell className="h-4 w-4 mr-2" />
+              Powiadom mnie, gdy cena spadnie
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
   const prices = data.map((d) => d.price);
   const minPrice = Math.min(...prices);
   const maxPrice = Math.max(...prices);
@@ -88,10 +147,9 @@ export function PriceHistory({ snapshots }: PriceHistoryProps) {
           Historia ceny
         </CardTitle>
         <CardDescription>
-          {snapshots.length === 1
-            ? 'Mamy tylko jeden pomiar dla tego ogłoszenia'
-            : `${snapshots.length} pomiarów ceny`}
-          {snapshots.length > 1 && priceDiff !== 0 && (
+          {changesLabel(sorted.length - 1)} od{' '}
+          {format(new Date(sorted[0].scraped_at), 'd MMMM yyyy', { locale: pl })}
+          {priceDiff !== 0 && (
             <span
               className={`ml-2 font-medium ${priceDiff < 0 ? 'text-success' : 'text-warning'}`}
             >

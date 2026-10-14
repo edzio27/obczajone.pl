@@ -34,6 +34,7 @@ import { coordsFromLocation } from '@/lib/geo';
 import { PriceVerdictCard } from '@/components/price-verdict-card';
 import { assessNegotiation, assessPriceVerdict } from '@/lib/price-verdict';
 import { slugifyModel } from '@/lib/model-slug';
+import { largePhotoUrl } from '@/lib/photo-url';
 import { PartnerCta } from '@/components/partner-cta';
 import { VinCheckCta } from '@/components/vin-check-cta';
 import { ListingInspections } from '@/components/partner/listing-inspections';
@@ -293,6 +294,21 @@ export function ListingClient({
   }
 
   const latestSnapshot = snapshots[0];
+
+  /*
+    Galeria i opis z najnowszego snapshotu, który je MA, a nie z najnowszego
+    w ogóle. Przeloty zapisują samą cenę, więc po pierwszej zmianie ceny
+    galeria znikała. 14 października bez zdjęcia pokazywało się 11 176
+    z 12 033 ogłoszeń Otomoto, choć 9 389 z nich miało zdjęcie główne
+    w `listings.image_url`. Ono jest ostatnią deską ratunku.
+  */
+  const photoSnapshot = snapshots.find((s) => s.photo_urls?.length > 0);
+  const photos: string[] = photoSnapshot
+    ? photoSnapshot.photo_urls
+    : listing.image_url
+      ? [largePhotoUrl(listing.image_url)]
+      : [];
+  const description = snapshots.find((s) => s.description?.trim())?.description ?? null;
   const earliestSnapshot = snapshots.length > 1
     ? [...snapshots].sort((a, b) => new Date(a.scraped_at).getTime() - new Date(b.scraped_at).getTime())[0]
     : null;
@@ -361,67 +377,57 @@ export function ListingClient({
 
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
-          <div className="mb-6">
+          <div>
             {(() => {
               const hasHumanReviews = reviewCount > 0 && !!averageRating;
               const hasAiOnly = !hasHumanReviews && listing.ai_opinion_rating != null;
               const showSummary = hasHumanReviews || hasAiOnly;
               const displayRating = hasHumanReviews ? averageRating! : listing.ai_opinion_rating!;
 
+              // Bez żadnej oceny karta była samym przyciskiem „Zostaw swoją
+              // opinię” nad zdjęciem auta, czyli pierwszą rzeczą na stronie.
+              // Formularz opinii i tak jest niżej.
+              if (!showSummary) return null;
+
               return (
                 <Card
-                  className={showSummary ? 'mb-4 cursor-pointer transition-colors hover:bg-muted/50' : 'mb-4'}
-                  onClick={
-                    showSummary
-                      ? () => {
-                          // Gdy podsumowanie pokazuje ocenę AI, a opinii ludzi jeszcze
-                          // nie ma, kliknięcie musi prowadzić do samej opinii AI - sekcja
-                          // opinii użytkowników mówiłaby wtedy "Brak opinii".
-                          const target = hasAiOnly ? 'opinia-ai' : 'opinie-uzytkownikow';
-                          document
-                            .getElementById(target)
-                            ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        }
-                      : undefined
-                  }
+                  className="mb-6 cursor-pointer transition-colors hover:bg-muted/50"
+                  onClick={() => {
+                    // Gdy podsumowanie pokazuje ocenę AI, a opinii ludzi jeszcze
+                    // nie ma, kliknięcie musi prowadzić do samej opinii AI - sekcja
+                    // opinii użytkowników mówiłaby wtedy "Brak opinii".
+                    const target = hasAiOnly ? 'opinia-ai' : 'opinie-uzytkownikow';
+                    document
+                      .getElementById(target)
+                      ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }}
                 >
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <CardTitle>Opinie użytkowników</CardTitle>
-                      {showSummary ? (
-                        <div className="flex items-center gap-3">
-                          {hasAiOnly && (
-                            <Badge className="bg-blue-600 text-white hover:bg-blue-600">Opinia AI</Badge>
-                          )}
-                          <div className="flex items-center gap-1">
-                            {[...Array(5)].map((_, i) => (
-                              <Star
-                                key={i}
-                                className={`h-5 w-5 ${
-                                  i < Math.round(displayRating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
-                                }`}
-                              />
-                            ))}
-                          </div>
-                          <div className="text-3xl font-bold text-gray-900">
-                            {displayRating.toFixed(1)}
-                          </div>
-                          {hasHumanReviews && (
-                            <div className="text-sm text-gray-500">
-                              {reviewCount} {reviewCount === 1 ? 'opinia' : reviewCount < 5 ? 'opinie' : 'opinii'}
-                            </div>
-                          )}
+                      <div className="flex items-center gap-3">
+                        {hasAiOnly && (
+                          <Badge className="bg-blue-600 text-white hover:bg-blue-600">Opinia AI</Badge>
+                        )}
+                        <div className="flex items-center gap-1">
+                          {[...Array(5)].map((_, i) => (
+                            <Star
+                              key={i}
+                              className={`h-5 w-5 ${
+                                i < Math.round(displayRating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
+                              }`}
+                            />
+                          ))}
                         </div>
-                      ) : (
-                        <Button onClick={() => {
-                          const reviewForm = document.querySelector('[data-review-form]');
-                          if (reviewForm) {
-                            reviewForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                          }
-                        }}>
-                          Zostaw swoją opinię
-                        </Button>
-                      )}
+                        <div className="text-3xl font-bold text-gray-900">
+                          {displayRating.toFixed(1)}
+                        </div>
+                        {hasHumanReviews && (
+                          <div className="text-sm text-gray-500">
+                            {reviewCount} {reviewCount === 1 ? 'opinia' : reviewCount < 5 ? 'opinie' : 'opinii'}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </CardHeader>
                 </Card>
@@ -430,25 +436,25 @@ export function ListingClient({
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-            {latestSnapshot?.photo_urls && latestSnapshot.photo_urls.length > 0 && (
+            {photos.length > 0 && (
               <div className="lg:col-span-2">
                 <Card className="overflow-hidden">
                   <CardContent className="p-0">
                     <div
                       className="relative bg-gray-100 cursor-pointer hover:opacity-95 transition-opacity flex items-center justify-center"
                       style={{ minHeight: '400px', maxHeight: '600px' }}
-                      onClick={() => window.open(latestSnapshot.photo_urls[selectedPhoto], '_blank')}
+                      onClick={() => window.open(photos[selectedPhoto], '_blank')}
                     >
                       <img
-                        src={latestSnapshot.photo_urls[selectedPhoto]}
+                        src={photos[selectedPhoto]}
                         alt={listing.title}
                         className="max-w-full max-h-full object-contain"
                         style={{ maxHeight: '600px' }}
                       />
                     </div>
-                    {latestSnapshot.photo_urls.length > 1 && (
+                    {photos.length > 1 && (
                       <div className="grid grid-cols-4 gap-2 p-4">
-                        {latestSnapshot.photo_urls.map((url, idx) => (
+                        {photos.map((url, idx) => (
                           <div
                             key={idx}
                             className={`relative bg-gray-100 rounded-lg overflow-hidden cursor-pointer transition-all flex items-center justify-center ${
@@ -473,7 +479,7 @@ export function ListingClient({
               </div>
             )}
 
-            <div className={latestSnapshot?.photo_urls && latestSnapshot.photo_urls.length > 0 ? '' : 'lg:col-span-3'}>
+            <div className={photos.length > 0 ? '' : 'lg:col-span-3'}>
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-2 mb-2">
@@ -592,23 +598,25 @@ export function ListingClient({
                       przy przycisku. Reszta - czyli praktycznie wszyscy, bo kont
                       jest dziesięć - dostaje to samo za jeden adres e-mail,
                       zamiast pięciu kroków rejestracji. */}
-                  {user ? (
-                    <Button
-                      onClick={togglePriceAlert}
-                      disabled={alertLoading}
-                      variant={alertEnabled ? 'default' : 'outline'}
-                      className="w-full"
-                    >
-                      {alertEnabled ? (
-                        <BellRing className="h-4 w-4 mr-2 fill-current" />
-                      ) : (
-                        <Bell className="h-4 w-4 mr-2" />
-                      )}
-                      {alertEnabled ? 'Powiadomimy o spadku ceny' : 'Powiadom mnie o spadku ceny'}
-                    </Button>
-                  ) : (
-                    <PriceWatchForm listingId={listingId} />
-                  )}
+                  <div id="powiadomienie-o-cenie">
+                    {user ? (
+                      <Button
+                        onClick={togglePriceAlert}
+                        disabled={alertLoading}
+                        variant={alertEnabled ? 'default' : 'outline'}
+                        className="w-full"
+                      >
+                        {alertEnabled ? (
+                          <BellRing className="h-4 w-4 mr-2 fill-current" />
+                        ) : (
+                          <Bell className="h-4 w-4 mr-2" />
+                        )}
+                        {alertEnabled ? 'Powiadomimy o spadku ceny' : 'Powiadom mnie o spadku ceny'}
+                      </Button>
+                    ) : (
+                      <PriceWatchForm listingId={listingId} />
+                    )}
+                  </div>
                   <Button onClick={handleShare} variant="outline" className="w-full">
                     <Share2 className="h-4 w-4 mr-2" />
                     Udostępnij
@@ -629,18 +637,20 @@ export function ListingClient({
             </div>
           </div>
 
-          {/* Opinia AI i zaproszenie do oględzin idą tuż pod ogłoszenie: to
-              jedyne dwie rzeczy na tej stronie, które mówią coś o tym konkretnym
-              aucie, a nie o rynku. Na dole strony, wśród opinii użytkowników,
-              docierały tylko do tych, którzy doscrollowali.
+          {/* Historia ceny pierwsza pod ogłoszeniem. To jedyna rzecz, której
+              nie ma na Otomoto, i powód, żeby tu wrócić: od 13 października
+              oglądane ogłoszenia dostają nową cenę codziennie. Do 14 października
+              stała pod opinią AI, trzema zaproszeniami i opisem. */}
+          <div className="mb-6">
+            <PriceHistory
+              snapshots={snapshots}
+              lastCheckedAt={listing.last_checked_at}
+              watchTargetId={listing.is_active ? 'powiadomienie-o-cenie' : undefined}
+            />
+          </div>
 
-              Kolejność w tym bloku jest celowa: jeżeli ktoś obejrzał to auto na
-              żywo, jego zdanie idzie przed opinią modelu. Specjalista stał przy
-              samochodzie, model przeczytał opis. Gdy oględzin nie ma, karta
-              zwraca null i opinia AI zostaje pierwsza, tak jak dotąd. */}
-          {/* Ocena ceny zaraz pod ogłoszeniem: to pytanie, z którym tu się
-              przychodzi ("czy to drogo i ile mogę zaproponować"). Niżej, za
-              opinią AI i dwoma zaproszeniami, docierała do niewielu. */}
+          {/* Ocena ceny zaraz za historią: odpowiada na pytanie, z którym tu
+              się przychodzi ("czy to drogo i ile mogę zaproponować"). */}
           <PriceVerdictCard
             comparison={initialData?.priceComparison ?? null}
             verdict={priceVerdict}
@@ -649,6 +659,34 @@ export function ListingClient({
             trendSlug={modelTrend ? slugifyModel(modelTrend.brand, modelTrend.model) : null}
           />
 
+          <VinCheckCta
+            context="listing"
+            listingId={listingId}
+            source={listing.source as 'otomoto' | 'otodom'}
+          />
+
+          {/* Podobne oferty tuż za oceną ceny i VIN-em: kto zobaczył, że to
+              auto jest drogie, od razu szuka innych. */}
+          {recommendedListings.length > 0 && (
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle>Podobne ogłoszenia z {listing.source}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {recommendedListings.map((rec) => (
+                    <ListingCard key={rec.id} {...rec} />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}          {/* Oględziny i opinia AI za liczbami: mówią o tym konkretnym aucie,
+              ale to cena przyciąga tu ludzi z Google.
+
+              Kolejność w tym bloku jest celowa: jeżeli ktoś obejrzał to auto na
+              żywo, jego zdanie idzie przed opinią modelu. Specjalista stał przy
+              samochodzie, model przeczytał opis. Gdy oględzin nie ma, karta
+              zwraca null i opinia AI zostaje pierwsza, tak jak dotąd. */}
           <ListingInspections inspections={initialData?.inspections ?? []} />
 
           {aiOpinion && <AiOpinionCard opinion={aiOpinion} />}
@@ -660,15 +698,9 @@ export function ListingClient({
             watchOutFor={aiOpinion?.watchOutFor ?? []}
           />
 
-          <VinCheckCta
-            context="listing"
-            listingId={listingId}
-            source={listing.source as 'otomoto' | 'otodom'}
-          />
-
           <ListingScoreCard score={listingScore} />
 
-          {latestSnapshot?.description && (
+          {description && (
             <Card className="mb-6">
               <CardHeader>
                 <CardTitle>Opis</CardTitle>
@@ -684,35 +716,12 @@ export function ListingClient({
                   needing raw HTML.
                 */}
                 <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed whitespace-pre-line">
-                  {latestSnapshot.description}
+                  {description}
                 </div>
               </CardContent>
             </Card>
           )}
 
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>Historia cen</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <PriceHistory snapshots={snapshots} />
-            </CardContent>
-          </Card>
-
-          {recommendedListings.length > 0 && (
-            <Card className="mb-6">
-              <CardHeader>
-                <CardTitle>Podobne ogłoszenia z {listing.source}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {recommendedListings.map((rec) => (
-                    <ListingCard key={rec.id} {...rec} />
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
 
           <div id="opinie-uzytkownikow">
             <ReviewForm
