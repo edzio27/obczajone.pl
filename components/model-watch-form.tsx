@@ -19,11 +19,14 @@ export function ModelWatchForm({
   brand,
   model,
   medianPrice,
+  stacked = false,
 }: {
   brand: string;
   model: string;
   /** Podpowiedź kwoty — pułap poniżej mediany jest tym, czego ludzie szukają. */
   medianPrice: number | null;
+  /** Pola jedno pod drugim - do wąskiej kolumny obok zdjęcia na stronie ogłoszenia. */
+  stacked?: boolean;
 }) {
   const { toast } = useToast();
   const [email, setEmail] = useState('');
@@ -111,7 +114,7 @@ export function ModelWatchForm({
         Szukasz takiego auta? Damy znać, gdy się pojawi
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-2">
+      <div className={stacked ? 'flex flex-col gap-2' : 'flex flex-col sm:flex-row gap-2'}>
         <Input
           type="email"
           inputMode="email"
@@ -129,9 +132,9 @@ export function ModelWatchForm({
           onChange={(e) => setMaxPrice(e.target.value)}
           placeholder={podpowiedz ? `do ${podpowiedz.toLocaleString('pl-PL')} zł` : 'do ilu zł'}
           aria-label="Maksymalna cena (opcjonalnie)"
-          className="bg-background sm:max-w-[160px]"
+          className={stacked ? 'bg-background' : 'bg-background sm:max-w-[160px]'}
         />
-        <Button type="submit" disabled={saving} className="sm:w-auto">
+        <Button type="submit" disabled={saving} className={stacked ? 'w-full' : 'sm:w-auto'}>
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Obserwuj model'}
         </Button>
       </div>

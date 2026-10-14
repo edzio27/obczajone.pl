@@ -12,7 +12,7 @@ import { ReviewForm } from '@/components/review-form';
 import { ReviewList } from '@/components/review-list';
 import { PriceHistory } from '@/components/price-history';
 import { ListingCard } from '@/components/listing-card';
-import { MapPin, Calendar, Heart, TrendingDown, TrendingUp, Share2, Store, Star, Bell, BellRing } from 'lucide-react';
+import { MapPin, Calendar, Heart, TrendingDown, TrendingUp, Share2, Store, Star, Bell, BellRing, Car, ExternalLink } from 'lucide-react';
 import { formatDistanceToNow, differenceInDays } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -30,6 +30,7 @@ import { AiOpinionCard } from '@/components/ai-opinion-card';
 import { ListingPrimaryActions } from '@/components/listing-primary-actions';
 import { ListingSignals } from '@/components/listing-signals';
 import { PriceWatchForm } from '@/components/price-watch-form';
+import { ModelWatchForm } from '@/components/model-watch-form';
 import { coordsFromLocation } from '@/lib/geo';
 import { PriceVerdictCard } from '@/components/price-verdict-card';
 import { assessNegotiation, assessPriceVerdict } from '@/lib/price-verdict';
@@ -68,6 +69,12 @@ export function ListingClient({
     initialData?.hasReportedReview ?? false
   );
   const [selectedPhoto, setSelectedPhoto] = useState(0);
+  // Zdjęcia, których CDN Otomoto już nie oddaje. Archiwalne ogłoszenia
+  // żyją u nas dłużej niż ich pliki, więc zepsuty obrazek ma zniknąć,
+  // a nie zostać pustą ramką.
+  const [failedPhotos, setFailedPhotos] = useState<Set<string>>(() => new Set());
+  const markPhotoFailed = (url: string) =>
+    setFailedPhotos((prev) => (prev.has(url) ? prev : new Set(prev).add(url)));
   const [recommendedListings, setRecommendedListings] = useState<Listing[]>(
     initialData?.recommendedListings ?? []
   );
@@ -309,6 +316,8 @@ export function ListingClient({
       ? [largePhotoUrl(listing.image_url)]
       : [];
   const description = snapshots.find((s) => s.description?.trim())?.description ?? null;
+  const visiblePhotos = photos.filter((url) => !failedPhotos.has(url));
+  const currentPhoto = visiblePhotos[Math.min(selectedPhoto, visiblePhotos.length - 1)];
   const earliestSnapshot = snapshots.length > 1
     ? [...snapshots].sort((a, b) => new Date(a.scraped_at).getTime() - new Date(b.scraped_at).getTime())[0]
     : null;
@@ -436,25 +445,29 @@ export function ListingClient({
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-            {photos.length > 0 && (
-              <div className="lg:col-span-2">
+            {/* Kolumna zdjęć jest zawsze. Bez niej strona ogłoszenia była samym
+                tekstem na całą szerokość, a tak wygląda pierwsze wejście z Google
+                na zdjęte ogłoszenie. */}
+            <div className="lg:col-span-2">
+              {currentPhoto ? (
                 <Card className="overflow-hidden">
                   <CardContent className="p-0">
                     <div
                       className="relative bg-gray-100 cursor-pointer hover:opacity-95 transition-opacity flex items-center justify-center"
                       style={{ minHeight: '400px', maxHeight: '600px' }}
-                      onClick={() => window.open(photos[selectedPhoto], '_blank')}
+                      onClick={() => window.open(currentPhoto, '_blank')}
                     >
                       <img
-                        src={photos[selectedPhoto]}
+                        src={currentPhoto}
                         alt={listing.title}
+                        onError={() => markPhotoFailed(currentPhoto)}
                         className="max-w-full max-h-full object-contain"
                         style={{ maxHeight: '600px' }}
                       />
                     </div>
-                    {photos.length > 1 && (
+                    {visiblePhotos.length > 1 && (
                       <div className="grid grid-cols-4 gap-2 p-4">
-                        {photos.map((url, idx) => (
+                        {visiblePhotos.map((url, idx) => (
                           <div
                             key={idx}
                             className={`relative bg-gray-100 rounded-lg overflow-hidden cursor-pointer transition-all flex items-center justify-center ${
@@ -468,6 +481,7 @@ export function ListingClient({
                             <img
                               src={url}
                               alt={`Zdjęcie ${idx + 1}`}
+                              onError={() => markPhotoFailed(url)}
                               className="w-full h-full object-contain"
                             />
                           </div>
@@ -476,10 +490,42 @@ export function ListingClient({
                     )}
                   </CardContent>
                 </Card>
-              </div>
-            )}
+              ) : (
+                <Card className="overflow-hidden h-full">
+                  <CardContent className="p-0 h-full">
+                    <div
+                      className="flex h-full flex-col items-center justify-center gap-3 bg-muted px-6 py-12 text-center"
+                      style={{ minHeight: '400px' }}
+                    >
+                      <Car className="h-16 w-16 text-muted-foreground/40" />
+                      <p className="text-lg font-semibold text-foreground">
+                        {listing.specs?.brand && listing.specs?.model
+                          ? `${listing.specs.brand} ${listing.specs.model}`
+                          : listing.title}
+                      </p>
+                      <p className="max-w-sm text-sm text-muted-foreground">
+                        {listing.is_active
+                          ? 'Nie mamy zapisanego zdjęcia tej oferty. Zobaczysz je w oryginalnym ogłoszeniu.'
+                          : 'Ogłoszenie zniknęło z serwisu razem ze zdjęciami. Zostały cena i jej historia.'}
+                      </p>
+                      {listing.is_active && (
+                        <a
+                          href={listing.url}
+                          target="_blank"
+                          rel="noopener noreferrer nofollow"
+                          className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+                        >
+                          Zobacz zdjęcia w ogłoszeniu
+                          <ExternalLink className="h-3.5 w-3.5" />
+                        </a>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
 
-            <div className={photos.length > 0 ? '' : 'lg:col-span-3'}>
+            <div>
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-2 mb-2">
@@ -598,25 +644,39 @@ export function ListingClient({
                       przy przycisku. Reszta - czyli praktycznie wszyscy, bo kont
                       jest dziesięć - dostaje to samo za jeden adres e-mail,
                       zamiast pięciu kroków rejestracji. */}
-                  <div id="powiadomienie-o-cenie">
-                    {user ? (
-                      <Button
-                        onClick={togglePriceAlert}
-                        disabled={alertLoading}
-                        variant={alertEnabled ? 'default' : 'outline'}
-                        className="w-full"
-                      >
-                        {alertEnabled ? (
-                          <BellRing className="h-4 w-4 mr-2 fill-current" />
-                        ) : (
-                          <Bell className="h-4 w-4 mr-2" />
-                        )}
-                        {alertEnabled ? 'Powiadomimy o spadku ceny' : 'Powiadom mnie o spadku ceny'}
-                      </Button>
-                    ) : (
-                      <PriceWatchForm listingId={listingId} />
-                    )}
-                  </div>
+                  {/* Zdjęte ogłoszenie już nie stanieje. Kto trafił tu z Google
+                      na archiwum, szuka zwykle takiego samego auta, więc
+                      proponujemy alert na model zamiast alertu na cenę. */}
+                  {!listing.is_active ? (
+                    modelTrend && (
+                      <ModelWatchForm
+                        brand={modelTrend.brand}
+                        model={modelTrend.model}
+                        medianPrice={modelTrend.medianPrice}
+                        stacked
+                      />
+                    )
+                  ) : (
+                    <div id="powiadomienie-o-cenie">
+                      {user ? (
+                        <Button
+                          onClick={togglePriceAlert}
+                          disabled={alertLoading}
+                          variant={alertEnabled ? 'default' : 'outline'}
+                          className="w-full"
+                        >
+                          {alertEnabled ? (
+                            <BellRing className="h-4 w-4 mr-2 fill-current" />
+                          ) : (
+                            <Bell className="h-4 w-4 mr-2" />
+                          )}
+                          {alertEnabled ? 'Powiadomimy o spadku ceny' : 'Powiadom mnie o spadku ceny'}
+                        </Button>
+                      ) : (
+                        <PriceWatchForm listingId={listingId} />
+                      )}
+                    </div>
+                  )}
                   <Button onClick={handleShare} variant="outline" className="w-full">
                     <Share2 className="h-4 w-4 mr-2" />
                     Udostępnij
