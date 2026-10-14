@@ -49,6 +49,9 @@ function CustomTooltip({ active, payload, label }: any) {
         <p className="text-base font-semibold text-gray-900">
           {payload[0].value.toLocaleString('pl-PL')} zł
         </p>
+        {payload[0].payload?.checkOnly && (
+          <p className="text-xs text-gray-500 mt-0.5">ostatnie sprawdzenie, cena bez zmian</p>
+        )}
       </div>
     );
   }
@@ -75,7 +78,7 @@ export function PriceHistory({ snapshots, lastCheckedAt, watchTargetId }: PriceH
     (a, b) => new Date(a.scraped_at).getTime() - new Date(b.scraped_at).getTime()
   );
 
-  const data = sorted.map((s) => ({
+  const changes = sorted.map((s) => ({
     date: format(new Date(s.scraped_at), 'd MMM yyyy', { locale: pl }),
     price: s.price,
   }));
@@ -126,6 +129,23 @@ export function PriceHistory({ snapshots, lastCheckedAt, watchTargetId }: PriceH
     );
   }
 
+  /*
+    Punkt „sprawdzone dziś”. W bazie nowy wiersz powstaje tylko przy zmianie
+    ceny, więc bez tego wykres kończył się na ostatniej zmianie, czasem sprzed
+    miesiąca, choć oglądane ogłoszenia sprawdzamy codziennie. Ten punkt nie jest
+    zapisem z bazy, tylko `last_checked_at` z ceną, która wtedy wciąż była.
+  */
+  const lastChangeAt = new Date(sorted[sorted.length - 1].scraped_at).getTime();
+  const checkedAt = lastCheckedAt ? new Date(lastCheckedAt).getTime() : null;
+  const data: { date: string; price: number; checkOnly?: boolean }[] = [...changes];
+  if (checkedAt && checkedAt - lastChangeAt > 12 * 60 * 60 * 1000) {
+    data.push({
+      date: format(new Date(checkedAt), 'd MMM yyyy', { locale: pl }),
+      price: sorted[sorted.length - 1].price,
+      checkOnly: true,
+    });
+  }
+
   const prices = data.map((d) => d.price);
   const minPrice = Math.min(...prices);
   const maxPrice = Math.max(...prices);
@@ -157,6 +177,12 @@ export function PriceHistory({ snapshots, lastCheckedAt, watchTargetId }: PriceH
               {priceDiff.toLocaleString('pl-PL')} zł od pierwszego pomiaru
             </span>
           )}
+          {checkedAt && (
+            <span className="block mt-1">
+              Ostatnio sprawdzona{' '}
+              {formatDistanceToNow(new Date(checkedAt), { addSuffix: true, locale: pl })}.
+            </span>
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -186,7 +212,10 @@ export function PriceHistory({ snapshots, lastCheckedAt, watchTargetId }: PriceH
               />
               <Tooltip content={<CustomTooltip />} />
               <Area
-                type="monotone"
+                // Schodki, nie krzywa: między pomiarami cena stała, a spadek
+                // nastąpił gdzieś przed punktem, w którym go zauważyliśmy.
+                // Gładka linia sugerowała tanienie po trochu przez cały miesiąc.
+                type="stepAfter"
                 dataKey="price"
                 stroke="hsl(var(--primary))"
                 strokeWidth={3}

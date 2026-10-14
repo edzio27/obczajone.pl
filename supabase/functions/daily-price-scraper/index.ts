@@ -229,10 +229,16 @@ Deno.serve(async (req: Request) => {
     */
     const body = await req.json().catch(() => ({}));
     const mode = body?.mode === 'watched' ? 'watched' : 'sweep';
+    // Cron moze prosic o mniejsza porcje (oglądane ida po 10 co 10 minut),
+    // ale nigdy o wieksza niz BATCH_SIZE - wyzej nie zmiescimy sie w limicie
+    // czasu funkcji.
+    const requested = Number(body?.limit);
+    const batchSize =
+      Number.isInteger(requested) && requested > 0 ? Math.min(requested, BATCH_SIZE) : BATCH_SIZE;
 
     const { data: listings, error: listingsError } =
       mode === 'watched'
-        ? await supabase.rpc('watched_listings_due', { p_limit: BATCH_SIZE })
+        ? await supabase.rpc('watched_listings_due', { p_limit: batchSize })
         : await supabase
             .from('listings')
             .select('id, url, source, current_price, specs')
