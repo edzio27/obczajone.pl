@@ -22,7 +22,9 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_IDS = 25;
 
 export async function POST(request: Request) {
-  const secret = process.env.REVALIDATE_SECRET;
+  // trim(): wartość wklejona w panelu Vercela potrafi przynieść ze schowka
+  // znak nowej linii, a wtedy żaden nagłówek jej nie odpowie.
+  const secret = process.env.REVALIDATE_SECRET?.trim();
   if (!secret) {
     return NextResponse.json({ error: 'REVALIDATE_SECRET nie jest ustawiony' }, { status: 503 });
   }
