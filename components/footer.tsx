@@ -6,6 +6,7 @@ const COLUMNS = [
   {
     heading: 'Sprawdzanie ofert',
     links: [
+      { href: '/trendy-cen', label: 'Trendy cen używanych aut' },
       { href: '/ile-spada-cena', label: 'Ile spada cena' },
       { href: '/archiwum-otomoto', label: 'Archiwum ogłoszeń Otomoto' },
       { href: '/barometr', label: 'Barometr obniżek' },

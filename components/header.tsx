@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { LogoMark } from '@/components/brand/logo-mark';
 import { useAuth } from '@/lib/auth-context';
 import { AuthDialog } from '@/components/auth/auth-dialog';
-import { LogOut, CircleUser as UserCircle, Menu, MapPin, ShieldCheck, Store, ChevronDown, TrendingDown } from 'lucide-react';
+import { ChevronDown, CircleUser as UserCircle, LineChart, LogOut, MapPin, Menu, ShieldCheck, Store, TrendingDown } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -25,6 +25,12 @@ import { cn } from '@/lib/utils';
 // się tylko etykietą. Zostaje to, czego przycisk nie obsługuje - mapa
 // pośredników dla kupujących i strona współpracy dla firm.
 const NAV_ITEMS = [
+  {
+    href: '/trendy-cen',
+    label: 'Trendy cen',
+    icon: LineChart,
+    activePrefixes: ['/trendy-cen'],
+  },
   {
     /*
       Statystyki obniżek nie mialy dotad ani jednego linku w calym serwisie -
