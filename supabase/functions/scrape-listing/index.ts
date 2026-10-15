@@ -245,6 +245,15 @@ function extractOtomotoSpecs(ad: any): OtomotoSpecs {
   };
 }
 
+/*
+  Ogloszenie, ktorego serwis juz nie ma (410 Gone, 404). To nie jest awaria
+  pobierania, tylko odpowiedz: ludzie wklejaja nam linki do zdjetych ofert,
+  bo szukaja archiwum - w pazdzierniku 2026 bylo ich ~85 miesiecznie i kazdy
+  konczyl na pustej stronie. Wyjatek przelatuje przez catch w funkcjach
+  pobierajacych, zeby wolajacy mogl oznaczyc ogloszenie jako zdjete.
+*/
+class AdvertGoneError extends Error {}
+
 async function scrapeOtomoto(url: string) {
   try {
     /*
@@ -275,6 +284,10 @@ async function scrapeOtomoto(url: string) {
       "Blad 404". Zwrocenie null sprawia, ze wolajacy rzuca wyjatkiem i nie
       nadpisuje niczego - tak jak juz robimy przy seller_id i wspolrzednych.
     */
+    if (response.status === 410 || response.status === 404) {
+      throw new AdvertGoneError(`Ogloszenie zdjete: ${response.status} dla ${url}`);
+    }
+
     if (!response.ok) {
       console.error(`Scrape odrzucony: ${response.status} ${response.statusText} dla ${url}`);
       return null;
@@ -426,6 +439,7 @@ async function scrapeOtomoto(url: string) {
       originalPostedAt,
     };
   } catch (error) {
+    if (error instanceof AdvertGoneError) throw error;
     console.error('Error scraping Otomoto:', error);
     return null;
   }
@@ -549,6 +563,10 @@ async function scrapeOtodom(url: string) {
       "Blad 404". Zwrocenie null sprawia, ze wolajacy rzuca wyjatkiem i nie
       nadpisuje niczego - tak jak juz robimy przy seller_id i wspolrzednych.
     */
+    if (response.status === 410 || response.status === 404) {
+      throw new AdvertGoneError(`Ogloszenie zdjete: ${response.status} dla ${url}`);
+    }
+
     if (!response.ok) {
       console.error(`Scrape odrzucony: ${response.status} ${response.statusText} dla ${url}`);
       return null;
@@ -645,6 +663,7 @@ async function scrapeOtodom(url: string) {
       originalPostedAt,
     };
   } catch (error) {
+    if (error instanceof AdvertGoneError) throw error;
     console.error('Error scraping Otodom:', error);
     return null;
   }
@@ -1058,10 +1077,24 @@ Deno.serve(async (req: Request) => {
     }
 
     let scrapedData;
-    if (listing.source === 'otomoto') {
-      scrapedData = await scrapeOtomoto(listing.url);
-    } else {
-      scrapedData = await scrapeOtodom(listing.url);
+    try {
+      if (listing.source === 'otomoto') {
+        scrapedData = await scrapeOtomoto(listing.url);
+      } else {
+        scrapedData = await scrapeOtodom(listing.url);
+      }
+    } catch (error) {
+      if (!(error instanceof AdvertGoneError)) throw error;
+      // Oferty juz nie ma. Zapisujemy to wprost, zeby strona mogla powiedziec
+      // „nie zdazylismy jej zapisac” zamiast udawac, ze czeka na dane.
+      await supabase
+        .from('listings')
+        .update({ is_active: false, last_checked_at: new Date().toISOString() })
+        .eq('id', listingId);
+      return new Response(JSON.stringify({ success: true, gone: true }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     if (!scrapedData) {

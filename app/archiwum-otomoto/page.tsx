@@ -6,13 +6,50 @@ import { Card, CardContent } from '@/components/ui/card';
 import { ListingCard } from '@/components/listing-card';
 import { fetchArchivedListings, fetchArchiveStats } from '@/lib/archive-data';
 import { klientSerwerowy } from '@/lib/supabase-server';
+import { Suspense } from 'react';
+import { ArchiveSearch } from '@/components/archive-search';
 
+/*
+  Tytuł i opis pod to, jak ludzie pytają. W Search Console (3 miesiące do
+  13.10.2026) grupa „archiwum otomoto”, „otomoto archiwum (ogłoszeń)”,
+  „ogłoszenia archiwalne otomoto” to ~1370 wyświetleń na pozycji 5-6 i CTR
+  ~11%. Słowo „archiwalne” i obietnica wyszukania konkretnej oferty są w tych
+  zapytaniach, a wcześniej nie było ich ani w tytule, ani na stronie.
+*/
 export const metadata: Metadata = {
-  title: 'Archiwum ogłoszeń Otomoto — zdjęte oferty i historia cen | obczajone.pl',
+  title: 'Archiwum Otomoto — wyszukaj archiwalne i zdjęte ogłoszenia z ceną | obczajone.pl',
   description:
-    'Ogłoszenia z Otomoto, których już tam nie ma: ostatnia cena, historia obniżek i data zniknięcia. Po zdjęciu oferty jej strona znika z serwisu — u nas zostaje.',
+    'Archiwalne ogłoszenia z Otomoto: wyszukaj zdjętą ofertę po marce, modelu albo linku i zobacz ostatnią cenę, historię obniżek i datę zniknięcia. Kilka tysięcy aut, przybywa codziennie.',
   alternates: { canonical: '/archiwum-otomoto' },
 };
+
+const faqs = [
+  {
+    question: 'Czy Otomoto ma archiwum ogłoszeń?',
+    answer:
+      'Tylko dla sprzedającego. Zakończone ogłoszenie zostaje przez około pół roku w archiwum jego konta, ale kupujący widzi po zdjęciu oferty już tylko pusty adres. Dlatego zapisujemy ogłoszenia, zanim znikną, razem z ceną i jej historią.',
+  },
+  {
+    question: 'Jak zobaczyć archiwalne ogłoszenie z Otomoto?',
+    answer:
+      'Wpisz markę i model w wyszukiwarkę na tej stronie albo wklej link do oferty. Jeśli zdążyliśmy ją zapisać, zobaczysz ostatnią cenę, historię obniżek, zdjęcie i datę zniknięcia.',
+  },
+  {
+    question: 'Jak otworzyć własne archiwalne ogłoszenie na Otomoto?',
+    answer:
+      'Zaloguj się na swoje konto Otomoto, przejdź do swoich ogłoszeń i przełącz widok na zakończone. Tam możesz je podejrzeć albo wystawić ponownie. To archiwum Twojego konta, nie nasze.',
+  },
+  {
+    question: 'Za ile sprzedało się auto ze zdjętego ogłoszenia?',
+    answer:
+      'Tego nie wie nikt poza stronami transakcji. Pokazujemy ostatnią cenę z ogłoszenia i to, jak sprzedający ją obniżał. Zniknięcie oferty nie zawsze oznacza sprzedaż: ogłoszenie mogło wygasnąć albo wrócić pod nowym adresem.',
+  },
+  {
+    question: 'Dlaczego nie ma tu ogłoszenia, którego szukam?',
+    answer:
+      'Archiwum obejmuje tylko oferty, które zdążyliśmy zobaczyć przed zniknięciem. Żeby następnym razem mieć historię ceny, wklej link na stronie głównej, póki ogłoszenie wisi na Otomoto — od tej chwili sprawdzamy je codziennie.',
+  },
+];
 
 // Archiwum przyrasta po każdym przelocie, ale nie szybciej niż raz na godzinę.
 export const revalidate = 3600;
@@ -46,8 +83,19 @@ export default async function OtomotoArchivePage() {
     fetchArchiveStats(supabase, { source: 'otomoto' }),
   ]);
 
+  const faqJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map(({ question, answer }) => ({
+      '@type': 'Question',
+      name: question,
+      acceptedAnswer: { '@type': 'Answer', text: answer },
+    })),
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
       <Header />
       <main className="container mx-auto px-4 py-10 flex-1">
         <div className="max-w-6xl mx-auto space-y-8">
@@ -60,8 +108,15 @@ export default async function OtomotoArchivePage() {
             </p>
           </div>
 
+          {/* Wyszukiwarka przed wszystkim innym: po nią tu się przychodzi. Strona
+              od początku zakładała, że „pełną listę przegląda się wyszukiwarką”,
+              której nie było. */}
+          <Suspense fallback={null}>
+            <ArchiveSearch />
+          </Suspense>
+
           {/*
-            Rozróżnienie dwóch intencji, i to na samej górze.
+            Rozróżnienie dwóch intencji, zaraz pod wyszukiwarką.
 
             Wyniki wyszukiwania na "archiwum otomoto" prowadzą dziś do pomocy
             Otomoto i do poradników "jak otworzyć archiwalne ogłoszenie" - bo
@@ -129,6 +184,16 @@ export default async function OtomotoArchivePage() {
               </div>
             )}
           </div>
+
+          <section aria-labelledby="pytania-archiwum" className="space-y-4">
+            <h2 id="pytania-archiwum" className="text-xl font-bold">Najczęstsze pytania</h2>
+            {faqs.map((f) => (
+              <div key={f.question}>
+                <h3 className="font-semibold">{f.question}</h3>
+                <p className="mt-1 text-sm text-muted-foreground">{f.answer}</p>
+              </div>
+            ))}
+          </section>
 
           <Card>
             <CardContent className="pt-6 space-y-3 text-sm text-muted-foreground">

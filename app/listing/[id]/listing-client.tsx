@@ -39,6 +39,7 @@ import { largePhotoUrl } from '@/lib/photo-url';
 import { PartnerCta } from '@/components/partner-cta';
 import { VinCheckCta } from '@/components/vin-check-cta';
 import { ListingInspections } from '@/components/partner/listing-inspections';
+import { ListingNotCaptured } from '@/components/listing-not-captured';
 
 export function ListingClient({
   listingId,
@@ -298,6 +299,12 @@ export function ListingClient({
         </main>
       </div>
     );
+  }
+
+  // Ogłoszenie bez ani jednej ceny: wklejone, ale nigdy nie pobrane. Zamiast
+  // pustej karty „0 zł” mówimy wprost, czego nie mamy i co możemy dać zamiast.
+  if (!(listing.current_price > 0)) {
+    return <ListingNotCaptured url={listing.url} isGone={!listing.is_active} />;
   }
 
   const latestSnapshot = snapshots[0];

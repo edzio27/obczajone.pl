@@ -38,3 +38,35 @@ export function isPreviewListingUrl(raw: string): boolean {
     return false;
   }
 }
+
+const MULTI_WORD_BRANDS = ['mercedes-benz', 'alfa-romeo', 'land-rover', 'aston-martin', 'rolls-royce'];
+
+/**
+ * Marka i model wyczytane z adresu oferty Otomoto, np.
+ * `/osobowe/oferta/ford-mondeo-ID6I2KY4.html` → „Ford Mondeo”.
+ *
+ * Potrzebne tam, gdzie oferty już nie ma i nie mamy z niej ani jednego pola:
+ * ktoś wkleił link do zdjętego ogłoszenia, a my możemy przynajmniej pokazać
+ * podobne auta z archiwum. To zgadywanie z adresu, więc wynik służy wyłącznie
+ * do wyszukiwania, nigdy do opisu konkretnego auta.
+ */
+export function carNameFromListingUrl(raw: string): string | null {
+  let path: string;
+  try {
+    path = new URL(raw.trim()).pathname;
+  } catch {
+    return null;
+  }
+  const match = path.match(/\/oferta\/([a-z0-9-]+?)-ID[0-9A-Za-z]+\.html$/);
+  if (!match) return null;
+
+  const slug = match[1];
+  const brand = MULTI_WORD_BRANDS.find((b) => slug.startsWith(`${b}-`));
+  const rest = brand ? slug.slice(brand.length + 1) : slug.split('-').slice(1).join('-');
+  const brandPart = brand ?? slug.split('-')[0];
+  const model = rest.split('-')[0];
+  if (!brandPart || !model) return null;
+
+  const capitalize = (w: string) => w.charAt(0).toUpperCase() + w.slice(1);
+  return `${brandPart.split('-').map(capitalize).join('-')} ${capitalize(model)}`;
+}

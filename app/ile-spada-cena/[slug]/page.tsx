@@ -270,9 +270,15 @@ export default async function ModelTrendPage({ params }: { params: { slug: strin
 
           {listings.length > 0 && (
             <div>
-              <h2 className="text-xl font-semibold mb-4">
-                Ogłoszenia {name}, które obserwujemy
-              </h2>
+              <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+                <h2 className="text-xl font-semibold">Ogłoszenia {name}, które obserwujemy</h2>
+                <Link
+                  href={`/archiwum-otomoto?q=${encodeURIComponent(name)}`}
+                  className="text-sm font-medium text-primary hover:underline"
+                >
+                  Archiwalne ogłoszenia {name} →
+                </Link>
+              </div>
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {listings.map((listing) => (
                   <ListingCard key={listing.id} {...listing} />
