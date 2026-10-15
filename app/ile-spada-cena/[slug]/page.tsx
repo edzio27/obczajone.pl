@@ -112,8 +112,11 @@ export default async function ModelTrendPage({ params }: { params: { slug: strin
     points && points.length > 0 ? points[points.length - 1].value - 100 : null;
   const modelChange = lastValue(charts?.index);
   const marketChange = lastValue(market?.index);
-  const signed = (v: number) =>
-    `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toLocaleString('pl-PL', { maximumFractionDigits: 1 })}%`;
+  // Zaokrąglamy przed wyborem znaku: -0,03% to „0%”, a nie „−0%”.
+  const signed = (v: number) => {
+    const r = Math.round(v * 10) / 10;
+    return `${r > 0 ? '+' : r < 0 ? '−' : ''}${Math.abs(r).toLocaleString('pl-PL', { maximumFractionDigits: 1 })}%`;
+  };
   const dropShare = Math.round((trend.droppedCount / trend.sampleSize) * 100);
 
   return (
