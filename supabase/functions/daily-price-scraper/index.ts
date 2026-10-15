@@ -275,6 +275,12 @@ Deno.serve(async (req: Request) => {
               miejsca w partii ogloszeniom, ktore jeszcze zyja.
             */
             .eq('is_active', true)
+            /*
+              Auta i mieszkania maja osobne harmonogramy (auta trzy razy na
+              godzine, mieszkania co dwie), wiec cron mowi, ktore zrodlo
+              obsluzyc. Bez parametru - oba, jak dawniej.
+            */
+            .in('source', body?.source === 'otomoto' || body?.source === 'otodom' ? [body.source] : ['otomoto', 'otodom'])
             // Najdawniej sprawdzane najpierw - dzięki temu kolejne przebiegi
             // przesuwają się po całej bazie zamiast krążyć wokół najnowszych.
             .order('last_checked_at', { ascending: true, nullsFirst: true })
