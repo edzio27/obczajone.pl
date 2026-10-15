@@ -8,7 +8,7 @@ import { PriceIndexChart } from '@/components/market/price-index-chart';
 import { fetchMarketTrends, type TrendGroup } from '@/lib/market-trends';
 import { fetchModelSlugs } from '@/lib/price-trends';
 import { slugifyModel } from '@/lib/model-slug';
-import { largePhotoUrl } from '@/lib/photo-url';
+import { RecentDropsGrid } from '@/components/market/recent-drops-grid';
 import { klientSerwerowy } from '@/lib/supabase-server';
 
 export const metadata: Metadata = {
@@ -283,37 +283,8 @@ export default async function MarketTrendsPage() {
               <p className="mt-2 text-sm text-muted-foreground">
                 Aktywne ogłoszenia, przy których zauważyliśmy największą obniżkę w ostatnich 7 dniach.
               </p>
-              <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {trends.recentDrops.map((d) => {
-                  const percent = ((d.toPrice - d.fromPrice) / d.fromPrice) * 100;
-                  return (
-                    <Link
-                      key={d.id}
-                      href={`/listing/${d.id}`}
-                      className="group overflow-hidden rounded-2xl border bg-card transition-all hover:-translate-y-0.5 hover:border-primary/40"
-                    >
-                      <div className="aspect-[4/3] bg-muted">
-                        {d.imageUrl && (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={largePhotoUrl(d.imageUrl)}
-                            alt={d.title}
-                            loading="lazy"
-                            className="h-full w-full object-cover"
-                          />
-                        )}
-                      </div>
-                      <div className="p-4">
-                        <p className="font-semibold truncate">{d.title}</p>
-                        <p className="mt-1 flex items-baseline gap-2">
-                          <span className="text-lg font-bold">{formatPln(d.toPrice)}</span>
-                          <span className="text-sm text-muted-foreground line-through">{formatPln(d.fromPrice)}</span>
-                          <span className="ml-auto font-semibold text-success">{formatChange(percent)}</span>
-                        </p>
-                      </div>
-                    </Link>
-                  );
-                })}
+              <div className="mt-4">
+                <RecentDropsGrid drops={trends.recentDrops} />
               </div>
             </section>
           )}

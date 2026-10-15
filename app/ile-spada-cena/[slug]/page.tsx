@@ -9,6 +9,10 @@ import { TrendingDown } from 'lucide-react';
 import { fetchModelTrend, fetchModelTrends, MIN_SAMPLE_SIZE } from '@/lib/price-trends';
 import { VinCheckCta } from '@/components/vin-check-cta';
 import { ModelWatchForm } from '@/components/model-watch-form';
+import { ModelPriceCharts } from '@/components/market/model-price-charts';
+import { RecentDropsGrid } from '@/components/market/recent-drops-grid';
+import { fetchModelCharts } from '@/lib/model-charts';
+import { fetchMarketTrends } from '@/lib/market-trends';
 import { klientSerwerowy } from '@/lib/supabase-server';
 
 export const revalidate = 3600;
@@ -93,6 +97,23 @@ export default async function ModelTrendPage({ params }: { params: { slug: strin
 
   const listings = (data as any[]) || [];
   const name = `${trend.brand} ${trend.model}`;
+
+  const [charts, market] = await Promise.all([
+    fetchModelCharts(supabase, trend.brand, trend.model),
+    fetchMarketTrends(supabase),
+  ]);
+  /*
+    Zdanie nad wykresem liczymy z tego samego indeksu co wykres. Zmiana
+    „30 dni” z /trendy-cen dotyczy innej grupy (auta wystawione co najmniej
+    miesiąc temu) i potrafiła mówić coś odwrotnego niż linia tuż pod nią:
+    Octavia -2,1% wobec rynku -1,9%, a na wykresie Octavia tanieje wolniej.
+  */
+  const lastValue = (points: { value: number }[] | undefined) =>
+    points && points.length > 0 ? points[points.length - 1].value - 100 : null;
+  const modelChange = lastValue(charts?.index);
+  const marketChange = lastValue(market?.index);
+  const signed = (v: number) =>
+    `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toLocaleString('pl-PL', { maximumFractionDigits: 1 })}%`;
   const dropShare = Math.round((trend.droppedCount / trend.sampleSize) * 100);
 
   return (
@@ -197,6 +218,36 @@ export default async function ModelTrendPage({ params }: { params: { slug: strin
               )}
             </CardContent>
           </Card>
+
+          {charts && (
+            <section aria-labelledby="wykresy" className="space-y-4">
+              <div>
+                <h2 id="wykresy" className="text-xl font-semibold">
+                  Ceny {name} w liczbach
+                </h2>
+                {modelChange != null && marketChange != null && (
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Od początku pomiarów (7 września) ceny tych samych egzemplarzy {name} zmieniły
+                    się o <strong className="text-foreground">{signed(modelChange)}</strong>, a cały
+                    rynek o {signed(marketChange)}.{' '}
+                    <Link href="/trendy-cen" className="text-primary hover:underline">
+                      Trendy całego rynku →
+                    </Link>
+                  </p>
+                )}
+              </div>
+              <ModelPriceCharts name={name} charts={charts} marketIndex={market?.index ?? []} />
+            </section>
+          )}
+
+          {charts && charts.recentDrops.length > 0 && (
+            <section aria-labelledby="ostatnio-potanialy">
+              <h2 id="ostatnio-potanialy" className="text-xl font-semibold mb-4">
+                {name}, które potaniały w ostatnich 2 tygodniach
+              </h2>
+              <RecentDropsGrid drops={charts.recentDrops} />
+            </section>
+          )}
 
           {/*
             Alert nad blokiem o VIN-ie, bo odpowiada na wcześniejsze pytanie.
