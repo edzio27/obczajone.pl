@@ -188,18 +188,31 @@ jobs:
 
           od='2026-10-06T19:10:00Z'   # wdrożenie poprawki w scrape-listing
 
-          ile=$(curl -s --max-time 25 -o /dev/null -D - \
-            "${SUPABASE_URL}/rest/v1/listings?select=id&current_price=eq.0&first_seen_at=gte.${od}" \
-            -H "apikey: ${SUPABASE_ANON_KEY}" \
-            -H "Prefer: count=exact" -H "Range: 0-0" \
-            | grep -i '^content-range:' | sed 's|.*/||' | tr -d '\r' || true)
+          # Liczymy tylko to, co zapisał scraper. Sam wiersz z ceną 0 i pustym
+          # tytułem to ogłoszenie wklejone przez kogoś, którego scraper nie
+          # pobrał - najczęściej link do oferty już zdjętej z Otomoto (410).
+          # Formularz zakłada ten wiersz przed pobraniem i tak ma być: strona
+          # mówi wtedy „nie zdążyliśmy zapisać”. Do 17.10.2026 krok liczył też
+          # te wiersze i był czerwony od tygodnia przy działającym scraperze.
+          policz() {
+            curl -s --max-time 25 -o /dev/null -D - "$1" \
+              -H "apikey: ${SUPABASE_ANON_KEY}" \
+              -H "Prefer: count=exact" -H "Range: 0-0" \
+              | grep -i '^content-range:' | sed 's|.*/||' | tr -d '\r' || true
+          }
 
-          echo "Ogłoszeń bez ceny zapisanych po naprawie: ${ile:-?}"
+          ogloszenia=$(policz "${SUPABASE_URL}/rest/v1/listings?select=id&current_price=eq.0&title=neq.&first_seen_at=gte.${od}")
+          zapisy=$(policz "${SUPABASE_URL}/rest/v1/listing_snapshots?select=id&price=eq.0&scraped_at=gte.${od}")
 
-          if [ -n "$ile" ] && [ "$ile" -gt 0 ] 2>/dev/null; then
-            echo "Scraper nadal zapisuje rekordy bez ceny - odmowa zapisu nie działa."
-            exit 1
-          fi
+          echo "Ogłoszeń bez ceny, ale z treścią od scrapera: ${ogloszenia:-?}"
+          echo "Zapisów ceny równej zero: ${zapisy:-?}"
+
+          for ile in "$ogloszenia" "$zapisy"; do
+            if [ -n "$ile" ] && [ "$ile" -gt 0 ] 2>/dev/null; then
+              echo "Scraper nadal zapisuje rekordy bez ceny - odmowa zapisu nie działa."
+              exit 1
+            fi
+          done
           echo "OK - żaden nieudany odczyt nie trafił do bazy."
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
