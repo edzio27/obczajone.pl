@@ -40,6 +40,7 @@ import { PartnerCta } from '@/components/partner-cta';
 import { VinCheckCta } from '@/components/vin-check-cta';
 import { ListingInspections } from '@/components/partner/listing-inspections';
 import { ListingNotCaptured } from '@/components/listing-not-captured';
+import { CompareButton } from '@/components/compare-button';
 
 export function ListingClient({
   listingId,
@@ -746,6 +747,7 @@ export function ListingClient({
                       )}
                     </div>
                   )}
+                  {listing.source === 'otomoto' && <CompareButton listingId={listingId} />}
                   <Button onClick={handleShare} variant="outline" className="w-full">
                     <Share2 className="h-4 w-4 mr-2" />
                     Udostępnij

@@ -15,6 +15,12 @@ type ListingUrlFormProps = {
   /** "ink" - wariant na ciemne sekcje (hero, dolne CTA). */
   tone?: 'light' | 'ink';
   className?: string;
+  /**
+   * Co zrobić z rozpoznanym ogłoszeniem. Domyślnie przechodzimy na jego stronę;
+   * porównanie aut dokłada je do listy i zostaje na miejscu.
+   */
+  onListing?: (id: string) => void;
+  submitLabel?: string;
 };
 
 function extractListingInfo(url: string) {
@@ -30,7 +36,7 @@ function extractListingInfo(url: string) {
   return null;
 }
 
-export function ListingUrlForm({ tone = 'light', className }: ListingUrlFormProps) {
+export function ListingUrlForm({ tone = 'light', className, onListing, submitLabel }: ListingUrlFormProps) {
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [focused, setFocused] = useState(false);
@@ -107,8 +113,17 @@ export function ListingUrlForm({ tone = 'light', className }: ListingUrlFormProp
 
       if (searchError) throw searchError;
 
+      const done = (id: string) => {
+        if (onListing) {
+          onListing(id);
+          setUrl('');
+        } else {
+          router.push(`/listing/${id}`);
+        }
+      };
+
       if (existing) {
-        router.push(`/listing/${existing.id}`);
+        done(existing.id);
         return;
       }
 
@@ -145,7 +160,7 @@ export function ListingUrlForm({ tone = 'light', className }: ListingUrlFormProp
         body: JSON.stringify({ listingId: newListing.id }),
       });
 
-      router.push(`/listing/${newListing.id}`);
+      done(newListing.id);
     } catch (error: any) {
       toast({
         title: 'Błąd',
@@ -230,7 +245,7 @@ export function ListingUrlForm({ tone = 'light', className }: ListingUrlFormProp
           ) : (
             <>
               <Search className="h-5 w-5 mr-2" />
-              Sprawdź za darmo
+              {submitLabel ?? 'Sprawdź za darmo'}
             </>
           )}
         </Button>
