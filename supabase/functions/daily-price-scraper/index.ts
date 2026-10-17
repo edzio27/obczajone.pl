@@ -254,7 +254,8 @@ Deno.serve(async (req: Request) => {
       Bez trybu (cron :07) idziemy po calej bazie, od najdawniej sprawdzanych.
     */
     const body = await req.json().catch(() => ({}));
-    const mode = body?.mode === 'watched' ? 'watched' : 'sweep';
+    const mode =
+      body?.mode === 'watched' ? 'watched' : body?.mode === 'visit' ? 'visit' : 'sweep';
     // Cron moze prosic o mniejsza porcje (oglądane ida po 10 co 10 minut),
     // ale nigdy o wieksza niz BATCH_SIZE - wyzej nie zmiescimy sie w limicie
     // czasu funkcji.
@@ -262,8 +263,20 @@ Deno.serve(async (req: Request) => {
     const batchSize =
       Number.isInteger(requested) && requested > 0 ? Math.min(requested, BATCH_SIZE) : BATCH_SIZE;
 
+    /*
+      `visit`: ktos wlasnie otworzyl ogloszenie z cena starsza niz doba. Wolanie
+      przychodzi z przegladarki, wiec o tym, czy wolno je sprawdzic, decyduje
+      baza (claim_visit_check: tylko aktywne, raz na dobe, 60 na godzine).
+      Pusta odpowiedz znaczy „nie teraz” i niczego nie pobieramy.
+    */
+    const visitId = typeof body?.listingId === 'string' ? body.listingId : null;
+
     const { data: listings, error: listingsError } =
-      mode === 'watched'
+      mode === 'visit'
+        ? visitId
+          ? await supabase.rpc('claim_visit_check', { p_listing_id: visitId })
+          : { data: [], error: null }
+        : mode === 'watched'
         ? await supabase.rpc('watched_listings_due', { p_limit: batchSize })
         : await supabase
             .from('listings')
@@ -430,7 +443,11 @@ Deno.serve(async (req: Request) => {
         failCount++;
       }
 
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Przerwa chroni Otomoto przed seria zapytan w przelocie. Przy jednym
+      // ogloszeniu z wizyty tylko opoznialaby odpowiedz, na ktora ktos czeka.
+      if (mode !== 'visit') {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
     }
 
     /*
@@ -441,7 +458,9 @@ Deno.serve(async (req: Request) => {
     */
     const touched = results
       .filter((r: any) =>
-        mode === 'watched' ? true : r.changed === true || String(r.error ?? '').startsWith('Advert removed')
+        mode === 'sweep'
+          ? r.changed === true || String(r.error ?? '').startsWith('Advert removed')
+          : true
       )
       .map((r: any) => r.id);
     const revalidation = await revalidateListingPages(touched);

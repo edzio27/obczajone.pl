@@ -12,7 +12,7 @@ import { ReviewForm } from '@/components/review-form';
 import { ReviewList } from '@/components/review-list';
 import { PriceHistory } from '@/components/price-history';
 import { ListingCard } from '@/components/listing-card';
-import { MapPin, Calendar, Heart, TrendingDown, TrendingUp, Share2, Store, Star, Bell, BellRing, Car, ExternalLink } from 'lucide-react';
+import { MapPin, Calendar, Heart, TrendingDown, TrendingUp, Share2, Store, Star, Bell, BellRing, Car, ExternalLink, Loader2, CheckCircle2 } from 'lucide-react';
 import { formatDistanceToNow, differenceInDays } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -129,6 +129,54 @@ export function ListingClient({
     }
     supabase.rpc('mark_listing_viewed', { p_listing_id: listingId }).then(() => {});
   }, [listingId, isActive]);
+
+  /*
+    Sprawdzenie przy wejściu. Gdy cena jest starsza niż doba, prosimy scrapera
+    o sprawdzenie tego ogłoszenia od razu i po kilku sekundach podmieniamy dane
+    na stronie. O tym, czy wolno (aktywne, raz na dobę, limit godzinowy),
+    decyduje baza - tutaj tylko nie pytamy bez potrzeby.
+  */
+  const [liveCheck, setLiveCheck] = useState<'idle' | 'checking' | 'done'>('idle');
+  const lastCheckedAt = listing?.last_checked_at ?? null;
+  const liveCheckStarted = useRef(false);
+  useEffect(() => {
+    if (liveCheckStarted.current || !isActive || !lastCheckedAt) return;
+    if (Date.now() - new Date(lastCheckedAt).getTime() < 24 * 60 * 60 * 1000) return;
+    if (navigator.webdriver || /bot|crawl|spider|slurp|headless|lighthouse/i.test(navigator.userAgent)) {
+      return;
+    }
+    liveCheckStarted.current = true;
+    setLiveCheck('checking');
+
+    (async () => {
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/daily-price-scraper`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ mode: 'visit', listingId }),
+          }
+        );
+        const result = await response.json().catch(() => null);
+        if (!result?.total) {
+          setLiveCheck('idle');
+          return;
+        }
+        const data = await fetchListingPageData(supabase, listingId).catch(() => null);
+        if (data) {
+          setListing(data.listing);
+          setSnapshots(data.snapshots);
+        }
+        setLiveCheck('done');
+      } catch {
+        setLiveCheck('idle');
+      }
+    })();
+  }, [listingId, isActive, lastCheckedAt]);
 
   useEffect(() => {
     async function checkFavorite() {
@@ -636,6 +684,20 @@ export function ListingClient({
                       {priceChangePercent === 0 && (
                         <div className="text-sm text-muted-foreground mt-1">
                           Cena bez zmian od pierwszego wykrycia
+                        </div>
+                      )}
+                      {liveCheck === 'checking' && (
+                        <div className="mt-2 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          Sprawdzamy aktualną cenę na {listing.source === 'otodom' ? 'Otodom' : 'Otomoto'}…
+                        </div>
+                      )}
+                      {liveCheck === 'done' && (
+                        <div className="mt-2 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+                          {listing.is_active
+                            ? 'Cena sprawdzona przed chwilą'
+                            : 'Właśnie sprawdziliśmy: tej oferty już nie ma w serwisie'}
                         </div>
                       )}
                     </div>
