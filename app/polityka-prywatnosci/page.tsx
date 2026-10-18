@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   alternates: { canonical: '/polityka-prywatnosci' },
 };
 
-const LAST_UPDATED = '2 września 2026';
+const LAST_UPDATED = '18 października 2026';
 
 const sections: LegalSection[] = [
   {
@@ -50,7 +50,9 @@ const sections: LegalSection[] = [
           'Zgłoszenia opinii wraz z podaną przyczyną — w celu moderacji treści. Podstawa: art. 6 ust. 1 lit. c oraz lit. f RODO (obowiązek prawny i prawnie uzasadniony interes polegający na zapewnieniu zgodności treści z prawem).',
           'Dane podane w formularzu zapytania do partnera (imię, numer telefonu lub adres e-mail, treść zapytania oraz wskazanie ogłoszenia, którego dotyczy) — w celu przekazania ich wskazanemu partnerowi, aby mógł się skontaktować i przedstawić ofertę. Podstawa: art. 6 ust. 1 lit. b RODO (podjęcie działań na żądanie osoby przed zawarciem umowy). Podanie tych danych jest dobrowolne, ale bez nich zapytania nie da się zrealizować.',
           'Dane podane w formularzu zgłoszenia firmy do programu partnerskiego (dane firmy, dane osoby kontaktowej, adres e-mail, telefon) — w celu rozpatrzenia zgłoszenia i kontaktu w sprawie współpracy. Podstawa: art. 6 ust. 1 lit. b oraz lit. f RODO.',
-          'Adres e-mail podany w formularzu obserwowania ceny ogłoszenia — wyłącznie po to, aby wysłać powiadomienie, gdy sprzedający obniży cenę tego ogłoszenia. Podstawa: art. 6 ust. 1 lit. b RODO (wykonanie usługi na żądanie osoby, której dane dotyczą). Podanie adresu jest dobrowolne i nie wymaga założenia konta. Adresu nie wykorzystujemy do żadnej innej korespondencji ani nie przekazujemy go partnerom. Każda wiadomość zawiera link, który jednym kliknięciem usuwa adres z naszej bazy.',
+          'Adres e-mail podany w formularzu obserwowania ceny ogłoszenia albo modelu samochodu — po to, aby wysłać powiadomienie, gdy sprzedający obniży cenę albo pojawi się nowa oferta. Podstawa: art. 6 ust. 1 lit. b RODO (wykonanie usługi na żądanie osoby, której dane dotyczą). Podanie adresu jest dobrowolne i nie wymaga założenia konta. Bez osobnej zgody adresu nie wykorzystujemy do żadnej innej korespondencji ani nie przekazujemy go partnerom. Każda wiadomość zawiera link, który jednym kliknięciem usuwa adres z naszej bazy.',
+          'Zgoda na cotygodniowe podsumowanie (co potaniało i co nowego w obserwowanym modelu) — jeżeli użytkownik zaznaczy ją w formularzu albo włączy linkiem z wiadomości. Zapisujemy datę jej udzielenia. Podstawa: art. 6 ust. 1 lit. a RODO (zgoda). Zgodę można w każdej chwili wycofać linkiem z wiadomości.',
+          'Anonimowe dane o korzystaniu z serwisu: która strona została otwarta, w jaki element kliknięto (jego podpis i sekcja strony), przy którym ogłoszeniu, a w przypadku linków do innych serwisów — tylko ich domena. Nie zapisujemy identyfikatora osoby ani urządzenia, adresu IP, plików cookie ani treści wpisywanych w formularze. Celem jest ulepszanie serwisu. Podstawa: art. 6 ust. 1 lit. f RODO (prawnie uzasadniony interes). Dane przechowujemy przez 180 dni.',
           'Dane techniczne przetwarzane przez dostawcę infrastruktury, w tym adres IP i informacje o przeglądarce zapisywane w logach serwera — w celu zapewnienia bezpieczeństwa i przeciwdziałania nadużyciom. Podstawa: art. 6 ust. 1 lit. f RODO.',
         ],
       },
@@ -170,13 +172,14 @@ const sections: LegalSection[] = [
     blocks: [
       {
         type: 'p',
-        text: 'Serwis korzysta wyłącznie z rozwiązań niezbędnych do jego działania. Nie stosujemy cookies analitycznych, reklamowych ani narzędzi śledzących, dlatego nie prosimy o zgodę na ich wykorzystanie.',
+        text: 'Serwis korzysta wyłącznie z rozwiązań niezbędnych do jego działania. Nie stosujemy cookies analitycznych ani reklamowych i nie śledzimy użytkowników między stronami ani wizytami, dlatego nie prosimy o zgodę na ich wykorzystanie. Anonimowe statystyki opisane w punkcie 2 nie korzystają z cookies ani z pamięci przeglądarki.',
       },
       {
         type: 'ul',
         items: [
           'Dane sesji logowania zapisywane przez mechanizm uwierzytelniania Supabase w pamięci przeglądarki — niezbędne do utrzymania zalogowania.',
           'Wpis „cookie-consent-ack" w pamięci lokalnej przeglądarki — zapamiętuje, że komunikat o plikach cookie został potwierdzony, dzięki czemu nie pojawia się ponownie.',
+          'Wpis „obczajone-compare" w pamięci lokalnej przeglądarki — lista do pięciu ogłoszeń dodanych do porównania. Pozostaje wyłącznie w tej przeglądarce i nie jest wysyłana do nas, chyba że użytkownik sam udostępni link do porównania.',
         ],
       },
       {

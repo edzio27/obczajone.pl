@@ -9,6 +9,7 @@ import { ReferralTracker } from '@/components/referral-tracker';
 // wymaga zgody z bannera - ale bez niej nie wiemy nawet, czy ktokolwiek wchodzi
 // na strony ogłoszeń, a to jedyna liczba, od której zależy cała reszta.
 import { Analytics } from '@vercel/analytics/next';
+import { ClickTracker } from '@/components/click-tracker';
 
 const inter = Inter({
   subsets: ['latin', 'latin-ext'],
@@ -134,6 +135,7 @@ export default function RootLayout({
           <CookieConsent />
           <ReferralTracker />
           <Analytics />
+          <ClickTracker />
         </AuthProvider>
       </body>
     </html>
