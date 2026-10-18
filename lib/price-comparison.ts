@@ -145,6 +145,33 @@ export async function fetchPriceComparison(
   // "Bezpośrednio" albo "Przestronne" jako markę, więc tego nie robimy.
   if (!brand || !model || !(listing.current_price > 0)) return null;
 
+  /*
+    Najpierw gotowa ocena z nocy (refresh_price_assessments) - ta sama, którą
+    pokazują kafelki, więc kafelek i strona mówią to samo. Medianę i przedział
+    bierzemy z nocy, ale procent liczymy z dzisiejszej ceny: ogłoszenie mogło
+    potanieć w ciągu dnia. Liczenie na żywo niżej zostaje dla ogłoszeń, których
+    cron jeszcze nie widział (wklejonych dziś).
+  */
+  const { data: stored } = await supabase
+    .from('listing_price_assessment')
+    .select('sufficient, sample_size, median_price, lower_quartile, upper_quartile, criteria_label, strict')
+    .eq('listing_id', listing.id)
+    .maybeSingle();
+
+  if (stored) {
+    const med = stored.median_price == null ? null : Number(stored.median_price);
+    return {
+      sufficient: stored.sufficient,
+      sampleSize: stored.sample_size,
+      medianPrice: med,
+      percentVsMedian: stored.sufficient && med && med > 0 ? ((listing.current_price - med) / med) * 100 : null,
+      lowerQuartile: stored.lower_quartile == null ? null : Number(stored.lower_quartile),
+      upperQuartile: stored.upper_quartile == null ? null : Number(stored.upper_quartile),
+      criteriaLabel: stored.criteria_label,
+      strict: stored.strict,
+    };
+  }
+
   const { data, error } = await supabase
     .from('listings')
     .select('id, current_price, specs')

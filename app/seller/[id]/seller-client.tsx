@@ -59,7 +59,7 @@ export function SellerClient({ sellerId }: { sellerId: string }) {
 
       const { data: listingsData } = await supabase
         .from('listings')
-        .select('id, title, location, current_price, source, created_at, image_url, ai_opinion_rating')
+        .select('id, title, location, current_price, source, created_at, image_url, ai_opinion_rating, price_verdict')
         .eq('seller_id', sellerId)
         .order('created_at', { ascending: false });
 

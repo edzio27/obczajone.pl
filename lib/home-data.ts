@@ -14,10 +14,12 @@ export type HomeListing = {
   average_rating?: number;
   review_count?: number;
   priceChangePercent?: number | null;
+  /** Ocena ceny z nocnego przeliczenia (refresh_price_assessments). */
+  price_verdict?: string | null;
 };
 
 const CARD_COLUMNS =
-  'id, title, location, current_price, first_price, source, created_at, image_url, ai_opinion_rating';
+  'id, title, location, current_price, first_price, source, created_at, image_url, ai_opinion_rating, price_verdict';
 
 /**
  * Dokleja zmianę ceny względem najstarszego snapshotu. Wyciągnięte z komponentu,

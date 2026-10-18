@@ -5,6 +5,7 @@ import { pl } from 'date-fns/locale';
 import { ArrowUpRight, MapPin, Sparkles, Star, TrendingDown, TrendingUp } from 'lucide-react';
 import { ListingThumbnail } from '@/components/listing-thumbnail';
 import { cn } from '@/lib/utils';
+import { VERDICT_BADGE, isVerdictLevel } from '@/lib/price-verdict';
 
 type ListingCardProps = {
   id: string;
@@ -18,6 +19,8 @@ type ListingCardProps = {
   review_count?: number;
   ai_opinion_rating?: number | null;
   priceChangePercent?: number | null;
+  /** Ocena ceny z nocnego przeliczenia; null, gdy za mało podobnych ofert. */
+  price_verdict?: string | null;
   /**
    * Oferty już nie ma w źródle. Kafelek musi to mówić wprost: na liście
    * archiwum wygląda tak samo jak żywe ogłoszenie, a prowadzi do auta,
@@ -67,9 +70,13 @@ export function ListingCard({
   review_count = 0,
   ai_opinion_rating,
   priceChangePercent,
+  price_verdict,
   isArchived = false,
   userReview,
 }: ListingCardProps) {
+  // Ocenę pokazujemy tylko przy żywych ofertach: przy zdjętej „Super cena”
+  // zachęcałaby do auta, którego nie da się już kupić.
+  const verdict = !isArchived && isVerdictLevel(price_verdict) ? VERDICT_BADGE[price_verdict] : null;
   const hasHumanReviews = !!average_rating && review_count > 0;
   const hasAiOnly = !hasHumanReviews && ai_opinion_rating != null;
   const displayRating = hasHumanReviews ? average_rating! : ai_opinion_rating!;
@@ -92,6 +99,22 @@ export function ListingCard({
               <Badge variant="secondary" className="uppercase text-[10px] tracking-wide">
                 {source}
               </Badge>
+
+              {verdict && (
+                <span
+                  title={verdict.hint}
+                  className={cn(
+                    'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold',
+                    verdict.tone === 'great' && 'bg-success text-success-foreground',
+                    verdict.tone === 'good' && 'bg-success/15 text-success',
+                    verdict.tone === 'neutral' && 'bg-muted text-muted-foreground',
+                    verdict.tone === 'high' && 'bg-warning/15 text-warning',
+                    verdict.tone === 'veryHigh' && 'bg-warning/25 text-foreground'
+                  )}
+                >
+                  {verdict.label}
+                </span>
+              )}
 
               {isArchived && (
                 <Badge

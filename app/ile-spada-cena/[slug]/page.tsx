@@ -14,6 +14,8 @@ import { RecentDropsGrid } from '@/components/market/recent-drops-grid';
 import { fetchModelCharts } from '@/lib/model-charts';
 import { fetchMarketTrends } from '@/lib/market-trends';
 import { klientSerwerowy } from '@/lib/supabase-server';
+import { format } from 'date-fns';
+import { pl } from 'date-fns/locale';
 
 export const revalidate = 3600;
 
@@ -88,7 +90,7 @@ export default async function ModelTrendPage({ params }: { params: { slug: strin
 
   const { data } = await supabase
     .from('listings')
-    .select('id, title, current_price, location, image_url, source, created_at')
+    .select('id, title, current_price, location, image_url, source, created_at, price_verdict')
     .eq('specs->>brand', trend.brand)
     .eq('specs->>model', trend.model)
     .gt('current_price', 0)
@@ -98,9 +100,19 @@ export default async function ModelTrendPage({ params }: { params: { slug: strin
   const listings = (data as any[]) || [];
   const name = `${trend.brand} ${trend.model}`;
 
-  const [charts, market] = await Promise.all([
+  const [charts, market, belowMarket] = await Promise.all([
     fetchModelCharts(supabase, trend.brand, trend.model),
     fetchMarketTrends(supabase),
+    // Ile aktywnych ofert jest tańszych niż 3 na 4 podobne („Super cena”).
+    // Nie „poniżej mediany”: tam z definicji leży prawie połowa rynku.
+    supabase
+      .from('listings')
+      .select('id', { count: 'exact', head: true })
+      .eq('is_active', true)
+      .eq('specs->>brand', trend.brand)
+      .eq('specs->>model', trend.model)
+      .eq('price_verdict', 'okazja')
+      .then((r) => r.count ?? null),
   ]);
   /*
     Zdanie nad wykresem liczymy z tego samego indeksu co wykres. Zmiana
@@ -134,9 +146,39 @@ export default async function ModelTrendPage({ params }: { params: { slug: strin
             <h1 className="text-3xl md:text-4xl font-bold mt-3 mb-3">
               Ile spada cena — {name}
             </h1>
-            <p className="text-muted-foreground max-w-2xl">
-              Policzone z {trend.sampleSize} ogłoszeń tego modelu, które obserwujemy w serwisie,
-              i z zapisów ich cen z kolejnych dni.
+            {/*
+              Przegląd rynku jednym akapitem, jak u AutoUncle („Przegląd rynku:
+              Październik-2026…”), ale z naszych liczb. Google dostaje tekst,
+              który odpowiada na „ile kosztuje używany {model}”, a czytelnik ma
+              w trzech zdaniach to, co niżej rozpisują kafelki i wykresy.
+            */}
+            <p className="text-muted-foreground max-w-3xl">
+              <strong className="text-foreground">
+                Przegląd rynku, {format(new Date(), 'LLLL yyyy', { locale: pl })}:
+              </strong>{' '}
+              obserwujemy {trend.sampleSize} aktywnych ogłoszeń {name}
+              {charts && charts.byYear.length > 1
+                ? ` z roczników ${charts.byYear[0].year}–${charts.byYear[charts.byYear.length - 1].year}`
+                : ''}
+              .
+              {charts && charts.distribution.length > 1
+                ? ` Większość ofert kosztuje od ${formatPln(charts.distribution[0].from)} do ${formatPln(
+                    charts.distribution[charts.distribution.length - 1].to
+                  )}`
+                : ''}
+              {trend.medianPrice != null
+                ? `${charts && charts.distribution.length > 1 ? ', a' : ' Mediana'} mediana ceny to ${formatPln(trend.medianPrice)}.`
+                : '.'}
+              {trend.droppedCount > 0
+                ? ` ${dropShare}% ogłoszeń potaniało w czasie, gdy je obserwujemy${
+                    trend.medianDropPercent != null
+                      ? `, typowo o ${trend.medianDropPercent.toLocaleString('pl-PL', { maximumFractionDigits: 1 })}%${
+                          trend.medianDropPln != null ? ` (ok. ${formatPln(trend.medianDropPln)})` : ''
+                        }`
+                      : ''
+                  }.`
+                : ''}
+              {belowMarket != null && belowMarket > 0 ? ` ${ofertyPonizej(belowMarket)}` : ''}
             </p>
           </div>
 
@@ -297,6 +339,13 @@ export default async function ModelTrendPage({ params }: { params: { slug: strin
       <Footer />
     </div>
   );
+}
+
+/** „Taniej niż 3 na 4 podobne auta jest teraz wystawionych 23 ofert” z poprawną odmianą. */
+function ofertyPonizej(n: number): string {
+  const few = n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14);
+  const [verb, noun] = n === 1 ? ['jest', 'oferta'] : few ? ['są', 'oferty'] : ['jest', 'ofert'];
+  return `Taniej niż 3 na 4 podobne auta ${verb} teraz wystawion${n === 1 ? 'a' : few ? 'e' : 'ych'} ${n} ${noun}.`;
 }
 
 function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {

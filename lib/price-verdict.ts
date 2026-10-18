@@ -137,3 +137,19 @@ export function assessNegotiation(
     suggestedDiscount,
   };
 }
+
+/**
+ * Krótkie etykiety na kafelki. Na stronie ogłoszenia jest miejsce na „12%
+ * poniżej mediany”, na kafelku nie - tam liczy się, czy w ogóle warto kliknąć.
+ */
+export const VERDICT_BADGE: Record<VerdictLevel, { label: string; hint: string; tone: 'great' | 'good' | 'neutral' | 'high' | 'veryHigh' }> = {
+  okazja: { label: 'Super cena', hint: 'Tańsza niż 3 na 4 podobne oferty', tone: 'great' },
+  ponizej: { label: 'Dobra cena', hint: 'Ponad 3% poniżej mediany podobnych ofert', tone: 'good' },
+  rynkowa: { label: 'Cena rynkowa', hint: 'W granicach 3% od mediany podobnych ofert', tone: 'neutral' },
+  powyzej: { label: 'Powyżej rynku', hint: 'Ponad 3% powyżej mediany podobnych ofert', tone: 'high' },
+  wysoka: { label: 'Wysoka cena', hint: 'Droższa niż 3 na 4 podobne oferty', tone: 'veryHigh' },
+};
+
+export function isVerdictLevel(value: unknown): value is VerdictLevel {
+  return typeof value === 'string' && value in VERDICT_BADGE;
+}

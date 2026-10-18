@@ -21,7 +21,7 @@ import { attachPriceChanges, type HomeListing } from './home-data';
 */
 
 const CARD_COLUMNS =
-  'id, title, location, current_price, first_price, source, created_at, image_url, ai_opinion_rating';
+  'id, title, location, current_price, first_price, source, created_at, image_url, ai_opinion_rating, price_verdict';
 
 export type ArchiveStats = {
   /** Ile zdjętych ogłoszeń mamy opisanych. */
