@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { WeeklyDigestCheckbox } from '@/components/weekly-digest-checkbox';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/lib/supabase';
@@ -20,6 +21,7 @@ export function PriceWatchForm({ listingId }: { listingId: string }) {
   const [email, setEmail] = useState('');
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
+  const [digest, setDigest] = useState(false);
 
   async function subscribe(event: React.FormEvent) {
     event.preventDefault();
@@ -38,7 +40,7 @@ export function PriceWatchForm({ listingId }: { listingId: string }) {
 
     const { error } = await supabase
       .from('listing_price_watchers')
-      .insert({ listing_id: listingId, email: trimmed });
+      .insert({ listing_id: listingId, email: trimmed, weekly_digest: digest });
 
     setSaving(false);
 
@@ -95,9 +97,10 @@ export function PriceWatchForm({ listingId }: { listingId: string }) {
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Obserwuj cenę'}
         </Button>
       </div>
+      <WeeklyDigestCheckbox checked={digest} onChange={setDigest} />
       <p className="text-xs text-muted-foreground">
-        Bez zakładania konta. Adresu używamy wyłącznie do tego jednego powiadomienia i
-        wypiszesz się linkiem z maila.
+        Bez zakładania konta. Bez zaznaczenia powyżej adresu używamy wyłącznie do tego
+        jednego powiadomienia. Wypiszesz się linkiem z maila.
       </p>
     </form>
   );

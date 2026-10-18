@@ -8,6 +8,8 @@ import { ListingCard } from '@/components/listing-card';
 import { supabase } from '@/lib/supabase';
 import { searchArchive } from '@/lib/archive-search';
 import type { HomeListing } from '@/lib/home-data';
+import { fetchModelTrends, type ModelTrend } from '@/lib/price-trends';
+import { ModelWatchInline } from '@/components/model-watch-inline';
 
 function ogloszen(n: number): string {
   if (n === 1) return 'ogłoszenie';
@@ -43,6 +45,20 @@ export function ArchiveSearch() {
   const [results, setResults] = useState<HomeListing[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [notFoundLink, setNotFoundLink] = useState(false);
+  const [trends, setTrends] = useState<ModelTrend[]>([]);
+
+  useEffect(() => {
+    fetchModelTrends(supabase).then(setTrends).catch(() => setTrends([]));
+  }, []);
+
+  // Model, którego dotyczy wyszukiwanie - jeśli fraza zawiera markę i model.
+  const phraseLower = active.trim().toLowerCase();
+  const watchedModel =
+    phraseLower.length >= 3
+      ? trends.find(
+          (t) => phraseLower.includes(t.brand.toLowerCase()) && phraseLower.includes(t.model.toLowerCase())
+        ) ?? null
+      : null;
 
   useEffect(() => {
     const phrase = active.trim();
@@ -164,6 +180,19 @@ export function ArchiveSearch() {
             Zapisujemy tylko ogłoszenia, które zdążyliśmy zobaczyć, zanim zniknęły z Otomoto.
             Wpisz markę i model, żeby zobaczyć podobne auta, które mamy.
           </p>
+        </div>
+      )}
+
+      {!loading && watchedModel && (
+        <div className="rounded-xl border bg-muted/30">
+          <p className="px-4 pt-3 text-sm text-muted-foreground">
+            Szukasz takiego auta? Damy znać, gdy pojawi się nowa oferta.
+          </p>
+          <ModelWatchInline
+            brand={watchedModel.brand}
+            model={watchedModel.model}
+            medianPrice={watchedModel.medianPrice}
+          />
         </div>
       )}
 

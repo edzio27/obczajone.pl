@@ -61,6 +61,19 @@ function blokOgledzin(): string {
       </div>`;
 }
 
+/*
+  Link do zgody na poniedziałkowe podsumowanie. Pokazujemy go w mailach
+  z alertem zamiast dopisywać ludzi z automatu: zapisali się na alert,
+  nie na podsumowanie (patrz migracja 20261018120000).
+*/
+function blokPodsumowania(token: string): string {
+  return `
+      <p style="font-size:13px;color:#555;margin:0 0 16px">
+        Chcesz co poniedziałek krótkie podsumowanie — co potaniało i co nowego w tym modelu?
+        <a href="${SITE_URL}/podsumowanie/${token}" style="color:#175CE0">Włącz je tutaj</a>.
+      </p>`;
+}
+
 function buildEmail(drops: Drop[], unsubscribeToken?: string): { subject: string; html: string } {
   const subject =
     drops.length === 1
@@ -91,6 +104,7 @@ function buildEmail(drops: Drop[], unsubscribeToken?: string): { subject: string
       </p>
       <ul style="padding-left:18px;margin:0 0 24px">${items}</ul>
       ${blokOgledzin()}
+      ${unsubscribeToken ? blokPodsumowania(unsubscribeToken) : ''}
       <p style="color:#777;font-size:12px;margin:0">
         Dostajesz tę wiadomość, bo włączyłeś powiadomienia o cenie w serwisie obczajone.pl.
         ${unsubscribeToken
@@ -149,6 +163,7 @@ function buildModelEmail(
       <p style="color:#555;margin:0 0 20px">${offers.length === 1 ? 'Pojawiła się oferta, której wcześniej nie było.' : 'Pojawiły się oferty, których wcześniej nie było.'}</p>
       <ul style="padding-left:18px;margin:0 0 24px">${items}</ul>
       ${blokOgledzin()}
+      ${blokPodsumowania(unsubscribeToken)}
       <p style="font-size:13px;color:#777;margin:0">
         Cenę każdej z nich śledzimy codziennie — jeśli sprzedający zejdzie, zobaczysz to na stronie ogłoszenia.<br>
         <a href="${SITE_URL}/wypisz/${unsubscribeToken}" style="color:#777">Wypisz się jednym kliknięciem</a>.

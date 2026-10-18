@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { WeeklyDigestCheckbox } from '@/components/weekly-digest-checkbox';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/lib/supabase';
@@ -31,6 +32,7 @@ export function ModelWatchForm({
   const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
+  const [digest, setDigest] = useState(false);
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState<{ maxPrice: number | null } | null>(null);
 
@@ -67,7 +69,7 @@ export function ModelWatchForm({
 
     const { error } = await supabase
       .from('model_price_watchers')
-      .insert({ brand, model, email: trimmed, max_price: parsed });
+      .insert({ brand, model, email: trimmed, max_price: parsed, weekly_digest: digest });
 
     setSaving(false);
 
@@ -138,6 +140,8 @@ export function ModelWatchForm({
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Obserwuj model'}
         </Button>
       </div>
+
+      <WeeklyDigestCheckbox checked={digest} onChange={setDigest} modelName={`${brand} ${model}`} />
 
       <p className="text-xs text-muted-foreground">
         Kwotę możesz zostawić pustą — wtedy napiszemy o każdej nowej ofercie tego modelu.

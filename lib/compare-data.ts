@@ -28,6 +28,8 @@ export type CompareCar = {
   medianPrice: number | null;
   negotiation: NegotiationHint | null;
   trendSlug: string | null;
+  /** Marka i model z trendem modelu - do alertu „obserwuj wszystkie”. */
+  watchModel: { brand: string; model: string; medianPrice: number | null } | null;
 };
 
 function toNumber(value: unknown): number | null {
@@ -103,6 +105,7 @@ export async function fetchCompareCars(supabase: SupabaseClient, ids: string[]):
         medianPrice: comparison?.sufficient ? comparison.medianPrice : null,
         negotiation: l.is_active ? assessNegotiation(price, firstPrice, trend) : null,
         trendSlug: trend ? trendSlug : null,
+        watchModel: trend ? { brand: trend.brand, model: trend.model, medianPrice: trend.medianPrice } : null,
       };
     })
   );

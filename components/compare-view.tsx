@@ -7,6 +7,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { Check, ExternalLink, Link2, Loader2, X } from 'lucide-react';
 import { ListingUrlForm } from '@/components/listing-url-form';
+import { ModelWatchInline } from '@/components/model-watch-inline';
 import { supabase } from '@/lib/supabase';
 import { fetchCompareCars, type CompareCar } from '@/lib/compare-data';
 import { MAX_COMPARE, useCompareList } from '@/lib/compare-store';
@@ -319,6 +320,28 @@ export function CompareView() {
               </tbody>
             </table>
           </div>
+
+          {/* Kto porównuje kilka aut, szuka modelu, a nie egzemplarza: alert na
+              każdy porównywany model, najwyżej trzy. */}
+          {(() => {
+            const models = Array.from(
+              new Map(
+                cars
+                  .filter((c) => c.isActive && c.watchModel)
+                  .map((c) => [`${c.watchModel!.brand}|${c.watchModel!.model}`, c.watchModel!])
+              ).values()
+            ).slice(0, 3);
+            if (models.length === 0) return null;
+            return (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {models.map((m) => (
+                  <div key={`${m.brand}|${m.model}`} className="rounded-xl border">
+                    <ModelWatchInline brand={m.brand} model={m.model} medianPrice={m.medianPrice} />
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
 
           <p className="text-xs text-muted-foreground">
             Zielonym zaznaczamy najlepszą wartość w wierszu, gdy jest jednoznaczna. Ceny ofertowe, nie

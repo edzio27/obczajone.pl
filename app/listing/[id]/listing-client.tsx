@@ -31,6 +31,7 @@ import { ListingPrimaryActions } from '@/components/listing-primary-actions';
 import { ListingSignals } from '@/components/listing-signals';
 import { PriceWatchForm } from '@/components/price-watch-form';
 import { ModelWatchForm } from '@/components/model-watch-form';
+import { ModelWatchInline } from '@/components/model-watch-inline';
 import { coordsFromLocation } from '@/lib/geo';
 import { PriceVerdictCard } from '@/components/price-verdict-card';
 import { assessNegotiation, assessPriceVerdict } from '@/lib/price-verdict';
@@ -746,6 +747,15 @@ export function ListingClient({
                         <PriceWatchForm listingId={listingId} />
                       )}
                     </div>
+                  )}
+                  {/* Obok alertu na to jedno auto - alert na cały model. Kto patrzy
+                      na jedno ogłoszenie, zwykle szuka takiego auta, nie tego egzemplarza. */}
+                  {listing.is_active && modelTrend && (
+                    <ModelWatchInline
+                      brand={modelTrend.brand}
+                      model={modelTrend.model}
+                      medianPrice={modelTrend.medianPrice}
+                    />
                   )}
                   {listing.source === 'otomoto' && <CompareButton listingId={listingId} />}
                   <Button onClick={handleShare} variant="outline" className="w-full">
