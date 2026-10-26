@@ -3,22 +3,14 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { FileSearch, ExternalLink } from 'lucide-react';
 import { logAffiliateClick, type AffiliateClickContext } from '@/lib/affiliate-clicks';
-
-/*
-  Program partnerski konfigurujemy zmiennymi, a nie w kodzie, bo link zawiera
-  identyfikator konta i bywa zmieniany bez udziału programisty. Dopóki nie są
-  ustawione, blok płatny w ogóle się nie renderuje - lepiej nie pokazać nic niż
-  pokazać przycisk prowadzący donikąd.
-*/
-const AFFILIATE_URL = process.env.NEXT_PUBLIC_VIN_AFFILIATE_URL;
-const AFFILIATE_NAME = process.env.NEXT_PUBLIC_VIN_AFFILIATE_NAME;
-const AFFILIATE_PROVIDER = process.env.NEXT_PUBLIC_VIN_AFFILIATE_PROVIDER;
-/*
-  Kod rabatowy jest opcjonalny. Program może go nie dawać albo cofnąć, a link
-  działa bez niego, więc brak tych zmiennych chowa tylko linijkę z kodem.
-*/
-const DISCOUNT_CODE = process.env.NEXT_PUBLIC_VIN_AFFILIATE_DISCOUNT_CODE;
-const DISCOUNT_PERCENT = process.env.NEXT_PUBLIC_VIN_AFFILIATE_DISCOUNT_PERCENT;
+import {
+  VIN_AFFILIATE_URL as AFFILIATE_URL,
+  VIN_AFFILIATE_NAME as AFFILIATE_NAME,
+  VIN_AFFILIATE_PROVIDER as AFFILIATE_PROVIDER,
+  VIN_AFFILIATE_DISCOUNT_CODE as DISCOUNT_CODE,
+  VIN_AFFILIATE_DISCOUNT_PERCENT as DISCOUNT_PERCENT,
+  hasVinAffiliate,
+} from '@/lib/vin-affiliate';
 
 type VinCheckCtaProps = {
   context: AffiliateClickContext;
@@ -48,7 +40,7 @@ type VinCheckCtaProps = {
  * tu aktywem, z którego bierze się przychód, a nie kosztem przychodu.
  */
 export function VinCheckCta({ context, listingId, source }: VinCheckCtaProps) {
-  const hasAffiliate = Boolean(AFFILIATE_URL && AFFILIATE_NAME && AFFILIATE_PROVIDER);
+  const hasAffiliate = hasVinAffiliate;
 
   /*
     Nieruchomość dostaje swój odpowiednik, a nie samą pustkę po usuniętym bloku.

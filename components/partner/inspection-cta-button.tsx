@@ -24,6 +24,8 @@ type InspectionCtaButtonProps = {
   isFallback: boolean;
   /** Ile rzeczy opinia AI kazała obejrzeć na żywo - to jest cały argument. */
   watchOutCount?: number;
+  /** Pomarańcz oddajemy raportowi VIN, gdy stoi nad tym przyciskiem. */
+  variant?: 'signal' | 'default';
 };
 
 /**
@@ -42,6 +44,7 @@ export function InspectionCtaButton({
   loaded,
   isFallback,
   watchOutCount = 0,
+  variant = 'signal',
 }: InspectionCtaButtonProps) {
   const [open, setOpen] = useState(false);
 
@@ -50,7 +53,7 @@ export function InspectionCtaButton({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="signal" size="lg" className="w-full">
+        <Button variant={variant} size="lg" className="w-full">
           <ShieldCheck className="h-4 w-4 mr-2" />
           Zamów inspekcję
         </Button>

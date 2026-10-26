@@ -53,7 +53,8 @@ const config: Config = {
           DEFAULT: 'hsl(var(--accent))',
           foreground: 'hsl(var(--accent-foreground))',
         },
-        // Kolor akcji płatnej - "zamów inspekcję" i nic poza tym. Trzymany
+        // Kolor akcji płatnej - "zamów inspekcję", a przy ogłoszeniu auta raport
+        // VIN (wtedy inspekcja przechodzi na zwykły przycisk). Trzymany
         // osobno od --accent, bo --accent w shadcn to token hoveru ghost/outline
         // i pomalowanie go na sygnałowy pomarańcz zabarwiłoby pół interfejsu.
         signal: {
